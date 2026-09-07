@@ -2,9 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
+import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useUserStore } from '@/store/userStore';
-import type { MealEntry, User, WeightEntry } from '@/types';
+import type { FoodItem, MealEntry, User, WeightEntry } from '@/types';
 
 const LOCAL_CHANGE_KEY = 'coach-imi-last-local-change';
 const SYNC_TIMEOUT_MS = 10000;
@@ -59,17 +60,21 @@ export interface CloudSnapshot {
   weightHistory: WeightEntry[];
   entriesByDate: Record<string, MealEntry[]>;
   hasOnboarded: boolean;
+  // Optional: absent in snapshots pushed before custom foods existed - callers must fall back to [].
+  customFoods?: FoodItem[];
 }
 
 export function buildSnapshot(): CloudSnapshot {
   const { user, weightHistory, hasOnboarded } = useUserStore.getState();
   const { entriesByDate } = useDiaryStore.getState();
+  const { customFoods } = useCustomFoodStore.getState();
 
   return {
     user,
     weightHistory,
     entriesByDate,
     hasOnboarded,
+    customFoods,
   };
 }
 
@@ -81,6 +86,9 @@ export function applySnapshot(snapshot: CloudSnapshot): void {
   }));
   useDiaryStore.setState({
     entriesByDate: snapshot.entriesByDate ?? {},
+  });
+  useCustomFoodStore.setState({
+    customFoods: snapshot.customFoods ?? [],
   });
 }
 

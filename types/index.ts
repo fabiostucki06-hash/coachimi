@@ -64,7 +64,7 @@ export interface User {
   visibleNutrients: NutrientVisibility;
 }
 
-export type FoodItemSource = 'local' | 'recent' | 'off';
+export type FoodItemSource = 'local' | 'recent' | 'off' | 'custom';
 
 export interface FoodItem {
   id: string;
@@ -102,4 +102,42 @@ export interface WeightEntry {
   id: string;
   date: string;
   weightKg: number;
+}
+
+// --- Training ---
+
+/** One exercise slot inside a reusable workout template - a rep RANGE (not a fixed count) is the point of double progression: stay in range while adding reps, then jump weight once every set hits the top. */
+export interface TemplateExercise {
+  id: string;
+  name: string;
+  targetSets: number;
+  targetRepsMin: number;
+  targetRepsMax: number;
+}
+
+export interface WorkoutTemplate {
+  id: string;
+  name: string;
+  exercises: TemplateExercise[];
+}
+
+export interface LoggedSet {
+  weightKg: number;
+  reps: number;
+}
+
+export interface LoggedExercise {
+  id: string;
+  name: string;
+  targetRepsMin: number;
+  targetRepsMax: number;
+  sets: LoggedSet[];
+}
+
+export interface WorkoutSession {
+  id: string;
+  templateId: string;
+  templateName: string;
+  date: string;
+  exercises: LoggedExercise[];
 }

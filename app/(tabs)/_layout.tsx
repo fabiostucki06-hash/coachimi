@@ -1,4 +1,4 @@
-import { BookOpen, ChartColumn, Sparkles, User } from 'lucide-react-native';
+import { BookOpen, ChartColumn, Dumbbell, Sparkles, User } from 'lucide-react-native';
 import { Link, Tabs, usePathname } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -13,6 +13,7 @@ type TabBarProps = Parameters<TabBarRenderer>[0];
 
 const SIDEBAR_LINKS = [
   { href: '/', label: 'Tagebuch', Icon: BookOpen },
+  { href: '/training', label: 'Training', Icon: Dumbbell },
   { href: '/statistik', label: 'Statistik', Icon: ChartColumn },
   { href: '/profil', label: 'Profil', Icon: User },
 ] as const;
@@ -135,6 +136,13 @@ export default function TabsLayout() {
         options={{
           title: 'Tagebuch',
           tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="training"
+        options={{
+          title: 'Training',
+          tabBarIcon: ({ color, size }) => <Dumbbell color={color} size={size} />,
         }}
       />
       <Tabs.Screen

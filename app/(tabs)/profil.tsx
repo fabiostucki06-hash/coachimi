@@ -5,7 +5,9 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CloudSyncCard } from '@/components/features/CloudSyncCard';
+import { FeedbackDiagnostics } from '@/components/features/FeedbackDiagnostics';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
+import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
 import { ACTIVITY_OPTIONS, ChipGroup, GENDER_OPTIONS, GOAL_OPTIONS, THEME_OPTIONS } from '@/components/features/ProfileOptions';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -355,6 +357,10 @@ export default function ProfilScreen() {
         <Card className="gap-1">
           <NutrientVisibilitySelector visibleNutrients={user.visibleNutrients} onToggle={toggleNutrientVisibility} />
         </Card>
+
+        <SupplementRecommendations />
+
+        <FeedbackDiagnostics />
 
         <Card className="gap-4">
           <View className="flex-row items-center gap-3">

@@ -12,6 +12,7 @@ import {
   shouldApplyRemote,
   subscribeToRemoteChanges,
 } from '@/services/cloudSync';
+import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useUserStore } from '@/store/userStore';
 
@@ -99,6 +100,7 @@ function startAutoSyncWatchers(session: Session) {
   unsubscribers = [
     useUserStore.subscribe(handleLocalStoreChange),
     useDiaryStore.subscribe(handleLocalStoreChange),
+    useCustomFoodStore.subscribe(handleLocalStoreChange),
   ];
 
   // Best-effort: a realtime subscribe failure (Realtime not enabled on the
