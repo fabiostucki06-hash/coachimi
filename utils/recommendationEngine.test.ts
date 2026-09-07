@@ -26,8 +26,15 @@ describe('generateRecommendation', () => {
     expect(result.suggestion).toContain('Magerquark mit Beeren');
   });
 
-  it('adapts the suggestion to the time of day', () => {
-    const result = generateRecommendation('morning', 400, { carbs: 10, protein: 35, fat: 5 });
-    expect(result.suggestion).toContain('Rührei mit Hüttenkäse');
+  it('cycles through variants of the dominant macro tip pool', () => {
+    const result = generateRecommendation('morning', 400, { carbs: 10, protein: 35, fat: 5 }, undefined, 1);
+    expect(result.suggestion).toContain('Hähnchenbrustfilet');
+    expect(result.variantCount).toBeGreaterThan(1);
+  });
+
+  it('suggests a balanced meal when the top two macro gaps are close', () => {
+    const result = generateRecommendation('evening', 400, { carbs: 30, protein: 32, fat: 10 });
+    expect(result.headline).toBe('Noch 400 kcal übrig');
+    expect(result.suggestion).toMatch(/Lachsfilet|Vollkorn-Wrap|Gemischter Salat/);
   });
 });

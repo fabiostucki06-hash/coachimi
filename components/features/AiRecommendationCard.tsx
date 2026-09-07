@@ -11,8 +11,6 @@ interface AiRecommendationCardProps {
   visibleNutrients: NutrientVisibility;
 }
 
-const MAX_VARIANTS = 3;
-
 export function AiRecommendationCard({ remainingCalories, remainingMacros, visibleNutrients }: AiRecommendationCardProps) {
   const [variantIndex, setVariantIndex] = useState(0);
   const spin = useRef(new Animated.Value(0)).current;
@@ -31,11 +29,12 @@ export function AiRecommendationCard({ remainingCalories, remainingMacros, visib
     spin.setValue(0);
     Animated.timing(spin, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
 
+    const variantCount = recommendation.variantCount;
     setVariantIndex((current) => {
-      if (MAX_VARIANTS <= 1) return current;
+      if (variantCount <= 1) return current;
       let next = current;
       while (next === current) {
-        next = Math.floor(Math.random() * MAX_VARIANTS);
+        next = Math.floor(Math.random() * variantCount);
       }
       return next;
     });
