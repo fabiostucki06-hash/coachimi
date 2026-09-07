@@ -19,6 +19,7 @@ const EMPTY_ENTRIES: MealEntry[] = [];
 
 interface DiaryState {
   entriesByDate: Record<string, MealEntry[]>;
+  lastUpdatedAt: string | null;
   addEntry: (date: string, foodItem: FoodItem, mealType: MealType, servings: number) => void;
   removeEntry: (date: string, entryId: string) => void;
   getEntriesForDate: (date: string) => MealEntry[];
@@ -28,6 +29,7 @@ export const useDiaryStore = create<DiaryState>()(
   persist(
     (set, get) => ({
       entriesByDate: {},
+      lastUpdatedAt: null,
 
       addEntry: (date, foodItem, mealType, servings) => {
         const entry: MealEntry = {
@@ -42,6 +44,7 @@ export const useDiaryStore = create<DiaryState>()(
             ...state.entriesByDate,
             [date]: [...(state.entriesByDate[date] ?? []), entry],
           },
+          lastUpdatedAt: entry.loggedAt,
         }));
       },
 
@@ -51,6 +54,7 @@ export const useDiaryStore = create<DiaryState>()(
             ...state.entriesByDate,
             [date]: (state.entriesByDate[date] ?? []).filter((entry) => entry.id !== entryId),
           },
+          lastUpdatedAt: new Date().toISOString(),
         }));
       },
 
@@ -59,11 +63,12 @@ export const useDiaryStore = create<DiaryState>()(
     {
       name: 'coach-imi-diary-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
-        const state = persistedState as { entriesByDate?: Record<string, MealEntry[]> } | undefined;
+        const state = persistedState as { entriesByDate?: Record<string, MealEntry[]>; lastUpdatedAt?: string | null } | undefined;
         return {
           entriesByDate: state?.entriesByDate ?? {},
+          lastUpdatedAt: state?.lastUpdatedAt ?? null,
         };
       },
     },

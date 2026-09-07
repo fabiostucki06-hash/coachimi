@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Camera, ChevronDown, Coffee, Cookie, GlassWater, Moon, Plus, RefreshCw, Sparkles, UtensilsCrossed } from 'lucide-react-native';
 import type { ComponentType } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,8 +16,13 @@ import { useSyncStore } from '@/store/syncStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { Macros, MealEntry, MealType, NutrientKey } from '@/types';
+import { formatUpdatedAt } from '@/utils/formatUpdatedAt';
 import { getLastUpdatedLabel } from '@/utils/lastUpdated';
 import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
+
+// Re-renders the relative "vor X Min." label periodically so it doesn't go
+// stale while the screen stays mounted.
+const RELATIVE_TIME_REFRESH_MS = 60_000;
 
 interface IconProps {
   color?: string;
@@ -166,6 +171,7 @@ function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntr
 export default function DiaryScreen() {
   const date = useUiStore((state) => state.selectedDate);
   const entries = useDiaryStore((state) => state.entriesByDate[date] ?? EMPTY_ENTRIES);
+  const lastUpdatedAt = useDiaryStore((state) => state.lastUpdatedAt);
   const user = useUserStore((state) => state.user);
   const session = useSyncStore((state) => state.session);
   const syncStatus = useSyncStore((state) => state.status);
@@ -173,6 +179,12 @@ export default function DiaryScreen() {
   const lastSyncedAt = useSyncStore((state) => state.lastSyncedAt);
   const syncNow = useSyncStore((state) => state.syncNow);
   const syncedAt = remoteUpdatedAt ?? lastSyncedAt;
+
+  const [, forceRelativeTimeRefresh] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => forceRelativeTimeRefresh((n) => n + 1), RELATIVE_TIME_REFRESH_MS);
+    return () => clearInterval(id);
+  }, []);
 
   const selectedDateLabel = new Date(`${date}T00:00:00Z`).toLocaleDateString('de-DE', {
     weekday: 'long',
@@ -235,6 +247,11 @@ export default function DiaryScreen() {
                 </Text>
               </Pressable>
             )}
+            {lastUpdatedAt && (
+              <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Zuletzt aktualisiert: {formatUpdatedAt(lastUpdatedAt)}
+              </Text>
+            )}
           </View>
           <View className="flex-row items-center gap-2">
             <HardRefreshButton />
@@ -249,12 +266,12 @@ export default function DiaryScreen() {
             <View className="items-center gap-5 rounded-[28px] border border-slate-200/60 bg-white/70 p-6 shadow-2xl shadow-emerald-500/10 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
               <View className="items-center gap-1">
                 <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={ACCENT}>
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verbraucht</Text>
-                  <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{Math.round(totalCalories)}</Text>
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verbleibend</Text>
+                  <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{remainingCalories}</Text>
                   <Text className="text-xs text-slate-400">von {user.dailyCalorieGoal} kcal</Text>
                 </ProgressRing>
                 <Text className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
-                  {remainingCalories} kcal verbleibend
+                  {Math.round(totalCalories)} kcal gegessen
                 </Text>
               </View>
 
