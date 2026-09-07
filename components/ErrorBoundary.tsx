@@ -41,6 +41,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <Text className="text-center text-sm text-slate-500 dark:text-slate-400">
           Diese Ansicht konnte nicht geladen werden. Du kannst es erneut versuchen.
         </Text>
+        <Button label="Erneut versuchen" onPress={this.handleRetry} className="mt-2" />
         {__DEV__ && (
           <ScrollView className="max-h-64 w-full rounded-xl bg-black/90 p-3">
             <Text selectable className="text-xs font-semibold text-red-400">
@@ -56,7 +57,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             )}
           </ScrollView>
         )}
-        <Button label="Erneut versuchen" onPress={this.handleRetry} className="mt-2" />
       </View>
     );
   }

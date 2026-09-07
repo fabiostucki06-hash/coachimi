@@ -6,13 +6,20 @@ export interface MonthCell {
   inMonth: boolean;
 }
 
+/** `new Date(bad).toISOString()` throws RangeError (unlike toLocaleDateString, which just prints "Invalid Date") - guard every ISO-string conversion against a malformed/corrupted date key. */
+function isValidDate(date: Date): boolean {
+  return !Number.isNaN(date.getTime());
+}
+
 export function addDays(dateKey: string, delta: number): string {
   const date = new Date(`${dateKey}T00:00:00Z`);
+  if (!isValidDate(date)) return getLocalDateKey();
   date.setUTCDate(date.getUTCDate() + delta);
   return date.toISOString().slice(0, 10);
 }
 
 export function dateKeyOf(date: Date): string {
+  if (!isValidDate(date)) return getLocalDateKey();
   return date.toISOString().slice(0, 10);
 }
 
@@ -52,11 +59,14 @@ export function buildMonthGrid(year: number, month: number): MonthCell[] {
 
 export function monthYearOf(dateKey: string): { year: number; month: number } {
   const d = new Date(`${dateKey}T00:00:00Z`);
-  return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+  const fallback = isValidDate(d) ? d : new Date(`${getLocalDateKey()}T00:00:00Z`);
+  return { year: fallback.getUTCFullYear(), month: fallback.getUTCMonth() };
 }
 
 export function formatDateShort(dateKey: string): string {
-  return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString('de-DE', {
+  const d = new Date(`${dateKey}T00:00:00Z`);
+  const fallback = isValidDate(d) ? d : new Date(`${getLocalDateKey()}T00:00:00Z`);
+  return fallback.toLocaleDateString('de-DE', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
