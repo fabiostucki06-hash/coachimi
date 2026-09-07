@@ -70,4 +70,21 @@ export const useDiaryStore = create<DiaryState>()(
   ),
 );
 
+/** Most-recently-logged distinct foods across all dates, newest first - used to prioritize search results before hitting the network. */
+export function getRecentFoods(limit = 20): FoodItem[] {
+  const entries = Object.values(useDiaryStore.getState().entriesByDate).flat();
+  entries.sort((a, b) => b.loggedAt.localeCompare(a.loggedAt));
+
+  const seenNames = new Set<string>();
+  const recent: FoodItem[] = [];
+  for (const entry of entries) {
+    const key = entry.foodItem.name.trim().toLowerCase();
+    if (seenNames.has(key)) continue;
+    seenNames.add(key);
+    recent.push({ ...entry.foodItem, source: 'recent' });
+    if (recent.length >= limit) break;
+  }
+  return recent;
+}
+
 export { todayKey };

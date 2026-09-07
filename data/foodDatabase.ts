@@ -96,6 +96,7 @@ export const LOCAL_FOOD_DATABASE: FoodItem[] = LOCAL_FOOD_SEEDS.map((seed) => ({
   },
   servingSize: 100,
   servingUnit: 'g',
+  source: 'local',
 }));
 
 /** Lowercase, strips accents/diacritics, and collapses non-alphanumeric runs to single spaces. */
@@ -132,14 +133,19 @@ function fuzzyWordMatch(word: string, text: string): boolean {
   return text.split(' ').some((candidate) => Math.abs(candidate.length - word.length) <= maxDistance && levenshteinDistance(word, candidate) <= maxDistance);
 }
 
-export function searchLocalFoods(query: string): FoodItem[] {
+/** Fuzzy-filters any FoodItem list by name against `query` - shared by the common-foods DB and the recent-foods list. */
+export function fuzzyFilterFoodItems<T extends { name: string }>(query: string, items: T[]): T[] {
   const normalizedQuery = normalizeSearchText(query);
   if (!normalizedQuery) return [];
 
   const queryWords = normalizedQuery.split(' ').filter(Boolean);
 
-  return LOCAL_FOOD_DATABASE.filter((item) => {
+  return items.filter((item) => {
     const normalizedName = normalizeSearchText(item.name);
     return queryWords.every((word) => fuzzyWordMatch(word, normalizedName));
   });
+}
+
+export function searchLocalFoods(query: string): FoodItem[] {
+  return fuzzyFilterFoodItems(query, LOCAL_FOOD_DATABASE);
 }

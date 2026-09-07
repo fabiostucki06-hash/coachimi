@@ -8,10 +8,16 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SkeletonListRow } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
-import { normalizeSearchText, searchLocalFoods } from '@/data/foodDatabase';
+import { fuzzyFilterFoodItems, normalizeSearchText, searchLocalFoods } from '@/data/foodDatabase';
 import { FoodApiError, FoodApiUnavailableError, searchFood } from '@/services/foodApi';
+import { getRecentFoods } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
 import type { FoodItem, MealType } from '@/types';
+
+const SOURCE_BADGES: Partial<Record<NonNullable<FoodItem['source']>, string>> = {
+  local: 'Standard',
+  recent: 'Zuletzt',
+};
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: 'Frühstück',
@@ -66,7 +72,12 @@ export default function AddFoodScreen() {
       return;
     }
 
-    const localMatches = searchLocalFoods(trimmed);
+    // Instant, offline results: recently-logged foods first (most relevant to this user),
+    // then the common-foods DB - both are in-memory, so this renders on the same tick as the keystroke.
+    const recentMatches = fuzzyFilterFoodItems(trimmed, getRecentFoods());
+    const seenLocalNames = new Set(recentMatches.map((item) => normalizeSearchText(item.name)));
+    const commonMatches = searchLocalFoods(trimmed).filter((item) => !seenLocalNames.has(normalizeSearchText(item.name)));
+    const localMatches = [...recentMatches, ...commonMatches];
     setResults(localMatches);
     setNotice(null);
 
@@ -284,9 +295,18 @@ export default function AddFoodScreen() {
             onPress={() => handleSelect(item)}
           >
             <View className="flex-1 pr-3">
-              <Text className="text-sm font-semibold text-slate-900 dark:text-white" numberOfLines={1}>
-                {item.name}
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-sm font-semibold text-slate-900 dark:text-white" numberOfLines={1}>
+                  {item.name}
+                </Text>
+                {item.source && SOURCE_BADGES[item.source] && (
+                  <View className="rounded-full bg-emerald-500/10 px-2 py-0.5">
+                    <Text className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                      {SOURCE_BADGES[item.source]}
+                    </Text>
+                  </View>
+                )}
+              </View>
               {item.brand && (
                 <Text className="text-xs text-slate-400" numberOfLines={1}>
                   {item.brand}

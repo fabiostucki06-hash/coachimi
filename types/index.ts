@@ -64,6 +64,8 @@ export interface User {
   visibleNutrients: NutrientVisibility;
 }
 
+export type FoodItemSource = 'local' | 'recent' | 'off';
+
 export interface FoodItem {
   id: string;
   name: string;
@@ -73,6 +75,8 @@ export interface FoodItem {
   micronutrientsPerServing: Micronutrients;
   servingSize: number;
   servingUnit: string;
+  /** Where this item came from - drives the "Standard"/"Zuletzt" badge in search results. Undefined for custom user-created items. */
+  source?: FoodItemSource;
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'drinks';

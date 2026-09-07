@@ -3,6 +3,8 @@ import type { FoodItem } from '@/types';
 const SEARCH_URL = 'https://de.openfoodfacts.org/cgi/search.pl';
 const PRODUCT_URL = 'https://world.openfoodfacts.org/api/v2/product';
 const REQUEST_TIMEOUT_MS = 8000;
+/** Background search fallback gets a tighter budget so typing never feels blocked by a slow network. */
+const SEARCH_TIMEOUT_MS = 3000;
 
 export class FoodApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -155,9 +157,9 @@ function normalizeFoodItem(product: OffProduct, fallbackId: string): FoodItem {
   };
 }
 
-async function fetchJson<T>(url: string, externalSignal?: AbortSignal): Promise<T> {
+async function fetchJson<T>(url: string, externalSignal?: AbortSignal, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<T> {
   const timeoutController = new AbortController();
-  const timeout = setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => timeoutController.abort(), timeoutMs);
   externalSignal?.addEventListener('abort', () => timeoutController.abort());
 
   let response: Response;
@@ -190,13 +192,13 @@ export async function searchFood(query: string, signal?: AbortSignal): Promise<F
   }
 
   const url = `${SEARCH_URL}?search_terms=${encodeURIComponent(trimmedQuery)}&search_simple=1&action=process&json=1&page_size=20`;
-  const data = await fetchJson<OffSearchResponse>(url, signal);
+  const data = await fetchJson<OffSearchResponse>(url, signal, SEARCH_TIMEOUT_MS);
   if (__DEV__) console.log('OFF Raw API Response:', data);
   const products = data.products ?? [];
 
   return products
     .filter((product) => (product.product_name || product.product_name_de) && hasAnyMacro(product.nutriments ?? {}))
-    .map((product, index) => normalizeFoodItem(product, `search-${index}`));
+    .map((product, index) => ({ ...normalizeFoodItem(product, `search-${index}`), source: 'off' as const }));
 }
 
 export async function getFoodByBarcode(barcode: string): Promise<FoodItem> {
