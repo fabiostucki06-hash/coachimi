@@ -14,21 +14,21 @@ const TIME_LABELS: Record<TimeOfDay, string> = {
   evening: 'Abends',
 };
 
-const SUGGESTIONS_BY_MACRO: Record<'protein' | 'carbs' | 'fat', Record<TimeOfDay, string>> = {
+const SUGGESTIONS_BY_MACRO: Record<'protein' | 'carbs' | 'fat', Record<TimeOfDay, string[]>> = {
   protein: {
-    morning: 'Rührei mit Hüttenkäse',
-    midday: 'Hähnchenbrust mit Quinoa',
-    evening: 'Magerquark mit Beeren',
+    morning: ['Rührei mit Hüttenkäse', 'Griechischer Joghurt mit Nüssen', 'Proteinshake mit Haferflocken'],
+    midday: ['Hähnchenbrust mit Quinoa', 'Linsensalat mit Feta', 'Thunfisch-Wrap mit Vollkorn'],
+    evening: ['Magerquark mit Beeren', 'Gebackener Lachs mit Brokkoli', 'Hüttenkäse mit Paprika'],
   },
   carbs: {
-    morning: 'Haferflocken mit Banane',
-    midday: 'Vollkornreis mit Gemüse',
-    evening: 'Vollkornbrot mit Honig',
+    morning: ['Haferflocken mit Banane', 'Vollkorntoast mit Marmelade', 'Müsli mit Milch'],
+    midday: ['Vollkornreis mit Gemüse', 'Kartoffeln mit Quark', 'Vollkornnudeln mit Tomatensauce'],
+    evening: ['Vollkornbrot mit Honig', 'Süßkartoffel-Pommes', 'Reiswaffeln mit Banane'],
   },
   fat: {
-    morning: 'Avocado-Toast',
-    midday: 'Nüsse & Olivenöl-Dressing',
-    evening: 'Ein Stück Käse mit Nüssen',
+    morning: ['Avocado-Toast', 'Nussmus auf Vollkornbrot', 'Chiapudding mit Kokosmilch'],
+    midday: ['Nüsse & Olivenöl-Dressing', 'Avocado-Salat', 'Hummus mit Gemüsesticks'],
+    evening: ['Ein Stück Käse mit Nüssen', 'Oliven & Feta', 'Dunkle Schokolade (85%)'],
   },
 };
 
@@ -50,6 +50,7 @@ export function generateRecommendation(
   remainingCalories: number,
   remainingMacros: Macros,
   visibleMacros: Record<'protein' | 'carbs' | 'fat', boolean> = DEFAULT_VISIBLE_MACROS,
+  variantIndex = 0,
 ): Recommendation {
   const timeLabel = TIME_LABELS[timeOfDay];
 
@@ -80,7 +81,8 @@ export function generateRecommendation(
 
   const topGap = gaps.reduce((max, gap) => (gap.remaining > max.remaining ? gap : max), gaps[0]);
   const macroLabel = topGap.key === 'protein' ? 'Protein' : topGap.key === 'carbs' ? 'Kohlenhydrate' : 'Fett';
-  const suggestion = SUGGESTIONS_BY_MACRO[topGap.key][timeOfDay];
+  const options = SUGGESTIONS_BY_MACRO[topGap.key][timeOfDay];
+  const suggestion = options[variantIndex % options.length];
 
   return {
     timeLabel,
