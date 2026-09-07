@@ -9,7 +9,7 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ mealType: 'snack' }),
 }));
 
-import MealDetailScreen from './meal-detail';
+import MealDetailScreen from '@/app/meal-detail';
 
 // Regression test: a meal category with nothing logged for today used to crash
 // with "Maximum update depth exceeded" because the diary selector returned a

@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { useDiaryStore, todayKey } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
 
-import LogQuantityScreen from './log-quantity';
+import LogQuantityScreen from '@/app/log-quantity';
 
 const mockDismissTo = router.dismissTo as jest.Mock;
 
