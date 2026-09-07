@@ -12,6 +12,9 @@ import { useUiStore } from '@/store/uiStore';
 import type { LoggedExercise, WorkoutSession } from '@/types';
 import { compareToPrevious, generateProgressionTip } from '@/utils/trainingProgression';
 
+/** Stable reference for the "no sessions" case - an inline `[]` fallback in a zustand selector returns a new array every read, which trips React's getSnapshot-must-be-cached check and causes an infinite render loop (error #185). */
+const EMPTY_SESSIONS: WorkoutSession[] = [];
+
 function parseNumber(value: string, fallback: number): number {
   const parsed = Number.parseFloat(value.replace(',', '.'));
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
@@ -184,7 +187,7 @@ function AttachTemplateSheet({ date, onClose }: { date: string; onClose: () => v
 
 export default function TrainingScreen() {
   const date = useUiStore((state) => state.selectedDate);
-  const sessions = useTrainingStore((state) => (date ? (state.sessionsByDate?.[date] ?? []) : []));
+  const sessions = useTrainingStore((state) => (date ? (state.sessionsByDate?.[date] ?? EMPTY_SESSIONS) : EMPTY_SESSIONS));
   const [showAttachSheet, setShowAttachSheet] = useState(false);
 
   const header = (
