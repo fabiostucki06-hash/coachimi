@@ -67,7 +67,7 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
       </View>
 
       <View className="gap-2">
-        {exercise.sets.map((set, index) => (
+        {(exercise.sets ?? []).map((set, index) => (
           <View key={index} className="flex-row items-center gap-2">
             <Text className="w-5 text-xs text-slate-400">{index + 1}</Text>
             <TextInput
@@ -131,7 +131,7 @@ function SessionCard({ session }: { session: WorkoutSession }) {
         </Pressable>
       </View>
 
-      {session.exercises.map((exercise) => (
+      {(session.exercises ?? []).map((exercise) => (
         <ExerciseRow key={exercise.id} session={session} exercise={exercise} />
       ))}
     </Card>
@@ -150,10 +150,10 @@ function AttachTemplateSheet({ date, onClose }: { date: string; onClose: () => v
           <X color="#64748b" size={16} />
         </Pressable>
       </View>
-      {templates.length === 0 ? (
+      {(templates ?? []).length === 0 ? (
         <Text className="text-sm text-slate-400">Noch keine Trainingspläne erstellt.</Text>
       ) : (
-        templates.map((template) => (
+        (templates ?? []).map((template) => (
           <Pressable
             key={template.id}
             className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
@@ -197,9 +197,13 @@ export default function TrainingScreen() {
 
         <DateSelector />
 
-        {sessions.map((session) => (
-          <SessionCard key={session.id} session={session} />
-        ))}
+        {(sessions ?? []).length === 0 && !showAttachSheet ? (
+          <Card>
+            <Text className="text-center text-sm text-slate-400">Noch keine Trainingspläne vorhanden</Text>
+          </Card>
+        ) : (
+          (sessions ?? []).map((session) => <SessionCard key={session.id} session={session} />)
+        )}
 
         {showAttachSheet ? (
           <AttachTemplateSheet date={date} onClose={() => setShowAttachSheet(false)} />

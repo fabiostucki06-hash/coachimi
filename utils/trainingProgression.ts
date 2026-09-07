@@ -10,11 +10,11 @@ export interface ProgressionComparison {
 }
 
 function totalVolume(exercise: LoggedExercise): number {
-  return exercise.sets.reduce((sum, set) => sum + set.weightKg * set.reps, 0);
+  return (exercise?.sets ?? []).reduce((sum, set) => sum + (set?.weightKg ?? 0) * (set?.reps ?? 0), 0);
 }
 
 function topSetWeight(exercise: LoggedExercise): number {
-  return exercise.sets.reduce((max, set) => (set.reps > 0 ? Math.max(max, set.weightKg) : max), 0);
+  return (exercise?.sets ?? []).reduce((max, set) => ((set?.reps ?? 0) > 0 ? Math.max(max, set?.weightKg ?? 0) : max), 0);
 }
 
 function pctChange(current: number, previous: number): number | null {
@@ -44,17 +44,19 @@ export function generateProgressionTip(
   current: LoggedExercise,
   history: LoggedExercise[], // most recent first, NOT including `current`
 ): string {
-  const loggedSets = current.sets.filter((set) => set.reps > 0);
+  const loggedSets = (current?.sets ?? []).filter((set) => (set?.reps ?? 0) > 0);
   if (loggedSets.length === 0) return 'Sätze eintragen, um eine Progressions-Empfehlung zu erhalten.';
 
-  const allAtMax = loggedSets.every((set) => set.reps >= current.targetRepsMax);
-  const anyBelowMin = loggedSets.some((set) => set.reps < current.targetRepsMin);
+  const targetRepsMax = current?.targetRepsMax ?? 0;
+  const targetRepsMin = current?.targetRepsMin ?? 0;
+  const allAtMax = loggedSets.every((set) => set.reps >= targetRepsMax);
+  const anyBelowMin = loggedSets.some((set) => set.reps < targetRepsMin);
 
   if (allAtMax) {
-    return `Alle Sätze mit max. Wiederholungen (${current.targetRepsMax}) geschafft -> Gewicht um 2.5kg erhöhen.`;
+    return `Alle Sätze mit max. Wiederholungen (${targetRepsMax}) geschafft -> Gewicht um 2.5kg erhöhen.`;
   }
 
-  const recentVolumes = [totalVolume(current), ...history.slice(0, 3).map((exercise) => totalVolume(exercise))];
+  const recentVolumes = [totalVolume(current), ...(history ?? []).slice(0, 3).map((exercise) => totalVolume(exercise))];
   if (recentVolumes.length >= 4) {
     const [latest, ...prior] = recentVolumes;
     const maxPrior = Math.max(...prior);
@@ -64,8 +66,8 @@ export function generateProgressionTip(
   }
 
   if (anyBelowMin) {
-    return `Wiederholungen unter Zielbereich (${current.targetRepsMin}-${current.targetRepsMax}) -> Gewicht halten, Technik/Erholung prüfen.`;
+    return `Wiederholungen unter Zielbereich (${targetRepsMin}-${targetRepsMax}) -> Gewicht halten, Technik/Erholung prüfen.`;
   }
 
-  return `Im Zielbereich (${current.targetRepsMin}-${current.targetRepsMax}) -> gleiches Gewicht, nächstes Mal mehr Wiederholungen anstreben.`;
+  return `Im Zielbereich (${targetRepsMin}-${targetRepsMax}) -> gleiches Gewicht, nächstes Mal mehr Wiederholungen anstreben.`;
 }

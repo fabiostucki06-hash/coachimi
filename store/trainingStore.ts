@@ -30,15 +30,46 @@ function mapSessionsForDate(
   date: string,
   transform: (sessions: WorkoutSession[]) => WorkoutSession[],
 ): Record<string, WorkoutSession[]> {
-  return { ...sessionsByDate, [date]: transform(sessionsByDate[date] ?? []) };
+  return { ...sessionsByDate, [date]: transform(sessionsByDate?.[date] ?? []) };
 }
 
 function mapSession(sessions: WorkoutSession[], sessionId: string, transform: (session: WorkoutSession) => WorkoutSession): WorkoutSession[] {
-  return sessions.map((session) => (session.id === sessionId ? transform(session) : session));
+  return (sessions ?? []).map((session) => (session.id === sessionId ? transform(session) : session));
 }
 
 function mapExercise(session: WorkoutSession, exerciseId: string, transform: (exercise: import('@/types').LoggedExercise) => import('@/types').LoggedExercise): WorkoutSession {
-  return { ...session, exercises: session.exercises.map((exercise) => (exercise.id === exerciseId ? transform(exercise) : exercise)) };
+  return { ...session, exercises: (session.exercises ?? []).map((exercise) => (exercise.id === exerciseId ? transform(exercise) : exercise)) };
+}
+
+/** Sanitizes persisted data from AsyncStorage - guards against partial/corrupted writes (interrupted app close, older schema) crashing render with undefined arrays. */
+function sanitizeTemplate(template: Partial<WorkoutTemplate> | null | undefined): WorkoutTemplate {
+  return {
+    id: template?.id ?? makeId(),
+    name: template?.name ?? '',
+    exercises: (template?.exercises ?? []).map((exercise) => ({
+      id: exercise?.id ?? makeId(),
+      name: exercise?.name ?? '',
+      targetSets: exercise?.targetSets ?? 3,
+      targetRepsMin: exercise?.targetRepsMin ?? 8,
+      targetRepsMax: exercise?.targetRepsMax ?? 12,
+    })),
+  };
+}
+
+function sanitizeSession(session: Partial<WorkoutSession> | null | undefined): WorkoutSession {
+  return {
+    id: session?.id ?? makeId(),
+    templateId: session?.templateId ?? '',
+    templateName: session?.templateName ?? '',
+    date: session?.date ?? '',
+    exercises: (session?.exercises ?? []).map((exercise) => ({
+      id: exercise?.id ?? makeId(),
+      name: exercise?.name ?? '',
+      targetRepsMin: exercise?.targetRepsMin ?? 8,
+      targetRepsMax: exercise?.targetRepsMax ?? 12,
+      sets: (exercise?.sets ?? []).map((set) => ({ weightKg: set?.weightKg ?? 0, reps: set?.reps ?? 0 })),
+    })),
+  };
 }
 
 export const useTrainingStore = create<TrainingState>()(
@@ -142,6 +173,16 @@ export const useTrainingStore = create<TrainingState>()(
       name: 'coach-imi-training-storage',
       storage: createJSONStorage(() => AsyncStorage),
       version: 1,
+      merge: (persisted, current) => {
+        const state = (persisted ?? {}) as Partial<TrainingState>;
+        return {
+          ...current,
+          templates: (state.templates ?? []).map(sanitizeTemplate),
+          sessionsByDate: Object.fromEntries(
+            Object.entries(state.sessionsByDate ?? {}).map(([date, sessions]) => [date, (sessions ?? []).map(sanitizeSession)]),
+          ),
+        };
+      },
     },
   ),
 );
@@ -151,11 +192,11 @@ export function getSessionsForExercise(exerciseName: string, beforeDate?: string
   const { sessionsByDate } = useTrainingStore.getState();
   const results: { date: string; exercise: import('@/types').LoggedExercise }[] = [];
 
-  for (const [date, sessions] of Object.entries(sessionsByDate)) {
+  for (const [date, sessions] of Object.entries(sessionsByDate ?? {})) {
     if (beforeDate && date >= beforeDate) continue;
-    for (const session of sessions) {
-      const exercise = session.exercises.find((e) => e.name === exerciseName);
-      if (exercise && exercise.sets.some((set) => set.reps > 0)) {
+    for (const session of sessions ?? []) {
+      const exercise = session.exercises?.find((e) => e.name === exerciseName);
+      if (exercise && (exercise.sets ?? []).some((set) => set.reps > 0)) {
         results.push({ date, exercise });
       }
     }
@@ -171,7 +212,8 @@ export function countRecentTrainingDays(days: number): number {
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffKey = cutoff.toISOString().slice(0, 10);
 
-  return Object.entries(sessionsByDate).filter(
-    ([date, sessions]) => date >= cutoffKey && sessions.some((session) => session.exercises.some((ex) => ex.sets.some((set) => set.reps > 0))),
+  return Object.entries(sessionsByDate ?? {}).filter(
+    ([date, sessions]) =>
+      date >= cutoffKey && (sessions ?? []).some((session) => (session.exercises ?? []).some((ex) => (ex.sets ?? []).some((set) => set.reps > 0))),
   ).length;
 }
