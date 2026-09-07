@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { Camera, Coffee, Cookie, GlassWater, Moon, Plus, RefreshCw, Sparkles, UtensilsCrossed } from 'lucide-react-native';
+import { Camera, ChevronDown, Coffee, Cookie, GlassWater, Moon, Plus, RefreshCw, Sparkles, UtensilsCrossed } from 'lucide-react-native';
 import type { ComponentType } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,9 +38,32 @@ const ACCENT = '#10b981';
 const RING_SIZE = 176;
 const RING_STROKE = 16;
 const EMPTY_ENTRIES: MealEntry[] = [];
+const CORE_MACROS: NutrientKey[] = ['protein', 'carbs', 'fat'];
 
 function formatSyncTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function MacroBadge({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey; amount: number; goal: number }) {
+  const { label, unit, color, Icon } = NUTRIENT_META[nutrientKey];
+  const pct = goal > 0 ? Math.min(Math.round((amount / goal) * 100), 100) : 0;
+
+  return (
+    <View className="flex-1 gap-2 rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-800/50">
+      <View className="flex-row items-center gap-1.5">
+        <Icon color={color} size={14} />
+        <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</Text>
+      </View>
+      <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+        {Math.round(amount)}
+        {unit}
+        <Text className="text-xs font-normal text-slate-400"> /{Math.round(goal)}{unit}</Text>
+      </Text>
+      <View className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+        <View className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </View>
+    </View>
+  );
 }
 
 function NutrientTile({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey; amount: number; goal: number }) {
@@ -66,22 +89,26 @@ function NutrientTile({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey;
 
 function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntry[] }) {
   const { label, Icon } = MEAL_TYPE_META[mealType];
+  const [expanded, setExpanded] = useState(entries.length > 0);
   const kcal = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
+  const protein = entries.reduce((sum, entry) => sum + entry.foodItem.macrosPerServing.protein * entry.servings, 0);
 
   return (
-    <Pressable
-      className="gap-3 rounded-[28px] border border-slate-200/60 bg-white/70 p-4 shadow-xl shadow-slate-900/5 backdrop-blur-xl active:opacity-90 dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-black/20"
-      onPress={() => router.push({ pathname: '/meal-detail', params: { mealType } })}
-    >
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-3">
+    <View className="rounded-[28px] border border-slate-200/60 bg-white/70 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-black/20">
+      <Pressable
+        className="flex-row items-center justify-between p-4 active:opacity-80"
+        onPress={() => setExpanded((current) => !current)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label} ${expanded ? 'einklappen' : 'ausklappen'}`}
+      >
+        <View className="flex-1 flex-row items-center gap-3">
           <View className="h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
             <Icon color={ACCENT} size={18} />
           </View>
-          <View>
+          <View className="flex-1">
             <Text className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{label}</Text>
-            <Text className="text-xs text-slate-400">
-              {entries.length > 0 ? `${Math.round(kcal)} kcal` : 'Noch keine Einträge'}
+            <Text className="text-xs text-slate-400" numberOfLines={1}>
+              {entries.length > 0 ? `${Math.round(kcal)} kcal · ${Math.round(protein)}g P` : 'Noch keine Einträge'}
             </Text>
           </View>
         </View>
@@ -89,26 +116,37 @@ function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntr
           <Pressable
             className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
             onPress={() => router.push({ pathname: '/meal-parser', params: { mealType } })}
+            accessibilityLabel="Per KI erfassen"
           >
             <Sparkles color={ACCENT} size={16} />
           </Pressable>
           <Pressable
             className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
             onPress={() => router.push({ pathname: '/analyze-food', params: { mealType } })}
+            accessibilityLabel="Per Foto erfassen"
           >
             <Camera color={ACCENT} size={16} />
           </Pressable>
           <Pressable
             className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500 shadow-md shadow-emerald-500/30 active:opacity-90 active:bg-emerald-600"
             onPress={() => router.push({ pathname: '/add-food', params: { mealType } })}
+            accessibilityLabel={`Zu ${label} hinzufügen`}
           >
             <Plus color="#ffffff" size={16} />
           </Pressable>
+          {entries.length > 0 && (
+            <View style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}>
+              <ChevronDown color="#94a3b8" size={16} />
+            </View>
+          )}
         </View>
-      </View>
+      </Pressable>
 
-      {entries.length > 0 && (
-        <View className="gap-2 border-t border-slate-200/50 pt-3 dark:border-slate-800/60">
+      {expanded && entries.length > 0 && (
+        <Pressable
+          className="gap-2 border-t border-slate-200/50 px-4 pb-4 pt-3 dark:border-slate-800/60"
+          onPress={() => router.push({ pathname: '/meal-detail', params: { mealType } })}
+        >
           {entries.map((entry) => (
             <View key={entry.id} className="flex-row items-center justify-between">
               <Text className="flex-1 text-sm text-slate-600 dark:text-slate-300" numberOfLines={1}>
@@ -119,9 +157,9 @@ function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntr
               </Text>
             </View>
           ))}
-        </View>
+        </Pressable>
       )}
-    </Pressable>
+    </View>
   );
 }
 
@@ -146,7 +184,7 @@ export default function DiaryScreen() {
   // every render (e.g. while the sync-status indicator ticks) would repeat that work
   // without `entries` or `user` actually having changed, which is where scroll-time
   // jank on this always-mounted screen tends to come from.
-  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, visibleNutrients, remainingCalories, caloriePct, remainingMacros } = useMemo(() => {
+  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, caloriePct, remainingMacros } = useMemo(() => {
     const grouped: Record<MealType, MealEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [], drinks: [] };
     for (const entry of entries) {
       grouped[entry.mealType].push(entry);
@@ -156,7 +194,9 @@ export default function DiaryScreen() {
     const nutrientAmounts = sumEntryNutrients(entries);
     const totalMacros: Macros = { carbs: nutrientAmounts.carbs, protein: nutrientAmounts.protein, fat: nutrientAmounts.fat };
     const nutrientGoals: Record<NutrientKey, number> = { ...user.dailyMacroGoal, ...MICRONUTRIENT_GOALS };
-    const visibleNutrients = NUTRIENT_ORDER.filter((key) => user.visibleNutrients[key]);
+    const secondaryNutrients = NUTRIENT_ORDER.filter(
+      (key) => user.visibleNutrients[key] && !CORE_MACROS.includes(key),
+    );
 
     const remainingCalories = Math.round(Math.max(user.dailyCalorieGoal - totalCalories, 0));
     const caloriePct = user.dailyCalorieGoal > 0 ? totalCalories / user.dailyCalorieGoal : 0;
@@ -166,7 +206,7 @@ export default function DiaryScreen() {
       fat: Math.max(user.dailyMacroGoal.fat - totalMacros.fat, 0),
     };
 
-    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, visibleNutrients, remainingCalories, caloriePct, remainingMacros };
+    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, caloriePct, remainingMacros };
   }, [entries, user]);
 
   return (
@@ -206,37 +246,50 @@ export default function DiaryScreen() {
 
         <View className="gap-6 lg:flex-row lg:items-start">
           <View className="gap-6 lg:w-[380px] lg:shrink-0">
-            <View className="items-center gap-4 rounded-[32px] border border-slate-200/60 bg-white/70 p-6 shadow-2xl shadow-emerald-500/10 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
-              <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={ACCENT}>
-                <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{Math.round(totalCalories)}</Text>
-                <Text className="text-xs text-slate-400">von {user.dailyCalorieGoal} kcal</Text>
-              </ProgressRing>
+            <View className="items-center gap-5 rounded-[28px] border border-slate-200/60 bg-white/70 p-6 shadow-2xl shadow-emerald-500/10 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
+              <View className="items-center gap-1">
+                <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={ACCENT}>
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verbraucht</Text>
+                  <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{Math.round(totalCalories)}</Text>
+                  <Text className="text-xs text-slate-400">von {user.dailyCalorieGoal} kcal</Text>
+                </ProgressRing>
+                <Text className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                  {remainingCalories} kcal verbleibend
+                </Text>
+              </View>
 
-              <Text className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                {remainingCalories} kcal übrig
-              </Text>
+              <View className="w-full flex-row gap-3 border-t border-slate-200/50 pt-5 dark:border-slate-800/60">
+                {CORE_MACROS.map((key) => (
+                  <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
+                ))}
+              </View>
 
-              {visibleNutrients.length > 0 && (
+              {secondaryNutrients.length > 0 && (
                 <View className="w-full flex-row flex-wrap gap-x-4 gap-y-4 border-t border-slate-200/50 pt-4 dark:border-slate-800/60">
-                  {visibleNutrients.map((key) => (
+                  {secondaryNutrients.map((key) => (
                     <NutrientTile key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                   ))}
                 </View>
               )}
             </View>
 
-            <AiRecommendationCard
-              remainingCalories={remainingCalories}
-              remainingMacros={remainingMacros}
-              visibleNutrients={user.visibleNutrients}
-            />
+            <View className="gap-3 rounded-[28px]">
+              <Text className="px-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Für dich</Text>
+              <AiRecommendationCard
+                remainingCalories={remainingCalories}
+                remainingMacros={remainingMacros}
+                visibleNutrients={user.visibleNutrients}
+              />
+            </View>
           </View>
 
           <View className="flex-1 gap-3">
             <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Mahlzeiten</Text>
-            {MEAL_TYPES.map((mealType) => (
-              <MealCard key={mealType} mealType={mealType} entries={entriesByMealType[mealType]} />
-            ))}
+            <View className="gap-4">
+              {MEAL_TYPES.map((mealType) => (
+                <MealCard key={mealType} mealType={mealType} entries={entriesByMealType[mealType]} />
+              ))}
+            </View>
           </View>
         </View>
       </ScrollView>
