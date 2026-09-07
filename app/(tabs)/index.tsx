@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Camera, Coffee, Cookie, GlassWater, Moon, Plus, RefreshCw, Sparkles, UtensilsCrossed } from 'lucide-react-native';
 import type { ComponentType } from 'react';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -141,30 +142,32 @@ export default function DiaryScreen() {
     month: 'long',
   });
 
-  const entriesByMealType: Record<MealType, MealEntry[]> = {
-    breakfast: [],
-    lunch: [],
-    dinner: [],
-    snack: [],
-    drinks: [],
-  };
-  for (const entry of entries) {
-    entriesByMealType[entry.mealType].push(entry);
-  }
+  // Sums 30 nutrient fields per entry and regroups by meal type - re-deriving this on
+  // every render (e.g. while the sync-status indicator ticks) would repeat that work
+  // without `entries` or `user` actually having changed, which is where scroll-time
+  // jank on this always-mounted screen tends to come from.
+  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, visibleNutrients, remainingCalories, caloriePct, remainingMacros } = useMemo(() => {
+    const grouped: Record<MealType, MealEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [], drinks: [] };
+    for (const entry of entries) {
+      grouped[entry.mealType].push(entry);
+    }
 
-  const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
-  const nutrientAmounts = sumEntryNutrients(entries);
-  const totalMacros: Macros = { carbs: nutrientAmounts.carbs, protein: nutrientAmounts.protein, fat: nutrientAmounts.fat };
-  const nutrientGoals: Record<NutrientKey, number> = { ...user.dailyMacroGoal, ...MICRONUTRIENT_GOALS };
-  const visibleNutrients = NUTRIENT_ORDER.filter((key) => user.visibleNutrients[key]);
+    const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
+    const nutrientAmounts = sumEntryNutrients(entries);
+    const totalMacros: Macros = { carbs: nutrientAmounts.carbs, protein: nutrientAmounts.protein, fat: nutrientAmounts.fat };
+    const nutrientGoals: Record<NutrientKey, number> = { ...user.dailyMacroGoal, ...MICRONUTRIENT_GOALS };
+    const visibleNutrients = NUTRIENT_ORDER.filter((key) => user.visibleNutrients[key]);
 
-  const remainingCalories = Math.round(Math.max(user.dailyCalorieGoal - totalCalories, 0));
-  const caloriePct = user.dailyCalorieGoal > 0 ? totalCalories / user.dailyCalorieGoal : 0;
-  const remainingMacros: Macros = {
-    carbs: Math.max(user.dailyMacroGoal.carbs - totalMacros.carbs, 0),
-    protein: Math.max(user.dailyMacroGoal.protein - totalMacros.protein, 0),
-    fat: Math.max(user.dailyMacroGoal.fat - totalMacros.fat, 0),
-  };
+    const remainingCalories = Math.round(Math.max(user.dailyCalorieGoal - totalCalories, 0));
+    const caloriePct = user.dailyCalorieGoal > 0 ? totalCalories / user.dailyCalorieGoal : 0;
+    const remainingMacros: Macros = {
+      carbs: Math.max(user.dailyMacroGoal.carbs - totalMacros.carbs, 0),
+      protein: Math.max(user.dailyMacroGoal.protein - totalMacros.protein, 0),
+      fat: Math.max(user.dailyMacroGoal.fat - totalMacros.fat, 0),
+    };
+
+    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, visibleNutrients, remainingCalories, caloriePct, remainingMacros };
+  }, [entries, user]);
 
   return (
     <SafeAreaView className="relative flex-1 bg-slate-50 dark:bg-background-dark">

@@ -233,7 +233,7 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
             {stepIndex > 0 && (
               <Pressable
                 onPress={handleBack}
-                className="h-[54px] w-[54px] items-center justify-center rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-md transition-all duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+                className="h-[54px] w-[54px] items-center justify-center rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
               >
                 <ChevronLeft color="#64748b" size={20} />
               </Pressable>

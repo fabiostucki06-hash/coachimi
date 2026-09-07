@@ -41,7 +41,7 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      className={`flex-row items-center justify-center gap-2 rounded-2xl px-5 py-3.5 transition-all duration-150 ease-in-out active:scale-[0.98] active:opacity-80 ${VARIANT_CLASSES[variant]} ${
+      className={`flex-row items-center justify-center gap-2 rounded-2xl px-5 py-3.5 transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 ${VARIANT_CLASSES[variant]} ${
         disabled || loading ? 'opacity-50' : ''
       } ${className}`}
     >

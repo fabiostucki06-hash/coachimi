@@ -72,7 +72,7 @@ export default function BarcodeScannerScreen() {
         <View className="flex-row items-center gap-2">
           {permission?.granted && (
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-all duration-150 ease-in-out active:scale-95 active:opacity-80"
+              className="h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80"
               onPress={() => setTorchOn((prev) => !prev)}
               accessibilityRole="button"
               accessibilityLabel="Taschenlampe umschalten"
@@ -81,7 +81,7 @@ export default function BarcodeScannerScreen() {
             </Pressable>
           )}
           <Pressable
-            className="h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-all duration-150 ease-in-out active:scale-95 active:opacity-80"
+            className="h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80"
             onPress={() => router.back()}
           >
             <X color="#ffffff" size={18} />

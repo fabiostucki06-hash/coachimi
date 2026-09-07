@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -46,19 +47,23 @@ export default function StatistikScreen() {
 
   const dailyCalorieGoal = user.dailyCalorieGoal;
 
-  const weekStats: DayStat[] = getLastNDays(DAYS_IN_WEEK).map(({ key, label }) => {
-    const entries = entriesByDate[key] ?? [];
-    const calories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
-    return { key, label, calories: Math.round(calories) };
-  });
+  const { weekStats, loggedDays, averageCalories, daysInGoal, maxCalories } = useMemo(() => {
+    const weekStats: DayStat[] = getLastNDays(DAYS_IN_WEEK).map(({ key, label }) => {
+      const entries = entriesByDate[key] ?? [];
+      const calories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
+      return { key, label, calories: Math.round(calories) };
+    });
 
-  const loggedDays = weekStats.filter((day) => day.calories > 0);
-  const averageCalories = loggedDays.length > 0
-    ? Math.round(loggedDays.reduce((sum, day) => sum + day.calories, 0) / loggedDays.length)
-    : 0;
-  const daysInGoal = loggedDays.filter((day) => day.calories <= dailyCalorieGoal).length;
+    const loggedDays = weekStats.filter((day) => day.calories > 0);
+    const averageCalories = loggedDays.length > 0
+      ? Math.round(loggedDays.reduce((sum, day) => sum + day.calories, 0) / loggedDays.length)
+      : 0;
+    const daysInGoal = loggedDays.filter((day) => day.calories <= dailyCalorieGoal).length;
 
-  const maxCalories = Math.max(...weekStats.map((day) => day.calories), dailyCalorieGoal);
+    const maxCalories = Math.max(...weekStats.map((day) => day.calories), dailyCalorieGoal);
+
+    return { weekStats, loggedDays, averageCalories, daysInGoal, maxCalories };
+  }, [entriesByDate, dailyCalorieGoal]);
 
   const weightChange =
     weightHistory.length >= 2

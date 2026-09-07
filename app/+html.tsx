@@ -47,6 +47,21 @@ export default function Root({ children }: { children: React.ReactNode }) {
         */}
         <ScrollViewStyleReset />
 
+        {/*
+          iOS Safari / WebKit touch tuning for the web build. RNW's own ScrollView already
+          sets -webkit-overflow-scrolling: touch inline per-instance, so this only needs to
+          cover what's shell-wide: no elastic bounce leaking past the app frame, no 300ms
+          tap delay on any element, and no gray flash on tap.
+        */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              html, body, #root { height: 100%; overscroll-behavior-y: none; touch-action: manipulation; }
+              * { -webkit-tap-highlight-color: transparent; }
+            `,
+          }}
+        />
+
         {headNodes}
 
         {/* Add any additional <head> elements that you want globally available on web... */}

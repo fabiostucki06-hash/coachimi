@@ -219,7 +219,7 @@ export default function AddFoodScreen() {
           <Text className="text-xs text-slate-400">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-all duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
           onPress={handleClose}
         >
           <X color="#64748b" size={18} />
@@ -259,14 +259,14 @@ export default function AddFoodScreen() {
 
         <View className="flex-row gap-2">
           <Pressable
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3.5 shadow-md shadow-emerald-500/20 transition-all duration-150 ease-in-out active:scale-[0.98] active:opacity-90 active:bg-emerald-600"
+            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3.5 shadow-md shadow-emerald-500/20 transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-90 active:bg-emerald-600"
             onPress={() => router.push({ pathname: '/barcode-scanner', params: { mealType } })}
           >
             <Barcode color="#ffffff" size={18} />
             <Text className="text-base font-semibold text-white">Barcode</Text>
           </Pressable>
           <Pressable
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm shadow-slate-900/5 backdrop-blur-xl transition-all duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+            className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-3.5 shadow-sm shadow-slate-900/5 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
             onPress={() => router.push({ pathname: '/meal-parser', params: { mealType } })}
           >
             <Sparkles color="#10b981" size={18} />
@@ -347,7 +347,7 @@ export default function AddFoodScreen() {
         }
         renderItem={({ item }) => (
           <Pressable
-            className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 shadow-sm shadow-slate-900/5 backdrop-blur-xl transition-all duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+            className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 shadow-sm shadow-slate-900/5 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
             onPress={() => handleSelect(item)}
           >
             <View className="flex-1 pr-3">

@@ -63,7 +63,7 @@ export function CloudSyncCard() {
 
         <Pressable
           onPress={handleSignOut}
-          className="h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-md transition-all duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
         >
           <LogOut color="#64748b" size={18} />
         </Pressable>
