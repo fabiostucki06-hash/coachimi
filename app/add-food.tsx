@@ -330,7 +330,7 @@ export default function AddFoodScreen() {
             </View>
           ) : showEmptyState ? (
             <View className="items-center gap-4 pt-8">
-              <Text className="text-center text-sm text-slate-400">Keine Ergebnisse gefunden</Text>
+              <Text className="text-center text-sm text-slate-400">Lebensmittel nicht gefunden?</Text>
               {!showCustomForm && (
                 <Pressable
                   className="flex-row items-center gap-2 rounded-full border border-emerald-500/60 bg-emerald-500/10 px-4 py-2 active:opacity-80"
@@ -338,7 +338,7 @@ export default function AddFoodScreen() {
                 >
                   <Plus color="#10b981" size={16} />
                   <Text className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                    Eigenes Lebensmittel hinzufügen
+                    Selbst erstellen
                   </Text>
                 </Pressable>
               )}

@@ -1,10 +1,14 @@
 import type { FoodItem } from '@/types';
 
 const SEARCH_URL = 'https://de.openfoodfacts.org/cgi/search.pl';
+const SEARCH_URL_WORLD = 'https://world.openfoodfacts.org/cgi/search.pl';
 const PRODUCT_URL = 'https://world.openfoodfacts.org/api/v2/product';
 const REQUEST_TIMEOUT_MS = 8000;
 /** Background search fallback gets a tighter budget so typing never feels blocked by a slow network. */
-const SEARCH_TIMEOUT_MS = 3000;
+const SEARCH_TIMEOUT_MS = 2500;
+/** Below this many hits, escalate to the next broader search tier instead of settling for a thin result set. */
+const MIN_RESULTS_BEFORE_FALLBACK = 3;
+const MAX_RESULTS = 20;
 
 export class FoodApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -185,15 +189,22 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal, timeoutMs
   }
 }
 
-export async function searchFood(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
-  const trimmedQuery = query.trim();
-  if (!trimmedQuery) {
-    return [];
-  }
+/** True for a bare 8-14 digit string (EAN-8/13, UPC-A/E, GTIN-14) - lets a scanned or pasted barcode typed straight into the search bar skip text search entirely. */
+export function looksLikeBarcode(query: string): boolean {
+  return /^\d{8,14}$/.test(query.trim());
+}
 
-  const url = `${SEARCH_URL}?search_terms=${encodeURIComponent(trimmedQuery)}&search_simple=1&action=process&json=1&page_size=20`;
+/** Strips punctuation/symbols a user might paste alongside a brand name (quotes, bullets, stray commas) while keeping letters, digits, spaces and hyphens, and collapses runs of whitespace - so "Alpro „Barista“  Hafer!!" still reaches Open Food Facts as clean search terms. */
+function sanitizeQuery(query: string): string {
+  return query
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function runSearchTier(url: string, signal?: AbortSignal): Promise<FoodItem[]> {
   const data = await fetchJson<OffSearchResponse>(url, signal, SEARCH_TIMEOUT_MS);
-  if (__DEV__) console.log('OFF Raw API Response:', data);
+  if (__DEV__) console.log('OFF Raw API Response:', url, data);
   const products = data.products ?? [];
 
   return products
@@ -201,14 +212,71 @@ export async function searchFood(query: string, signal?: AbortSignal): Promise<F
     .map((product, index) => ({ ...normalizeFoodItem(product, `search-${index}`), source: 'off' as const }));
 }
 
-export async function getFoodByBarcode(barcode: string): Promise<FoodItem> {
+/** Concatenates result lists, keeping first occurrence by id - later (broader) tiers only fill in gaps the earlier ones missed. */
+function mergeUniqueById(lists: FoodItem[][]): FoodItem[] {
+  const seen = new Set<string>();
+  const merged: FoodItem[] = [];
+  for (const list of lists) {
+    for (const item of list) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      merged.push(item);
+      if (merged.length >= MAX_RESULTS) return merged;
+    }
+  }
+  return merged;
+}
+
+/**
+ * Cascading search: a bare barcode goes straight to product lookup; otherwise runs up to
+ * three progressively broader Open Food Facts tiers, stopping as soon as one has enough
+ * hits - (1) DE-hosted mirror, exact terms, fastest and best match quality for German
+ * products; (2) global product base scoped to German locale/country tags, for regional
+ * brands the DE mirror hasn't synced yet; (3) global, no country restriction, last resort
+ * for imported/obscure products. Tiers 2-3 are best-effort: a failure there just means we
+ * keep whatever the earlier tier(s) already found instead of failing the whole search.
+ */
+export async function searchFood(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return [];
+  }
+
+  if (looksLikeBarcode(trimmedQuery)) {
+    try {
+      return [await getFoodByBarcode(trimmedQuery, signal)];
+    } catch (error) {
+      if (error instanceof ProductNotFoundError) return [];
+      throw error;
+    }
+  }
+
+  const cleanQuery = sanitizeQuery(trimmedQuery);
+  if (!cleanQuery) return [];
+  const encoded = encodeURIComponent(cleanQuery);
+
+  const primaryUrl = `${SEARCH_URL}?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=${MAX_RESULTS}`;
+  let results = await runSearchTier(primaryUrl, signal);
+  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
+
+  const secondaryUrl = `${SEARCH_URL_WORLD}?search_terms=${encoded}&search_simple=1&action=process&json=1&lc=de&cc=de&page_size=${MAX_RESULTS}`;
+  const secondary = await runSearchTier(secondaryUrl, signal).catch(() => [] as FoodItem[]);
+  results = mergeUniqueById([results, secondary]);
+  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
+
+  const tertiaryUrl = `${SEARCH_URL_WORLD}?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=${MAX_RESULTS}`;
+  const tertiary = await runSearchTier(tertiaryUrl, signal).catch(() => [] as FoodItem[]);
+  return mergeUniqueById([results, tertiary]);
+}
+
+export async function getFoodByBarcode(barcode: string, signal?: AbortSignal): Promise<FoodItem> {
   const trimmedBarcode = barcode.trim();
   if (!trimmedBarcode) {
     throw new FoodApiError('Barcode darf nicht leer sein.');
   }
 
   const url = `${PRODUCT_URL}/${encodeURIComponent(trimmedBarcode)}.json`;
-  const data = await fetchJson<OffProductResponse>(url);
+  const data = await fetchJson<OffProductResponse>(url, signal);
 
   if (data.status !== 1 || !data.product) {
     throw new ProductNotFoundError(trimmedBarcode);
