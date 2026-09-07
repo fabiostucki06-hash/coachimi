@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AiRecommendationCard } from '@/components/features/AiRecommendationCard';
 import { DateSelector } from '@/components/features/DateSelector';
 import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
+import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -254,6 +255,7 @@ export default function DiaryScreen() {
             )}
           </View>
           <View className="flex-row items-center gap-2">
+            <GoldBarBadge />
             <HardRefreshButton />
             <ThemeToggle />
           </View>

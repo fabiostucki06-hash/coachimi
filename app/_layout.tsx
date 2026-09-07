@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { GoldBarCelebration } from '@/components/ui/GoldBarCelebration';
 import { Toast } from '@/components/ui/Toast';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useThemeSync } from '@/hooks/useThemeSync';
@@ -32,8 +33,10 @@ export default function RootLayout() {
           <Stack.Screen name="log-quantity" options={{ presentation: 'modal' }} />
           <Stack.Screen name="analyze-food" options={{ presentation: 'modal' }} />
           <Stack.Screen name="meal-detail" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="rewards" options={{ presentation: 'modal' }} />
         </Stack>
         <Toast />
+        <GoldBarCelebration />
       </View>
     </ErrorBoundary>
   );

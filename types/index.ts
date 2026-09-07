@@ -141,3 +141,23 @@ export interface WorkoutSession {
   date: string;
   exercises: LoggedExercise[];
 }
+
+// --- Rewards ---
+
+export type BadgeId = 'gold_standard_tracker' | 'eisen_disziplin' | 'streak_meister' | 'protein_profi';
+
+export interface RewardTransaction {
+  id: string;
+  amount: number;
+  reason: string;
+  /** Local date key (YYYY-MM-DD) the transaction happened on - drives the daily-dedup checks. */
+  date: string;
+  timestamp: string;
+}
+
+export interface ShopItem {
+  id: BadgeId;
+  name: string;
+  description: string;
+  cost: number;
+}

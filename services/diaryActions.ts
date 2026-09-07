@@ -1,11 +1,30 @@
 import { buildSnapshot, pushSnapshotData } from '@/services/cloudSync';
 import { makeEntryId, useDiaryStore } from '@/store/diaryStore';
+import { useRewardStore } from '@/store/rewardStore';
 import { describeSyncError, useSyncStore, withSyncSuppressed } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
+import { useUserStore } from '@/store/userStore';
 import type { FoodItem, MealEntry, MealType } from '@/types';
 
 function showFailureToast(message: string) {
   useToastStore.getState().show(`Sync fehlgeschlagen: ${message}`, 'error');
+}
+
+/** Advances the daily streak and checks the calorie/protein-goal reward for `date`, reading the diary state fresh so it reflects the entries just committed. */
+function applyMealRewards(date: string) {
+  const entries = useDiaryStore.getState().entriesByDate[date] ?? [];
+  const consumedCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
+  const consumedProtein = entries.reduce((sum, entry) => sum + entry.foodItem.macrosPerServing.protein * entry.servings, 0);
+  const { dailyCalorieGoal, dailyMacroGoal } = useUserStore.getState().user;
+
+  useRewardStore.getState().recordDailyActivity(date);
+  useRewardStore.getState().checkCalorieProteinGoal({
+    consumedCalories,
+    calorieGoal: dailyCalorieGoal,
+    consumedProtein,
+    proteinGoal: dailyMacroGoal.protein,
+    dateKey: date,
+  });
 }
 
 // Serializes every online write-then-commit mutation so a second add/remove
@@ -60,6 +79,7 @@ export function addMealsAndSync(date: string, meals: PendingMeal[]): Promise<voi
     for (const meal of meals) {
       useDiaryStore.getState().addEntry(date, meal.foodItem, meal.mealType, meal.servings);
     }
+    applyMealRewards(date);
     return Promise.resolve();
   }
 
@@ -73,6 +93,7 @@ export function addMealsAndSync(date: string, meals: PendingMeal[]): Promise<voi
     }));
     const currentEntries = useDiaryStore.getState().entriesByDate[date] ?? [];
     await pushThenCommit(date, [...currentEntries, ...newEntries], session.user.id);
+    applyMealRewards(date);
   });
 }
 

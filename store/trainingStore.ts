@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { useRewardStore } from '@/store/rewardStore';
 import type { LoggedSet, TemplateExercise, WorkoutSession, WorkoutTemplate } from '@/types';
 
 function makeId(): string {
@@ -41,6 +42,12 @@ function mapExercise(session: WorkoutSession, exerciseId: string, transform: (ex
   return { ...session, exercises: (session.exercises ?? []).map((exercise) => (exercise.id === exerciseId ? transform(exercise) : exercise)) };
 }
 
+/** A session counts as "completed" once every exercise has at least one logged (reps > 0) set - the same bar `countRecentTrainingDays` uses to count a day as trained. */
+function isSessionCompleted(session: WorkoutSession | undefined): boolean {
+  const exercises = session?.exercises ?? [];
+  return exercises.length > 0 && exercises.every((exercise) => (exercise.sets ?? []).some((set) => set.reps > 0));
+}
+
 /** Sanitizes persisted data from AsyncStorage - guards against partial/corrupted writes (interrupted app close, older schema) crashing render with undefined arrays. */
 function sanitizeTemplate(template: Partial<WorkoutTemplate> | null | undefined): WorkoutTemplate {
   return {
@@ -74,7 +81,7 @@ function sanitizeSession(session: Partial<WorkoutSession> | null | undefined): W
 
 export const useTrainingStore = create<TrainingState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       templates: [],
       sessionsByDate: {},
 
@@ -154,6 +161,11 @@ export const useTrainingStore = create<TrainingState>()(
             ),
           ),
         }));
+
+        const session = get().sessionsByDate[date]?.find((candidate) => candidate.id === sessionId);
+        const completed = isSessionCompleted(session);
+        useRewardStore.getState().checkTrainingSessionCompleted(sessionId, completed);
+        if (completed) useRewardStore.getState().recordDailyActivity(date);
       },
 
       removeSet: (date, sessionId, exerciseId, setIndex) => {
