@@ -9,6 +9,8 @@ import { GoldBarCelebration } from '@/components/ui/GoldBarCelebration';
 import { Toast } from '@/components/ui/Toast';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useThemeSync } from '@/hooks/useThemeSync';
+import { useWidgetDeepLinks } from '@/hooks/useWidgetDeepLinks';
+import { useWidgetSync } from '@/hooks/useWidgetSync';
 import { useSyncStore } from '@/store/syncStore';
 
 export default function RootLayout() {
@@ -20,6 +22,8 @@ export default function RootLayout() {
 
   useAutoUpdate();
   useThemeSync();
+  useWidgetSync();
+  useWidgetDeepLinks();
 
   const stack = (
     <ErrorBoundary>
