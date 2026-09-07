@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react-native';
 import { Component, type ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 
@@ -10,20 +10,22 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   error: Error | null;
+  componentStack: string | null;
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { error: null };
+  state: ErrorBoundaryState = { error: null, componentStack: null };
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
     console.error('Unhandled render error:', error, info.componentStack);
+    this.setState({ componentStack: info.componentStack ?? null });
   }
 
-  handleRetry = () => this.setState({ error: null });
+  handleRetry = () => this.setState({ error: null, componentStack: null });
 
   render() {
     if (!this.state.error) return this.props.children;
@@ -39,6 +41,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <Text className="text-center text-sm text-slate-500 dark:text-slate-400">
           Diese Ansicht konnte nicht geladen werden. Du kannst es erneut versuchen.
         </Text>
+        {__DEV__ && (
+          <ScrollView className="max-h-64 w-full rounded-xl bg-black/90 p-3">
+            <Text selectable className="text-xs font-semibold text-red-400">
+              {this.state.error.message}
+            </Text>
+            <Text selectable className="mt-2 text-[10px] leading-4 text-red-200">
+              {this.state.error.stack}
+            </Text>
+            {this.state.componentStack && (
+              <Text selectable className="mt-2 text-[10px] leading-4 text-amber-300">
+                {this.state.componentStack}
+              </Text>
+            )}
+          </ScrollView>
+        )}
         <Button label="Erneut versuchen" onPress={this.handleRetry} className="mt-2" />
       </View>
     );
