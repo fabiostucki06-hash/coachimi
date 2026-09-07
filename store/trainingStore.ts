@@ -174,14 +174,25 @@ export const useTrainingStore = create<TrainingState>()(
       storage: createJSONStorage(() => AsyncStorage),
       version: 1,
       merge: (persisted, current) => {
-        const state = (persisted ?? {}) as Partial<TrainingState>;
-        return {
-          ...current,
-          templates: (state.templates ?? []).map(sanitizeTemplate),
-          sessionsByDate: Object.fromEntries(
-            Object.entries(state.sessionsByDate ?? {}).map(([date, sessions]) => [date, (sessions ?? []).map(sanitizeSession)]),
-          ),
-        };
+        try {
+          const state = (persisted ?? {}) as Partial<TrainingState>;
+          return {
+            ...current,
+            templates: (state.templates ?? []).map(sanitizeTemplate),
+            sessionsByDate: Object.fromEntries(
+              Object.entries(state.sessionsByDate ?? {}).map(([date, sessions]) => [date, (sessions ?? []).map(sanitizeSession)]),
+            ),
+          };
+        } catch (error) {
+          console.error('Corrupt training storage, resetting to defaults:', error);
+          return { ...current, templates: [], sessionsByDate: {} };
+        }
+      },
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('Failed to rehydrate training storage, resetting to defaults:', error);
+          useTrainingStore.setState({ templates: [], sessionsByDate: {} });
+        }
       },
     },
   ),

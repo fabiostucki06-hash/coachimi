@@ -42,21 +42,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           Diese Ansicht konnte nicht geladen werden. Du kannst es erneut versuchen.
         </Text>
         <Button label="Erneut versuchen" onPress={this.handleRetry} className="mt-2" />
-        {__DEV__ && (
-          <ScrollView className="max-h-64 w-full rounded-xl bg-black/90 p-3">
-            <Text selectable className="text-xs font-semibold text-red-400">
-              {this.state.error.message}
+        <ScrollView className="max-h-64 w-full rounded-xl bg-black/90 p-3">
+          <Text selectable className="text-xs font-semibold text-red-400">
+            {this.state.error.toString()}
+          </Text>
+          <Text selectable className="mt-2 text-[10px] leading-4 text-red-200">
+            {this.state.error.stack}
+          </Text>
+          {this.state.componentStack && (
+            <Text selectable className="mt-2 text-[10px] leading-4 text-amber-300">
+              {this.state.componentStack}
             </Text>
-            <Text selectable className="mt-2 text-[10px] leading-4 text-red-200">
-              {this.state.error.stack}
-            </Text>
-            {this.state.componentStack && (
-              <Text selectable className="mt-2 text-[10px] leading-4 text-amber-300">
-                {this.state.componentStack}
-              </Text>
-            )}
-          </ScrollView>
-        )}
+          )}
+        </ScrollView>
       </View>
     );
   }

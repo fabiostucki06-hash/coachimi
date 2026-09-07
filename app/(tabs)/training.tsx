@@ -184,16 +184,33 @@ function AttachTemplateSheet({ date, onClose }: { date: string; onClose: () => v
 
 export default function TrainingScreen() {
   const date = useUiStore((state) => state.selectedDate);
-  const sessions = useTrainingStore((state) => state.sessionsByDate[date] ?? []);
+  const sessions = useTrainingStore((state) => (date ? (state.sessionsByDate?.[date] ?? []) : []));
   const [showAttachSheet, setShowAttachSheet] = useState(false);
+
+  const header = (
+    <View>
+      <Text className="text-xs font-semibold uppercase tracking-wide text-emerald-500">Coach imi</Text>
+      <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Training</Text>
+    </View>
+  );
+
+  if (!date) {
+    return (
+      <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+        <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12">
+          {header}
+          <Card>
+            <Text className="text-center text-sm text-slate-400">Datum wird geladen…</Text>
+          </Card>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12">
-        <View>
-          <Text className="text-xs font-semibold uppercase tracking-wide text-emerald-500">Coach imi</Text>
-          <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Training</Text>
-        </View>
+        {header}
 
         <DateSelector />
 
