@@ -1,9 +1,15 @@
-import { RotateCw, Sparkles } from 'lucide-react-native';
+import { Clock, Droplet, RotateCw, Sparkles } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, Text, View } from 'react-native';
 
 import type { Macros, NutrientVisibility } from '@/types';
-import { generateRecommendation, getTimeOfDay } from '@/utils/recommendationEngine';
+import { generateRecommendation, getTimeOfDay, type TipMode } from '@/utils/recommendationEngine';
+
+const MODE_ICONS: Record<TipMode, typeof Sparkles> = {
+  food: Sparkles,
+  timing: Clock,
+  hydration: Droplet,
+};
 
 interface AiRecommendationCardProps {
   remainingCalories: number;
@@ -41,16 +47,17 @@ export function AiRecommendationCard({ remainingCalories, remainingMacros, visib
   }
 
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const ModeIcon = MODE_ICONS[recommendation.mode];
 
   return (
     <View className="gap-3 rounded-[28px] border border-white/20 bg-emerald-500/90 p-4 shadow-2xl shadow-emerald-500/30 backdrop-blur-xl">
       <View className="flex-row items-center gap-3">
         <View className="h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
-          <Sparkles color="#ffffff" size={18} />
+          <ModeIcon color="#ffffff" size={18} />
         </View>
         <View className="flex-1">
           <Text className="text-xs font-semibold uppercase tracking-wide text-emerald-100">
-            {recommendation.timeLabel} · Coach imi Tipp
+            {recommendation.timeLabel} · {recommendation.modeLabel}
           </Text>
           <Text className="text-sm font-bold tracking-tight text-white">{recommendation.headline}</Text>
         </View>
