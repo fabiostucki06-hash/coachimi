@@ -1,7 +1,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AlertTriangle, Camera, Check, ImagePlus, Plus, RotateCcw, Sparkles, X } from 'lucide-react-native';
+import { AlertTriangle, Camera, Check, ImagePlus, Minus, Plus, RotateCcw, Sparkles, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,8 +32,10 @@ const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
 };
 
 // Cap the longest edge before sending to the Vision API: large enough to keep
-// ingredient-level detail, small enough to avoid oversized payloads/timeouts.
-const MAX_ANALYSIS_DIMENSION = 1280;
+// ingredient-level detail, small enough to keep payloads fast over mobile networks.
+const MAX_ANALYSIS_DIMENSION = 1024;
+const ANALYSIS_JPEG_QUALITY = 0.8;
+const GRAM_STEP = 10;
 
 interface EditableItem {
   id: string;
@@ -94,7 +96,7 @@ async function prepareImageForAnalysis(picked: ImagePicker.ImagePickerAsset): Pr
       context.resize({ width: MAX_ANALYSIS_DIMENSION });
     }
     const rendered = await context.renderAsync();
-    const saved = await rendered.saveAsync({ compress: 0.7, format: SaveFormat.JPEG, base64: true });
+    const saved = await rendered.saveAsync({ compress: ANALYSIS_JPEG_QUALITY, format: SaveFormat.JPEG, base64: true });
     return saved.base64 ?? picked.base64 ?? null;
   } catch {
     return picked.base64 ?? null;
@@ -112,6 +114,8 @@ export default function AnalyzeFoodScreen() {
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [analysisSource, setAnalysisSource] = useState<VisionAnalysisResult['source'] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
+  const [reasoning, setReasoning] = useState<string | null>(null);
   const [items, setItems] = useState<EditableItem[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -120,6 +124,8 @@ export default function AnalyzeFoodScreen() {
     setItems([]);
     setAnalysisSource(null);
     setNotice(null);
+    setConfidenceScore(null);
+    setReasoning(null);
     setPickerError(null);
 
     const base64 = await prepareImageForAnalysis(picked);
@@ -133,6 +139,8 @@ export default function AnalyzeFoodScreen() {
       const analysis = await analyzeFoodPhoto(base64);
       setAnalysisSource(analysis.source);
       setNotice(analysis.notice);
+      setConfidenceScore(analysis.confidenceScore);
+      setReasoning(analysis.reasoning);
       setItems(analysis.items.map(toEditableItem));
     } catch {
       setPickerError('Die Bildanalyse ist fehlgeschlagen. Bitte erneut versuchen.');
@@ -180,6 +188,8 @@ export default function AnalyzeFoodScreen() {
     setItems([]);
     setAnalysisSource(null);
     setNotice(null);
+    setConfidenceScore(null);
+    setReasoning(null);
     setPickerError(null);
   }
 
@@ -344,10 +354,13 @@ export default function AnalyzeFoodScreen() {
                 </View>
                 <Text className="flex-1 text-sm font-semibold text-white">
                   {analysisSource === 'ai'
-                    ? `${items.length} Lebensmittel erkannt`
+                    ? `${items.length} Lebensmittel erkannt${
+                        confidenceScore != null ? ` · ${Math.round(confidenceScore * 100)}% Konfidenz` : ''
+                      }`
                     : 'Keine KI verfügbar – Schätzwerte zum Anpassen'}
                 </Text>
               </View>
+              {reasoning && <Text className="text-xs text-white/80">{reasoning}</Text>}
             </View>
 
             {notice && (
@@ -399,7 +412,25 @@ export default function AnalyzeFoodScreen() {
                     </View>
                   )}
 
-                  <TextField label="Menge" keyboardType="decimal-pad" value={item.grams} onChangeText={(text) => updateItem(item.id, { grams: text })} suffix="g" />
+                  <View className="flex-row items-start gap-2">
+                    <Pressable
+                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-slate-100/70 active:opacity-80 dark:bg-white/5"
+                      onPress={() => updateItem(item.id, { grams: String(Math.max(0, parseNumber(item.grams, 0) - GRAM_STEP)) })}
+                      accessibilityLabel="Menge verringern"
+                    >
+                      <Minus color="#64748b" size={16} />
+                    </Pressable>
+                    <View className="flex-1">
+                      <TextField label="Menge" keyboardType="decimal-pad" value={item.grams} onChangeText={(text) => updateItem(item.id, { grams: text })} suffix="g" />
+                    </View>
+                    <Pressable
+                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-slate-100/70 active:opacity-80 dark:bg-white/5"
+                      onPress={() => updateItem(item.id, { grams: String(parseNumber(item.grams, 0) + GRAM_STEP) })}
+                      accessibilityLabel="Menge erhöhen"
+                    >
+                      <Plus color="#64748b" size={16} />
+                    </Pressable>
+                  </View>
 
                   <Text className="pt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                     Nährwerte pro 100g (bearbeitbar)
