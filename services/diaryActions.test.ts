@@ -26,7 +26,7 @@ jest.mock('@/lib/supabase', () => ({
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { addMealAndSync } from '@/services/diaryActions';
+import { addMealAndSync, updateMealAndSync } from '@/services/diaryActions';
 import { useDiaryStore, todayKey } from '@/store/diaryStore';
 import { useSyncStore } from '@/store/syncStore';
 
@@ -87,4 +87,42 @@ it('serializes back-to-back meal additions so neither push drops the other', asy
   expect(mockUpsert).toHaveBeenCalledTimes(2);
   const secondPushPayload = mockUpsert.mock.calls[1][0];
   expect(secondPushPayload.data.entriesByDate[date]).toHaveLength(2);
+});
+
+describe('updateMealAndSync', () => {
+  it('edits grams and meal type locally when signed out', async () => {
+    // An earlier test in this file may have already signed in - force logged-out
+    // explicitly so this exercises the local-only branch, not push-then-commit.
+    useSyncStore.setState({ session: null });
+
+    const date = todayKey();
+    useDiaryStore.getState().addEntry(date, foodA, 'breakfast', 1);
+    const entryId = useDiaryStore.getState().entriesByDate[date][0].id;
+
+    await updateMealAndSync(date, entryId, { servings: 2, mealType: 'dinner' });
+
+    const entry = useDiaryStore.getState().entriesByDate[date][0];
+    expect(entry.servings).toBe(2);
+    expect(entry.mealType).toBe('dinner');
+  });
+
+  it('pushes the updated entry to Supabase before committing it locally when signed in', async () => {
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u2' }, access_token: 'tok-2' });
+    await flush();
+    await flush();
+
+    const date = todayKey();
+    await addMealAndSync(date, foodA, 'breakfast', 1);
+    const entryId = useDiaryStore.getState().entriesByDate[date][0].id;
+    mockUpsert.mockClear();
+
+    await updateMealAndSync(date, entryId, { servings: 1.5, mealType: 'snack' });
+
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+    const pushedEntries = mockUpsert.mock.calls[0][0].data.entriesByDate[date];
+    expect(pushedEntries[0].servings).toBe(1.5);
+    expect(pushedEntries[0].mealType).toBe('snack');
+    expect(useDiaryStore.getState().entriesByDate[date][0].servings).toBe(1.5);
+  });
 });

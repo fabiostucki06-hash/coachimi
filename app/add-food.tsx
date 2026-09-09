@@ -20,6 +20,7 @@ const SOURCE_BADGES: Partial<Record<NonNullable<FoodItem['source']>, string>> = 
   local: 'Standard',
   recent: 'Zuletzt',
   custom: 'Eigene',
+  ai: 'KI-Schätzung',
 };
 
 const MEAL_LABELS: Record<MealType, string> = {

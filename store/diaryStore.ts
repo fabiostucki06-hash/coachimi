@@ -17,11 +17,18 @@ export { makeId as makeEntryId };
 
 const EMPTY_ENTRIES: MealEntry[] = [];
 
+export interface MealEntryUpdate {
+  foodItem?: FoodItem;
+  mealType?: MealType;
+  servings?: number;
+}
+
 interface DiaryState {
   entriesByDate: Record<string, MealEntry[]>;
   lastUpdatedAt: string | null;
   addEntry: (date: string, foodItem: FoodItem, mealType: MealType, servings: number) => void;
   removeEntry: (date: string, entryId: string) => void;
+  updateEntry: (date: string, entryId: string, changes: MealEntryUpdate) => void;
   getEntriesForDate: (date: string) => MealEntry[];
 }
 
@@ -53,6 +60,16 @@ export const useDiaryStore = create<DiaryState>()(
           entriesByDate: {
             ...state.entriesByDate,
             [date]: (state.entriesByDate[date] ?? []).filter((entry) => entry.id !== entryId),
+          },
+          lastUpdatedAt: new Date().toISOString(),
+        }));
+      },
+
+      updateEntry: (date, entryId, changes) => {
+        set((state) => ({
+          entriesByDate: {
+            ...state.entriesByDate,
+            [date]: (state.entriesByDate[date] ?? []).map((entry) => (entry.id === entryId ? { ...entry, ...changes } : entry)),
           },
           lastUpdatedAt: new Date().toISOString(),
         }));

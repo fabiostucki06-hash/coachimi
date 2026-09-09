@@ -37,6 +37,7 @@ export default function RootLayout() {
           <Stack.Screen name="log-quantity" options={{ presentation: 'modal' }} />
           <Stack.Screen name="analyze-food" options={{ presentation: 'modal' }} />
           <Stack.Screen name="meal-detail" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="edit-meal-entry" options={{ presentation: 'modal' }} />
           <Stack.Screen name="rewards" options={{ presentation: 'modal' }} />
         </Stack>
         <Toast />

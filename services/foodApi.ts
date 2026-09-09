@@ -10,6 +10,93 @@ const SEARCH_TIMEOUT_MS = 2500;
 const MIN_RESULTS_BEFORE_FALLBACK = 3;
 const MAX_RESULTS = 20;
 
+// Last-resort tier: reuses the same demo-integration key as services/visionFoodApi.ts.
+// Only ever consulted once every Open Food Facts tier has come back completely empty,
+// and only if a key is configured - never blocks or replaces the OFF search otherwise.
+const AI_ESTIMATE_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const AI_ESTIMATE_URL = 'https://api.openai.com/v1/chat/completions';
+const AI_ESTIMATE_TIMEOUT_MS = 8000;
+
+const AI_ESTIMATE_PROMPT = `Du bist ein Ernährungsexperte. Der Nutzer sucht nach einem Lebensmittel, das in keiner Datenbank
+gefunden wurde. Schätze anhand des Suchbegriffs (auch bei Tippfehlern oder unvollständigen Begriffen) die durchschnittlichen
+Nährwerte pro 100g für ein typisches/durchschnittliches Exemplar. Antworte ausschließlich mit kompaktem JSON ohne Markdown,
+ohne Erklärung, in genau diesem Schema:
+{"name": string, "isFood": boolean, "caloriesPer100g": number, "carbsPer100g": number, "proteinPer100g": number, "fatPer100g": number}
+"name" ist der normalisierte, korrekt geschriebene deutsche Name des Lebensmittels. Falls der Suchbegriff erkennbar KEIN
+Lebensmittel ist, setze "isFood" auf false.`;
+
+interface AiEstimateJson {
+  name?: string;
+  isFood?: boolean;
+  caloriesPer100g?: number;
+  carbsPer100g?: number;
+  proteinPer100g?: number;
+  fatPer100g?: number;
+}
+
+function toNonNegative(value: number | undefined): number {
+  return Number.isFinite(value) && (value as number) >= 0 ? (value as number) : 0;
+}
+
+/** Generates a rough per-100g nutrition estimate for a generic search term via a small LLM call - only reached when Open Food Facts has nothing at all. Best-effort: any failure (no key configured, network error, malformed response) just yields no result, same as any other empty search. */
+async function fetchAiEstimate(query: string, signal?: AbortSignal): Promise<FoodItem | null> {
+  if (!AI_ESTIMATE_API_KEY) return null;
+
+  const timeoutController = new AbortController();
+  const timeout = setTimeout(() => timeoutController.abort(), AI_ESTIMATE_TIMEOUT_MS);
+  signal?.addEventListener('abort', () => timeoutController.abort());
+
+  let response: Response;
+  try {
+    response = await fetch(AI_ESTIMATE_URL, {
+      method: 'POST',
+      signal: timeoutController.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_ESTIMATE_API_KEY}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        max_tokens: 200,
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: AI_ESTIMATE_PROMPT },
+          { role: 'user', content: query },
+        ],
+      }),
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) return null;
+
+  try {
+    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const parsed = JSON.parse(content) as AiEstimateJson;
+    if (parsed.isFood === false) return null;
+
+    return {
+      id: `ai-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+      name: parsed.name?.trim() || query,
+      caloriesPerServing: Math.round(toNonNegative(parsed.caloriesPer100g)),
+      macrosPerServing: {
+        carbs: toNonNegative(parsed.carbsPer100g),
+        protein: toNonNegative(parsed.proteinPer100g),
+        fat: toNonNegative(parsed.fatPer100g),
+      },
+      micronutrientsPerServing: {},
+      servingSize: 100,
+      servingUnit: 'g',
+      source: 'ai',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export class FoodApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
     super(message);
@@ -266,7 +353,13 @@ export async function searchFood(query: string, signal?: AbortSignal): Promise<F
 
   const tertiaryUrl = `${SEARCH_URL_WORLD}?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=${MAX_RESULTS}`;
   const tertiary = await runSearchTier(tertiaryUrl, signal).catch(() => [] as FoodItem[]);
-  return mergeUniqueById([results, tertiary]);
+  results = mergeUniqueById([results, tertiary]);
+  if (results.length > 0) return results;
+
+  // Every OFF tier came back completely empty - last resort before "not found",
+  // a rough AI estimate for generic/unbranded terms. No-op if no key is configured.
+  const aiEstimate = await fetchAiEstimate(cleanQuery, signal).catch(() => null);
+  return aiEstimate ? [aiEstimate] : results;
 }
 
 export async function getFoodByBarcode(barcode: string, signal?: AbortSignal): Promise<FoodItem> {

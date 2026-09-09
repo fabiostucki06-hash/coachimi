@@ -1,5 +1,5 @@
 import { buildSnapshot, pushSnapshotData } from '@/services/cloudSync';
-import { makeEntryId, useDiaryStore } from '@/store/diaryStore';
+import { makeEntryId, useDiaryStore, type MealEntryUpdate } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { describeSyncError, useSyncStore, withSyncSuppressed } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
@@ -111,6 +111,21 @@ export function removeMealAndSync(date: string, entryId: string): Promise<void> 
   return enqueue(async () => {
     const currentEntries = useDiaryStore.getState().entriesByDate[date] ?? [];
     const nextEntries = currentEntries.filter((entry) => entry.id !== entryId);
+    await pushThenCommit(date, nextEntries, session.user.id);
+  });
+}
+
+/** Edits an already-logged entry in place (weight/grams, meal type, ...) - same push-then-commit guarantee as add/remove. */
+export function updateMealAndSync(date: string, entryId: string, changes: MealEntryUpdate): Promise<void> {
+  const session = useSyncStore.getState().session;
+  if (!session) {
+    useDiaryStore.getState().updateEntry(date, entryId, changes);
+    return Promise.resolve();
+  }
+
+  return enqueue(async () => {
+    const currentEntries = useDiaryStore.getState().entriesByDate[date] ?? [];
+    const nextEntries = currentEntries.map((entry) => (entry.id === entryId ? { ...entry, ...changes } : entry));
     await pushThenCommit(date, nextEntries, session.user.id);
   });
 }

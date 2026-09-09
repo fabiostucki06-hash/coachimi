@@ -102,9 +102,10 @@ export default function MealDetailScreen() {
           </Text>
         ) : (
           entries.map((entry) => (
-            <View
+            <Pressable
               key={entry.id}
-              className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 shadow-md shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60"
+              className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 shadow-md shadow-slate-900/5 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+              onPress={() => router.push({ pathname: '/edit-meal-entry', params: { entryId: entry.id } })}
             >
               <View className="flex-1 pr-3">
                 <Text className="text-sm font-semibold text-slate-900 dark:text-white" numberOfLines={1}>
@@ -124,7 +125,7 @@ export default function MealDetailScreen() {
               >
                 <Trash2 color="#ef4444" size={16} />
               </Pressable>
-            </View>
+            </Pressable>
           ))
         )}
       </ScrollView>
