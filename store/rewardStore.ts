@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { BadgeId, RewardTransaction, ShopItem } from '@/types';
+import type { BadgeId, Rank, RankId, RewardTransaction, ShopItem } from '@/types';
 import { addDays, getLocalDateKey } from '@/utils/calendarDates';
 
 function makeId(): string {
@@ -16,6 +16,17 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'gold_standard_tracker', name: 'Gold-Standard Tracker', description: 'Dein Ehrenabzeichen fürs lückenlose Tracking.', cost: 30 },
   { id: 'eisen_disziplin', name: 'Eisen-Disziplin', description: 'Das Badge für eiserne Trainingsdisziplin.', cost: 50 },
 ];
+
+/** Profile ranks/titles - equippable, permanent once unlocked. "Neuling" is the free default everyone starts with. */
+export const RANKS: Rank[] = [
+  { id: 'neuling', name: 'Neuling', cost: 0 },
+  { id: 'gold_standard_athlet', name: 'Gold-Standard-Athlet', cost: 50 },
+  { id: 'eisen_disziplin_rang', name: 'Eisen-Disziplin', cost: 100 },
+  { id: 'disziplin_legende', name: 'Disziplin-Legende', cost: 250 },
+];
+
+export const STREAK_SAVER_COST = 20;
+export const MAX_STREAK_SAVERS = 3;
 
 export interface Celebration {
   id: number;
@@ -34,6 +45,9 @@ interface RewardState {
   unlockedBadges: BadgeId[];
   transactionHistory: RewardTransaction[];
   celebration: Celebration | null;
+  streakSavers: number;
+  activeRank: RankId;
+  unlockedRanks: RankId[];
 
   addGoldBars: (amount: number, reason: string) => void;
   dismissCelebration: () => void;
@@ -50,6 +64,12 @@ interface RewardState {
   }) => void;
   checkTrainingSessionCompleted: (sessionId: string, isCompleted: boolean) => void;
   unlockBadge: (badgeId: BadgeId) => boolean;
+  /** 20 Goldbarren für 1 Schutzschild, gedeckelt bei MAX_STREAK_SAVERS. Returns whether the purchase went through. */
+  buyStreakSaver: () => boolean;
+  /** Schaltet einen Rang frei (falls nötig) und setzt ihn aktiv. Returns whether it succeeded. */
+  buyRank: (rankId: RankId) => boolean;
+  /** Verbraucht bei einer verpassten Aktivitätslücke ein Schutzschild statt den Streak zu reißen. Returns whether a shield was consumed. */
+  checkAndApplyStreakProtection: (dateKey?: string) => boolean;
 }
 
 let nextCelebrationId = 0;
@@ -73,6 +93,9 @@ export const useRewardStore = create<RewardState>()(
       unlockedBadges: [],
       transactionHistory: [],
       celebration: null,
+      streakSavers: 0,
+      activeRank: 'neuling',
+      unlockedRanks: ['neuling'],
 
       addGoldBars: (amount, reason) => {
         if (amount === 0) return;
@@ -87,6 +110,7 @@ export const useRewardStore = create<RewardState>()(
 
       recordDailyActivity: (dateKey) => {
         const today = dateKey ?? getLocalDateKey();
+        get().checkAndApplyStreakProtection(today);
         set((state) => {
           if (state.lastActiveDate === today) return state;
           const isConsecutive = state.lastActiveDate !== null && addDays(state.lastActiveDate, 1) === today;
@@ -137,6 +161,54 @@ export const useRewardStore = create<RewardState>()(
           goldBars: state.goldBars - item.cost,
           unlockedBadges: [...state.unlockedBadges, badgeId],
           transactionHistory: pushTransaction(state.transactionHistory, -item.cost, `Freigeschaltet: ${item.name}`),
+        }));
+        return true;
+      },
+
+      buyStreakSaver: () => {
+        const { goldBars, streakSavers } = get();
+        if (streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST) return false;
+
+        set((state) => ({
+          goldBars: state.goldBars - STREAK_SAVER_COST,
+          streakSavers: state.streakSavers + 1,
+          transactionHistory: pushTransaction(state.transactionHistory, -STREAK_SAVER_COST, 'Streak-Schutzschild gekauft'),
+        }));
+        return true;
+      },
+
+      buyRank: (rankId) => {
+        const rank = RANKS.find((candidate) => candidate.id === rankId);
+        if (!rank) return false;
+
+        const { unlockedRanks, goldBars } = get();
+        if (unlockedRanks.includes(rankId)) {
+          set({ activeRank: rankId });
+          return true;
+        }
+
+        if (goldBars < rank.cost) return false;
+
+        set((state) => ({
+          goldBars: state.goldBars - rank.cost,
+          unlockedRanks: [...state.unlockedRanks, rankId],
+          activeRank: rankId,
+          transactionHistory: rank.cost > 0 ? pushTransaction(state.transactionHistory, -rank.cost, `Rang freigeschaltet: ${rank.name}`) : state.transactionHistory,
+        }));
+        return true;
+      },
+
+      checkAndApplyStreakProtection: (dateKey) => {
+        const today = dateKey ?? getLocalDateKey();
+        const { lastActiveDate, streak, streakSavers } = get();
+        if (!lastActiveDate || lastActiveDate === today || streak <= 0 || streakSavers <= 0) return false;
+
+        const isConsecutive = addDays(lastActiveDate, 1) === today;
+        if (isConsecutive) return false;
+
+        set((state) => ({
+          streakSavers: state.streakSavers - 1,
+          lastActiveDate: addDays(today, -1),
         }));
         return true;
       },

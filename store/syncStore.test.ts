@@ -22,6 +22,7 @@ jest.mock('@/lib/supabase', () => ({
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { useRewardStore } from '@/store/rewardStore';
 import { useUserStore } from '@/store/userStore';
 import { useSyncStore } from '@/store/syncStore';
 
@@ -32,6 +33,8 @@ function flush() {
 beforeEach(async () => {
   await AsyncStorage.clear();
   useUserStore.setState((state) => ({ user: { ...state.user, dailyCalorieGoal: 1800 } }));
+  useRewardStore.setState({ goldBars: 0, streak: 0, streakSavers: 0, activeRank: 'neuling', unlockedRanks: ['neuling'] });
+  mockUpsert.mockClear();
 });
 
 function remoteRowAt(dailyCalorieGoal: number, updatedAt: string) {
@@ -89,4 +92,49 @@ it('still applies a genuinely newer remote snapshot (e.g. edited on another devi
   await flush();
 
   expect(useUserStore.getState().user.dailyCalorieGoal).toBe(3000);
+});
+
+it('pushes reward state (Goldbarren) to Supabase when it changes locally', async () => {
+  mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+  useSyncStore.getState().init();
+  authCallback?.('INITIAL_SESSION', { user: { id: 'u3' }, access_token: 'tok-5' });
+  await flush();
+  await flush();
+
+  useRewardStore.getState().addGoldBars(5, 'Testguthaben');
+  // Auto-sync push is debounced by 200ms - advance past it.
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  await flush();
+
+  expect(mockUpsert).toHaveBeenCalled();
+  const pushedRow = mockUpsert.mock.calls[mockUpsert.mock.calls.length - 1][0];
+  expect(pushedRow.data.rewards.goldBars).toBe(5);
+});
+
+it('applies a pulled remote reward snapshot to the reward store', async () => {
+  const { user, weightHistory } = useUserStore.getState();
+  // A clearly-future timestamp, same pattern as the "genuinely newer remote
+  // snapshot" test above: makes the assertion robust against any leftover
+  // local-change timestamp from an earlier test in this file.
+  const newerTimestamp = new Date(Date.now() + 60_000).toISOString();
+  mockMaybeSingle.mockResolvedValue({
+    data: {
+      data: {
+        user,
+        weightHistory,
+        entriesByDate: {},
+        hasOnboarded: true,
+        rewards: { goldBars: 42, streak: 3, streakSavers: 2, activeRank: 'gold_standard_athlet', unlockedRanks: ['neuling', 'gold_standard_athlet'] },
+      },
+      updated_at: newerTimestamp,
+    },
+    error: null,
+  });
+  useSyncStore.getState().init();
+  authCallback?.('INITIAL_SESSION', { user: { id: 'u4' }, access_token: 'tok-6' });
+  await flush();
+  await flush();
+
+  expect(useRewardStore.getState().goldBars).toBe(42);
+  expect(useRewardStore.getState().activeRank).toBe('gold_standard_athlet');
 });

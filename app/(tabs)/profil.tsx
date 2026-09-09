@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
+import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useUiStore } from '@/store/uiStore';
@@ -162,6 +163,8 @@ export default function ProfilScreen() {
   const selectedDiaryDate = useUiStore((state) => state.selectedDate);
   const session = useSyncStore((state) => state.session);
   const signOut = useSyncStore((state) => state.signOut);
+  const activeRank = useRewardStore((state) => state.activeRank);
+  const activeRankName = RANKS.find((rank) => rank.id === activeRank)?.name ?? RANKS[0].name;
 
   async function handleSignOut() {
     await signOut();
@@ -288,8 +291,13 @@ export default function ProfilScreen() {
           <View className="h-16 w-16 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30">
             <Text className="text-2xl font-bold text-white">{initial || '?'}</Text>
           </View>
-          <View className="items-center">
+          <View className="items-center gap-1">
             <Text className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{user.name || 'Ohne Namen'}</Text>
+            {activeRank !== 'neuling' && (
+              <View className="rounded-full bg-amber-400/15 px-2.5 py-0.5">
+                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">{activeRankName}</Text>
+              </View>
+            )}
             <Text className="text-sm text-slate-500 dark:text-slate-400">{user.email || 'Keine E-Mail hinterlegt'}</Text>
           </View>
         </View>

@@ -4,8 +4,9 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
+import { useRewardStore } from '@/store/rewardStore';
 import { useUserStore } from '@/store/userStore';
-import type { FoodItem, MealEntry, User, WeightEntry } from '@/types';
+import type { BadgeId, FoodItem, MealEntry, RankId, RewardTransaction, User, WeightEntry } from '@/types';
 
 const LOCAL_CHANGE_KEY = 'coach-imi-last-local-change';
 const SYNC_TIMEOUT_MS = 10000;
@@ -55,6 +56,24 @@ export function shouldApplyRemote(remoteUpdatedAt: string | null | undefined, lo
   return new Date(remoteUpdatedAt).getTime() > new Date(localChangedAt).getTime();
 }
 
+// Reward fields synced across devices - gamification state (Goldbarren, Streaks,
+// Ränge, Schutzschilde). All optional: absent in snapshots pushed before this
+// gamification feature existed - callers must fall back to the local default.
+export interface CloudRewardSnapshot {
+  goldBars: number;
+  streak: number;
+  lastActiveDate: string | null;
+  lastDailyClaimDate: string | null;
+  lastGoalRewardDate: string | null;
+  lastStreakRewardStreak: number;
+  rewardedSessionIds: string[];
+  unlockedBadges: BadgeId[];
+  transactionHistory: RewardTransaction[];
+  streakSavers: number;
+  activeRank: RankId;
+  unlockedRanks: RankId[];
+}
+
 export interface CloudSnapshot {
   user: User;
   weightHistory: WeightEntry[];
@@ -62,12 +81,27 @@ export interface CloudSnapshot {
   hasOnboarded: boolean;
   // Optional: absent in snapshots pushed before custom foods existed - callers must fall back to [].
   customFoods?: FoodItem[];
+  rewards?: CloudRewardSnapshot;
 }
 
 export function buildSnapshot(): CloudSnapshot {
   const { user, weightHistory, hasOnboarded } = useUserStore.getState();
   const { entriesByDate } = useDiaryStore.getState();
   const { customFoods } = useCustomFoodStore.getState();
+  const {
+    goldBars,
+    streak,
+    lastActiveDate,
+    lastDailyClaimDate,
+    lastGoalRewardDate,
+    lastStreakRewardStreak,
+    rewardedSessionIds,
+    unlockedBadges,
+    transactionHistory,
+    streakSavers,
+    activeRank,
+    unlockedRanks,
+  } = useRewardStore.getState();
 
   return {
     user,
@@ -75,6 +109,20 @@ export function buildSnapshot(): CloudSnapshot {
     entriesByDate,
     hasOnboarded,
     customFoods,
+    rewards: {
+      goldBars,
+      streak,
+      lastActiveDate,
+      lastDailyClaimDate,
+      lastGoalRewardDate,
+      lastStreakRewardStreak,
+      rewardedSessionIds,
+      unlockedBadges,
+      transactionHistory,
+      streakSavers,
+      activeRank,
+      unlockedRanks,
+    },
   };
 }
 
@@ -90,6 +138,9 @@ export function applySnapshot(snapshot: CloudSnapshot): void {
   useCustomFoodStore.setState({
     customFoods: snapshot.customFoods ?? [],
   });
+  if (snapshot.rewards) {
+    useRewardStore.setState({ ...snapshot.rewards });
+  }
 }
 
 // Set on every push and checked by the realtime handler so a device doesn't

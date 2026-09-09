@@ -1,5 +1,6 @@
 -- Run this once in the Supabase SQL Editor (https://supabase.com/dashboard/project/nejndycalbepcfmmuiai/sql/new)
--- Stores one JSON snapshot of app state (profile, goals, diary, water, fasting) per user.
+-- Stores one JSON snapshot of app state (profile, goals, diary, water, fasting,
+-- gamification rewards: Goldbarren/Streaks/Ränge/Schutzschilde) per user.
 
 create table if not exists public.user_data (
   user_id uuid primary key references auth.users (id) on delete cascade,

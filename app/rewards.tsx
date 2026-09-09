@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
-import { Check, Coins, Flame, Lock, X } from 'lucide-react-native';
+import { Check, Coins, Flame, Lock, Shield, ShieldCheck, X } from 'lucide-react-native';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { SHOP_ITEMS, useRewardStore } from '@/store/rewardStore';
+import { MAX_STREAK_SAVERS, RANKS, SHOP_ITEMS, STREAK_SAVER_COST, useRewardStore } from '@/store/rewardStore';
 import { useToastStore } from '@/store/toastStore';
-import type { BadgeId, RewardTransaction } from '@/types';
+import type { BadgeId, RankId, RewardTransaction } from '@/types';
 
 function formatTransactionDate(dateKey: string): string {
   return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
@@ -75,13 +75,67 @@ function ShopItemRow({
   );
 }
 
+function RankRow({
+  rank,
+  isActive,
+  isUnlocked,
+  affordable,
+  onSelect,
+}: {
+  rank: (typeof RANKS)[number];
+  isActive: boolean;
+  isUnlocked: boolean;
+  affordable: boolean;
+  onSelect: (id: RankId) => void;
+}) {
+  return (
+    <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 dark:border-slate-800/60 dark:bg-slate-900/60">
+      <View
+        className={`h-10 w-10 items-center justify-center rounded-full ${
+          isActive ? 'bg-emerald-500/15' : isUnlocked ? 'bg-slate-100 dark:bg-white/5' : 'bg-amber-400/15'
+        }`}
+      >
+        {isUnlocked ? <Check color={isActive ? '#10b981' : '#94a3b8'} size={18} /> : <Lock color="#d97706" size={16} />}
+      </View>
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{rank.name}</Text>
+        {isActive && <Text className="text-xs text-emerald-500">Aktiv</Text>}
+      </View>
+      {isActive ? null : isUnlocked ? (
+        <Pressable
+          onPress={() => onSelect(rank.id)}
+          className="rounded-full bg-slate-100 px-3 py-2 active:opacity-80 dark:bg-white/5"
+        >
+          <Text className="text-xs font-bold text-slate-600 dark:text-slate-300">Ausrüsten</Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          disabled={!affordable}
+          onPress={() => onSelect(rank.id)}
+          className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
+            affordable ? 'bg-amber-400 active:opacity-80' : 'bg-slate-100 dark:bg-white/5'
+          }`}
+        >
+          <Text className="text-xs">🪙</Text>
+          <Text className={`text-xs font-bold ${affordable ? 'text-amber-950' : 'text-slate-400'}`}>{rank.cost}</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 export default function RewardsScreen() {
   const goldBars = useRewardStore((state) => state.goldBars);
   const streak = useRewardStore((state) => state.streak);
+  const streakSavers = useRewardStore((state) => state.streakSavers);
+  const activeRank = useRewardStore((state) => state.activeRank);
+  const unlockedRanks = useRewardStore((state) => state.unlockedRanks);
   const unlockedBadges = useRewardStore((state) => state.unlockedBadges);
   const transactionHistory = useRewardStore((state) => state.transactionHistory);
   const claimDailyReward = useRewardStore((state) => state.claimDailyReward);
   const unlockBadge = useRewardStore((state) => state.unlockBadge);
+  const buyStreakSaver = useRewardStore((state) => state.buyStreakSaver);
+  const buyRank = useRewardStore((state) => state.buyRank);
   const showToast = useToastStore((state) => state.show);
 
   function handleClaim() {
@@ -95,6 +149,23 @@ export default function RewardsScreen() {
     const unlocked = unlockBadge(badgeId);
     if (!unlocked) {
       showToast('Nicht genug Goldbarren für dieses Badge.', 'error');
+    }
+  }
+
+  function handleBuyStreakSaver() {
+    const bought = buyStreakSaver();
+    if (!bought) {
+      showToast(
+        streakSavers >= MAX_STREAK_SAVERS ? 'Maximale Anzahl an Schutzschilden erreicht.' : 'Nicht genug Goldbarren für ein Schutzschild.',
+        'error',
+      );
+    }
+  }
+
+  function handleSelectRank(rankId: RankId) {
+    const applied = buyRank(rankId);
+    if (!applied) {
+      showToast('Nicht genug Goldbarren für diesen Rang.', 'error');
     }
   }
 
@@ -123,12 +194,62 @@ export default function RewardsScreen() {
             <View className="h-11 w-11 items-center justify-center rounded-full bg-orange-400/15">
               <Flame color="#f97316" size={20} />
             </View>
-            <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{streak}</Text>
+            <View className="flex-row items-center gap-1">
+              <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{streak}</Text>
+              {streakSavers > 0 && <ShieldCheck color="#38bdf8" size={16} />}
+            </View>
             <Text className="text-xs text-slate-400">Tage-Streak</Text>
           </Card>
         </View>
 
         <Button label="Tägliche Belohnung abholen (+5 🪙)" onPress={handleClaim} />
+
+        <Card className="gap-3">
+          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Streak-Schutzschild</Text>
+          <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 dark:border-slate-800/60 dark:bg-slate-900/60">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-sky-400/15">
+              <Shield color="#0ea5e9" size={18} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+                {streakSavers} / {MAX_STREAK_SAVERS} Schilde
+              </Text>
+              <Text className="text-xs text-slate-400">Rettet deinen Streak automatisch bei einem verpassten Tag.</Text>
+            </View>
+            <Pressable
+              disabled={streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST}
+              onPress={handleBuyStreakSaver}
+              className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
+                streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'bg-slate-100 dark:bg-white/5' : 'bg-amber-400 active:opacity-80'
+              }`}
+            >
+              <Text className="text-xs">🪙</Text>
+              <Text
+                className={`text-xs font-bold ${
+                  streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'text-slate-400' : 'text-amber-950'
+                }`}
+              >
+                {STREAK_SAVER_COST}
+              </Text>
+            </Pressable>
+          </View>
+        </Card>
+
+        <Card className="gap-1">
+          <Text className="pb-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Ränge &amp; Titel</Text>
+          <View className="gap-2">
+            {RANKS.map((rank) => (
+              <RankRow
+                key={rank.id}
+                rank={rank}
+                isActive={activeRank === rank.id}
+                isUnlocked={unlockedRanks.includes(rank.id)}
+                affordable={goldBars >= rank.cost}
+                onSelect={handleSelectRank}
+              />
+            ))}
+          </View>
+        </Card>
 
         <Card className="gap-1">
           <Text className="pb-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Meilensteine &amp; Shop</Text>

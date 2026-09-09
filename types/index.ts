@@ -161,3 +161,12 @@ export interface ShopItem {
   description: string;
   cost: number;
 }
+
+export type RankId = 'neuling' | 'gold_standard_athlet' | 'eisen_disziplin_rang' | 'disziplin_legende';
+
+export interface Rank {
+  id: RankId;
+  name: string;
+  /** Goldbarren-Kosten - 0 für den kostenlosen Standardrang. */
+  cost: number;
+}

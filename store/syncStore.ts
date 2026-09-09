@@ -14,6 +14,7 @@ import {
 } from '@/services/cloudSync';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
+import { useRewardStore } from '@/store/rewardStore';
 import { useUserStore } from '@/store/userStore';
 
 export type SyncStatus = 'offline' | 'syncing' | 'synced' | 'error';
@@ -101,6 +102,7 @@ function startAutoSyncWatchers(session: Session) {
     useUserStore.subscribe(handleLocalStoreChange),
     useDiaryStore.subscribe(handleLocalStoreChange),
     useCustomFoodStore.subscribe(handleLocalStoreChange),
+    useRewardStore.subscribe(handleLocalStoreChange),
   ];
 
   // Best-effort: a realtime subscribe failure (Realtime not enabled on the
@@ -153,6 +155,19 @@ async function pullAndApply(session: Session): Promise<void> {
   } catch (err) {
     applyingRemote = false;
     useSyncStore.setState({ status: 'error', error: describeSyncError(err) });
+  }
+}
+
+// Reconnect handler for foreground/focus/online events. A prior push may have
+// failed while offline (e.g. a Goldbarren purchase made mid-flight) and left
+// status stuck on 'error' with the edit sitting only in local state - retry
+// that push first. Otherwise this is just catching up on changes that may
+// have landed on another device while this one was away, so pull instead.
+function reconnectSync(session: Session) {
+  if (useSyncStore.getState().status === 'error') {
+    useSyncStore.getState().syncNow();
+  } else {
+    pullAndApply(session);
   }
 }
 
@@ -212,7 +227,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       if (state === 'active') {
         supabase.auth.startAutoRefresh();
         const { session } = get();
-        if (session) pullAndApply(session);
+        if (session) reconnectSync(session);
       } else {
         supabase.auth.stopAutoRefresh();
       }
@@ -226,7 +241,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     if (Platform.OS === 'web') {
       const refetchIfSignedIn = () => {
         const { session } = get();
-        if (session) pullAndApply(session);
+        if (session) reconnectSync(session);
       };
       window.addEventListener('focus', refetchIfSignedIn);
       // A second, already-open tab in the *same* window never fires focus/blur

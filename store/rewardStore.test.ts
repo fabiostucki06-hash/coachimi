@@ -4,6 +4,8 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import type { RankId } from '@/types';
+
 import { useRewardStore } from './rewardStore';
 
 const RESET_STATE = {
@@ -17,6 +19,9 @@ const RESET_STATE = {
   unlockedBadges: [],
   transactionHistory: [],
   celebration: null,
+  streakSavers: 0,
+  activeRank: 'neuling' as RankId,
+  unlockedRanks: ['neuling'] as RankId[],
 };
 
 beforeEach(async () => {
@@ -182,5 +187,80 @@ describe('unlockBadge', () => {
     useRewardStore.getState().addGoldBars(100, 'Testguthaben');
     expect(useRewardStore.getState().unlockBadge('protein_profi')).toBe(true);
     expect(useRewardStore.getState().unlockBadge('protein_profi')).toBe(false);
+  });
+});
+
+describe('buyStreakSaver', () => {
+  it('buys a shield and deducts 20 Goldbarren when affordable', () => {
+    useRewardStore.getState().addGoldBars(20, 'Testguthaben');
+    expect(useRewardStore.getState().buyStreakSaver()).toBe(true);
+    expect(useRewardStore.getState().streakSavers).toBe(1);
+    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+
+  it('refuses when the balance is too low', () => {
+    expect(useRewardStore.getState().buyStreakSaver()).toBe(false);
+    expect(useRewardStore.getState().streakSavers).toBe(0);
+  });
+
+  it('refuses past the cap of 3 shields', () => {
+    useRewardStore.getState().addGoldBars(80, 'Testguthaben');
+    useRewardStore.getState().buyStreakSaver();
+    useRewardStore.getState().buyStreakSaver();
+    useRewardStore.getState().buyStreakSaver();
+    expect(useRewardStore.getState().streakSavers).toBe(3);
+    expect(useRewardStore.getState().buyStreakSaver()).toBe(false);
+    expect(useRewardStore.getState().streakSavers).toBe(3);
+  });
+});
+
+describe('buyRank', () => {
+  it('unlocks and equips a rank when affordable', () => {
+    useRewardStore.getState().addGoldBars(50, 'Testguthaben');
+    expect(useRewardStore.getState().buyRank('gold_standard_athlet')).toBe(true);
+    expect(useRewardStore.getState().unlockedRanks).toContain('gold_standard_athlet');
+    expect(useRewardStore.getState().activeRank).toBe('gold_standard_athlet');
+    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+
+  it('refuses when the balance is too low', () => {
+    expect(useRewardStore.getState().buyRank('eisen_disziplin_rang')).toBe(false);
+    expect(useRewardStore.getState().unlockedRanks).not.toContain('eisen_disziplin_rang');
+  });
+
+  it('re-equips an already unlocked rank for free', () => {
+    useRewardStore.getState().addGoldBars(50, 'Testguthaben');
+    useRewardStore.getState().buyRank('gold_standard_athlet');
+    useRewardStore.getState().buyRank('neuling');
+    expect(useRewardStore.getState().activeRank).toBe('neuling');
+    expect(useRewardStore.getState().buyRank('gold_standard_athlet')).toBe(true);
+    expect(useRewardStore.getState().activeRank).toBe('gold_standard_athlet');
+    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+});
+
+describe('checkAndApplyStreakProtection', () => {
+  it('consumes a shield and preserves the streak across a missed day', () => {
+    useRewardStore.getState().recordDailyActivity('2026-01-01');
+    useRewardStore.setState({ streakSavers: 1 });
+
+    useRewardStore.getState().recordDailyActivity('2026-01-03');
+
+    expect(useRewardStore.getState().streak).toBe(2);
+    expect(useRewardStore.getState().streakSavers).toBe(0);
+  });
+
+  it('does nothing without a shield, so the streak still resets', () => {
+    useRewardStore.getState().recordDailyActivity('2026-01-01');
+    useRewardStore.getState().recordDailyActivity('2026-01-03');
+    expect(useRewardStore.getState().streak).toBe(1);
+  });
+
+  it('does not consume a shield for a consecutive day', () => {
+    useRewardStore.getState().recordDailyActivity('2026-01-01');
+    useRewardStore.setState({ streakSavers: 2 });
+    useRewardStore.getState().recordDailyActivity('2026-01-02');
+    expect(useRewardStore.getState().streakSavers).toBe(2);
+    expect(useRewardStore.getState().streak).toBe(2);
   });
 });
