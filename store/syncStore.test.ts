@@ -23,6 +23,7 @@ jest.mock('@/lib/supabase', () => ({
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useRewardStore } from '@/store/rewardStore';
+import { useTrainingStore } from '@/store/trainingStore';
 import { useUserStore } from '@/store/userStore';
 import { useSyncStore } from '@/store/syncStore';
 
@@ -34,6 +35,7 @@ beforeEach(async () => {
   await AsyncStorage.clear();
   useUserStore.setState((state) => ({ user: { ...state.user, dailyCalorieGoal: 1800 } }));
   useRewardStore.setState({ goldBars: 0, streak: 0, streakSavers: 0, activeRank: 'neuling', unlockedRanks: ['neuling'] });
+  useTrainingStore.setState({ templates: [], sessionsByDate: {} });
   mockUpsert.mockClear();
 });
 
@@ -137,4 +139,56 @@ it('applies a pulled remote reward snapshot to the reward store', async () => {
 
   expect(useRewardStore.getState().goldBars).toBe(42);
   expect(useRewardStore.getState().activeRank).toBe('gold_standard_athlet');
+});
+
+// Regression: a finished workout only lived in trainingStore's local
+// AsyncStorage persistence and was never included in the Supabase snapshot -
+// reinstalling the app or switching devices silently lost all training
+// history. Training must push through the same debounced auto-sync as every
+// other store.
+it('pushes training sessions to Supabase when they change locally', async () => {
+  mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+  useSyncStore.getState().init();
+  authCallback?.('INITIAL_SESSION', { user: { id: 'u5' }, access_token: 'tok-7' });
+  await flush();
+  await flush();
+
+  useTrainingStore.setState({
+    sessionsByDate: {
+      '2026-01-01': [
+        { id: 's1', templateId: 't1', templateName: 'Push Day', date: '2026-01-01', exercises: [] },
+      ],
+    },
+  });
+  // Auto-sync push is debounced by 200ms - advance past it.
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  await flush();
+
+  expect(mockUpsert).toHaveBeenCalled();
+  const pushedRow = mockUpsert.mock.calls[mockUpsert.mock.calls.length - 1][0];
+  expect(pushedRow.data.training.sessionsByDate['2026-01-01']).toHaveLength(1);
+});
+
+// Regression guard for the rollout of the above: existing users' remote rows
+// predate the `training` field entirely. Pulling one of those rows must leave
+// the local training store untouched, not wipe it back to empty (the same
+// safe-optional-field pattern `rewards` already uses).
+it('does not wipe local training data when a pulled remote snapshot predates the training-sync feature', async () => {
+  useTrainingStore.setState({
+    templates: [],
+    sessionsByDate: { '2026-01-02': [{ id: 's2', templateId: 't2', templateName: 'Leg Day', date: '2026-01-02', exercises: [] }] },
+  });
+
+  const { user, weightHistory } = useUserStore.getState();
+  const newerTimestamp = new Date(Date.now() + 60_000).toISOString();
+  mockMaybeSingle.mockResolvedValue({
+    data: { data: { user, weightHistory, entriesByDate: {}, hasOnboarded: true }, updated_at: newerTimestamp },
+    error: null,
+  });
+  useSyncStore.getState().init();
+  authCallback?.('INITIAL_SESSION', { user: { id: 'u6' }, access_token: 'tok-8' });
+  await flush();
+  await flush();
+
+  expect(useTrainingStore.getState().sessionsByDate['2026-01-02']).toHaveLength(1);
 });

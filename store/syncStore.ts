@@ -15,6 +15,7 @@ import {
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
+import { useTrainingStore } from '@/store/trainingStore';
 import { useUserStore } from '@/store/userStore';
 
 export type SyncStatus = 'offline' | 'syncing' | 'synced' | 'error';
@@ -103,6 +104,7 @@ function startAutoSyncWatchers(session: Session) {
     useDiaryStore.subscribe(handleLocalStoreChange),
     useCustomFoodStore.subscribe(handleLocalStoreChange),
     useRewardStore.subscribe(handleLocalStoreChange),
+    useTrainingStore.subscribe(handleLocalStoreChange),
   ];
 
   // Best-effort: a realtime subscribe failure (Realtime not enabled on the

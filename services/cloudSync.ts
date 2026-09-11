@@ -5,8 +5,9 @@ import { supabase } from '@/lib/supabase';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
+import { useTrainingStore } from '@/store/trainingStore';
 import { useUserStore } from '@/store/userStore';
-import type { BadgeId, FoodItem, MealEntry, RankId, RewardTransaction, User, WeightEntry } from '@/types';
+import type { BadgeId, FoodItem, MealEntry, RankId, RewardTransaction, User, WeightEntry, WorkoutSession, WorkoutTemplate } from '@/types';
 
 const LOCAL_CHANGE_KEY = 'coach-imi-last-local-change';
 const SYNC_TIMEOUT_MS = 10000;
@@ -74,6 +75,14 @@ export interface CloudRewardSnapshot {
   unlockedRanks: RankId[];
 }
 
+// Training data (workout templates + logged sessions) synced across devices.
+// Optional, same as `rewards`: absent in snapshots pushed before this existed
+// - callers must leave the local training store untouched rather than wipe it.
+export interface CloudTrainingSnapshot {
+  templates: WorkoutTemplate[];
+  sessionsByDate: Record<string, WorkoutSession[]>;
+}
+
 export interface CloudSnapshot {
   user: User;
   weightHistory: WeightEntry[];
@@ -82,6 +91,7 @@ export interface CloudSnapshot {
   // Optional: absent in snapshots pushed before custom foods existed - callers must fall back to [].
   customFoods?: FoodItem[];
   rewards?: CloudRewardSnapshot;
+  training?: CloudTrainingSnapshot;
 }
 
 export function buildSnapshot(): CloudSnapshot {
@@ -102,6 +112,7 @@ export function buildSnapshot(): CloudSnapshot {
     activeRank,
     unlockedRanks,
   } = useRewardStore.getState();
+  const { templates, sessionsByDate: trainingSessionsByDate } = useTrainingStore.getState();
 
   return {
     user,
@@ -123,6 +134,7 @@ export function buildSnapshot(): CloudSnapshot {
       activeRank,
       unlockedRanks,
     },
+    training: { templates, sessionsByDate: trainingSessionsByDate },
   };
 }
 
@@ -140,6 +152,12 @@ export function applySnapshot(snapshot: CloudSnapshot): void {
   });
   if (snapshot.rewards) {
     useRewardStore.setState({ ...snapshot.rewards });
+  }
+  if (snapshot.training) {
+    useTrainingStore.setState({
+      templates: snapshot.training.templates ?? [],
+      sessionsByDate: snapshot.training.sessionsByDate ?? {},
+    });
   }
 }
 
