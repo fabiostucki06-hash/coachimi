@@ -13,11 +13,11 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 // local files Expo's build bundles and rasterizes into favicon.ico), a plain
 // <link> tag is resolved by the browser at page-load time, so it can point
 // straight at the Supabase-hosted asset.
-// `?v=2` is a cache-buster: iOS Safari (and CDNs in front of Supabase Storage)
+// `?v=N` is a cache-buster: iOS Safari (and CDNs in front of Supabase Storage)
 // aggressively cache the apple-touch-icon by URL, so after replacing the
 // uploaded file at this same path, bump this version query param to force a
 // fresh fetch instead of iOS reusing its old cached (fallback-letter) icon.
-const SMALL_LOGO_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_klein.png?v=2';
+const SMALL_LOGO_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_klein.png?v=3';
 
 export default function Root({ children }: { children: React.ReactNode }) {
 
