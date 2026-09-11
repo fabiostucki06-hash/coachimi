@@ -9,15 +9,16 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 
 // The compact/app-icon logo - used for the favicon, the PWA homescreen icon
 // (referenced again from public/manifest.json) and the iOS "add to home
-// screen" icon. Unlike app.json's `icon`/`web.favicon` fields (which must be
-// local files Expo's build bundles and rasterizes into favicon.ico), a plain
-// <link> tag is resolved by the browser at page-load time, so it can point
-// straight at the Supabase-hosted asset.
-// `?v=N` is a cache-buster: iOS Safari (and CDNs in front of Supabase Storage)
-// aggressively cache the apple-touch-icon by URL, so after replacing the
-// uploaded file at this same path, bump this version query param to force a
-// fresh fetch instead of iOS reusing its old cached (fallback-letter) icon.
-const SMALL_LOGO_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_klein.png?v=3';
+// screen" icon. Served from public/apple-touch-icon.png (copied verbatim into
+// the web export root, same as public/manifest.json already is) rather than
+// the Supabase-hosted URL directly: a same-origin file sidesteps any iOS
+// Safari cross-origin quirk around fetching the touch-icon, and its cache
+// lifetime is now controlled entirely by this app's own deploy, not by
+// Supabase Storage's/any CDN's caching in front of it.
+// `?v=N` is a cache-buster - bump it whenever public/apple-touch-icon.png's
+// contents change, so browsers that already cached the old file by URL are
+// forced to refetch instead of reusing a stale (fallback-letter) icon.
+const APPLE_TOUCH_ICON_URL = '/apple-touch-icon.png?v=10';
 
 export default function Root({ children }: { children: React.ReactNode }) {
 
@@ -60,7 +61,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
         */}
         <ScrollViewStyleReset />
 
-        <link rel="icon" type="image/png" href={SMALL_LOGO_URL} />
+        <link rel="icon" type="image/png" href={APPLE_TOUCH_ICON_URL} />
         {/*
           iOS Safari's "Add to Home Screen" reads only these apple-touch-icon
           links (it ignores manifest.json entirely) - both a bare fallback and
@@ -68,8 +69,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
           declared so Safari has a directly-matching size to pick instead of
           falling back to its auto-generated site-initial tile.
         */}
-        <link rel="apple-touch-icon" href={SMALL_LOGO_URL} />
-        <link rel="apple-touch-icon" sizes="180x180" href={SMALL_LOGO_URL} />
+        <link rel="apple-touch-icon" href={APPLE_TOUCH_ICON_URL} />
+        <link rel="apple-touch-icon" sizes="180x180" href={APPLE_TOUCH_ICON_URL} />
         <link rel="manifest" href="/manifest.json" />
 
         {/*

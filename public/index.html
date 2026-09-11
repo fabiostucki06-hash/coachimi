@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%WEB_TITLE%</title>
+
+    <!--
+      IMPORTANT: with app.json's web.output set to "single", Expo's static-render
+      root (app/+html.tsx) is never used to build index.html - `expo export` reads
+      THIS file as its base template instead (see @expo/cli's
+      start/server/webTemplate.js:getTemplateIndexHtmlAsync, which checks
+      public/index.html before falling back to its own default). Any head/meta/
+      script customization for the web build must live here, not in +html.tsx.
+    -->
+
+    <!--
+      Without this, iOS Safari (especially as an installed/standalone PWA)
+      ignores `prefers-color-scheme: dark` entirely and always reports light,
+      no matter the device's actual appearance setting.
+    -->
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F4F6F8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)" />
+
+    <!--
+      Applies the persisted theme (or falls back to the OS preference) before
+      the app's own JS has hydrated, so there's no flash of the wrong theme
+      while zustand's AsyncStorage-backed persist middleware is still
+      rehydrating asynchronously. Reads the same storage key/shape as
+      store/themeStore.ts.
+    -->
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('coach-imi-theme-storage');
+          var pref = raw ? JSON.parse(raw).state.themePreference : 'system';
+          var isDark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+
+    <!--
+      The compact/app-icon logo, served from this same public/ directory
+      (copied verbatim into the export root) rather than the Supabase-hosted
+      URL directly - a same-origin file sidesteps any iOS Safari cross-origin
+      quirk around fetching the touch-icon, and cache lifetime is controlled
+      entirely by this app's own deploy. `?v=N` is a cache-buster - bump it
+      whenever public/apple-touch-icon.png's contents change.
+    -->
+    <link rel="icon" type="image/png" href="/apple-touch-icon.png?v=10" />
+    <!--
+      iOS Safari's "Add to Home Screen" reads only these apple-touch-icon
+      links (it ignores manifest.json entirely) - both a bare fallback and an
+      explicit 180x180 (Apple's documented iPhone home-screen size) are
+      declared so Safari has a directly-matching size to pick instead of
+      falling back to its auto-generated site-initial tile.
+    -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=10" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=10" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+
+    <!--
+      iOS Safari / WebKit touch tuning for the web build. RNW's own ScrollView
+      already sets -webkit-overflow-scrolling: touch inline per-instance, so
+      this only needs to cover what's shell-wide: no elastic bounce leaking
+      past the app frame, no 300ms tap delay on any element, and no gray
+      flash on tap.
+    -->
+    <style>
+      html, body, #root { height: 100%; overscroll-behavior-y: none; touch-action: manipulation; }
+      * { -webkit-tap-highlight-color: transparent; }
+    </style>
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  </body>
+</html>
