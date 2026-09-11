@@ -1,102 +1,25 @@
-import { parseJsonLoose } from '@/services/aiJson';
-import type { FoodItem } from '@/types';
+import { supabase } from '@/lib/supabase';
+import type { FoodItem, Micronutrients } from '@/types';
 
 const SEARCH_URL = 'https://de.openfoodfacts.org/cgi/search.pl';
 const SEARCH_URL_WORLD = 'https://world.openfoodfacts.org/cgi/search.pl';
 const PRODUCT_URL = 'https://world.openfoodfacts.org/api/v2/product';
 const REQUEST_TIMEOUT_MS = 8000;
+
+// Tier 3 barcode backup, only ever consulted once Open Food Facts has nothing for a
+// scanned code. USDA's public DEMO_KEY works out of the box (rate-limited); set
+// EXPO_PUBLIC_USDA_API_KEY for a real key in production.
+const USDA_API_KEY = process.env.EXPO_PUBLIC_USDA_API_KEY?.trim() || 'DEMO_KEY';
+const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
+const COMMUNITY_BARCODE_TABLE = 'community_barcodes';
 /** Background search fallback gets a tighter budget so typing never feels blocked by a slow network. */
 const SEARCH_TIMEOUT_MS = 2500;
 /** Below this many hits, escalate to the next broader search tier instead of settling for a thin result set. */
 const MIN_RESULTS_BEFORE_FALLBACK = 3;
 const MAX_RESULTS = 20;
 
-// Last-resort tier: reuses the same demo-integration key as services/visionFoodApi.ts.
-// Only ever consulted once every Open Food Facts tier has come back completely empty,
-// and only if a key is configured - never blocks or replaces the OFF search otherwise.
-const AI_ESTIMATE_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-const AI_ESTIMATE_URL = 'https://api.openai.com/v1/chat/completions';
-const AI_ESTIMATE_TIMEOUT_MS = 8000;
-
-const AI_ESTIMATE_PROMPT = `Du bist ein Ernährungsexperte. Der Nutzer sucht nach einem Lebensmittel, das in keiner Datenbank
-gefunden wurde. Schätze anhand des Suchbegriffs (auch bei Tippfehlern oder unvollständigen Begriffen) die durchschnittlichen
-Nährwerte pro 100g für ein typisches/durchschnittliches Exemplar, inklusive Eisengehalt (ironPer100g in mg). Antworte
-ausschließlich mit kompaktem JSON ohne Markdown, ohne Erklärung, in genau diesem Schema:
-{"name": string, "isFood": boolean, "caloriesPer100g": number, "carbsPer100g": number, "proteinPer100g": number, "fatPer100g": number, "ironPer100g": number}
-"name" ist der normalisierte, korrekt geschriebene deutsche Name des Lebensmittels. Falls der Suchbegriff erkennbar KEIN
-Lebensmittel ist, setze "isFood" auf false.`;
-
-interface AiEstimateJson {
-  name?: string;
-  isFood?: boolean;
-  caloriesPer100g?: number;
-  carbsPer100g?: number;
-  proteinPer100g?: number;
-  fatPer100g?: number;
-  ironPer100g?: number;
-}
-
 function toNonNegative(value: number | undefined): number {
   return Number.isFinite(value) && (value as number) >= 0 ? (value as number) : 0;
-}
-
-/** Generates a rough per-100g nutrition estimate for a generic search term via a small LLM call - only reached when Open Food Facts has nothing at all. Best-effort: any failure (no key configured, network error, malformed response) just yields no result, same as any other empty search. */
-async function fetchAiEstimate(query: string, signal?: AbortSignal): Promise<FoodItem | null> {
-  if (!AI_ESTIMATE_API_KEY) return null;
-
-  const timeoutController = new AbortController();
-  const timeout = setTimeout(() => timeoutController.abort(), AI_ESTIMATE_TIMEOUT_MS);
-  signal?.addEventListener('abort', () => timeoutController.abort());
-
-  let response: Response;
-  try {
-    response = await fetch(AI_ESTIMATE_URL, {
-      method: 'POST',
-      signal: timeoutController.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_ESTIMATE_API_KEY}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        response_format: { type: 'json_object' },
-        max_tokens: 200,
-        temperature: 0.2,
-        messages: [
-          { role: 'system', content: AI_ESTIMATE_PROMPT },
-          { role: 'user', content: query },
-        ],
-      }),
-    });
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
-  if (!response.ok) return null;
-
-  try {
-    const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-
-    const parsed = parseJsonLoose<AiEstimateJson>(content);
-    if (!parsed || parsed.isFood === false) return null;
-
-    return {
-      id: `ai-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
-      name: parsed.name?.trim() || query,
-      caloriesPerServing: Math.round(toNonNegative(parsed.caloriesPer100g)),
-      macrosPerServing: {
-        carbs: toNonNegative(parsed.carbsPer100g),
-        protein: toNonNegative(parsed.proteinPer100g),
-        fat: toNonNegative(parsed.fatPer100g),
-      },
-      micronutrientsPerServing: { iron: toNonNegative(parsed.ironPer100g) },
-      servingSize: 100,
-      servingUnit: 'g',
-      source: 'ai',
-    };
-  } catch {
-    return null;
-  }
 }
 
 export class FoodApiError extends Error {
@@ -317,13 +240,17 @@ function mergeUniqueById(lists: FoodItem[][]): FoodItem[] {
 }
 
 /**
- * Cascading search: a bare barcode goes straight to product lookup; otherwise runs up to
- * three progressively broader Open Food Facts tiers, stopping as soon as one has enough
- * hits - (1) DE-hosted mirror, exact terms, fastest and best match quality for German
- * products; (2) global product base scoped to German locale/country tags, for regional
- * brands the DE mirror hasn't synced yet; (3) global, no country restriction, last resort
- * for imported/obscure products. Tiers 2-3 are best-effort: a failure there just means we
- * keep whatever the earlier tier(s) already found instead of failing the whole search.
+ * Cascading search: a bare barcode goes straight to product lookup (its own Tier
+ * 1/2/3 cascade, see getFoodByBarcode); otherwise - Tier 1 Supabase community cache
+ * by name, additive and best-effort; Tier 2 up to three progressively broader Open
+ * Food Facts tiers, stopping as soon as one has enough hits - (a) DE-hosted mirror,
+ * exact terms, fastest and best match quality for German products; (b) global
+ * product base scoped to German locale/country tags, for regional brands the DE
+ * mirror hasn't synced yet; (c) global, no country restriction, last resort for
+ * imported/obscure products; Tier 3 USDA FoodData Central, only once Tier 1 and
+ * every OFF tier came back completely empty. No AI fallback by design. Every tier
+ * past the first OFF call is best-effort: a failure there just means we keep
+ * whatever the earlier tier(s) already found instead of failing the whole search.
  */
 export async function searchFood(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
   const trimmedQuery = query.trim();
@@ -344,8 +271,15 @@ export async function searchFood(query: string, signal?: AbortSignal): Promise<F
   if (!cleanQuery) return [];
   const encoded = encodeURIComponent(cleanQuery);
 
+  // Tier 1: Supabase community cache, matched by name - other users' contributed
+  // products. Additive and best-effort: a failure here never blocks Tier 2, it just
+  // means this run relies on Open Food Facts alone, same as before this tier existed.
+  const communityResults = await searchCommunityFoods(cleanQuery, signal).catch(() => [] as FoodItem[]);
+  if (communityResults.length >= MIN_RESULTS_BEFORE_FALLBACK) return communityResults;
+
+  // Tier 2: Open Food Facts.
   const primaryUrl = `${SEARCH_URL}?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=${MAX_RESULTS}`;
-  let results = await runSearchTier(primaryUrl, signal);
+  let results = mergeUniqueById([communityResults, await runSearchTier(primaryUrl, signal)]);
   if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
 
   const secondaryUrl = `${SEARCH_URL_WORLD}?search_terms=${encoded}&search_simple=1&action=process&json=1&lc=de&cc=de&page_size=${MAX_RESULTS}`;
@@ -358,24 +292,235 @@ export async function searchFood(query: string, signal?: AbortSignal): Promise<F
   results = mergeUniqueById([results, tertiary]);
   if (results.length > 0) return results;
 
-  // Every OFF tier came back completely empty - last resort before "not found",
-  // a rough AI estimate for generic/unbranded terms. No-op if no key is configured.
-  const aiEstimate = await fetchAiEstimate(cleanQuery, signal).catch(() => null);
-  return aiEstimate ? [aiEstimate] : results;
+  // Tier 3: USDA FoodData Central backup - only reached once Supabase and every OFF
+  // tier came back completely empty. No AI fallback by design: an AI guess at a
+  // specific product's nutrition facts would be worse than admitting nothing was found.
+  return await searchUsda(cleanQuery, signal).catch(() => [] as FoodItem[]);
 }
 
+// --- Tier 1: Supabase community cache -----------------------------------------
+
+interface CommunityBarcodeRow {
+  barcode: string;
+  name: string;
+  brand: string | null;
+  calories_per_100g: number;
+  carbs_per_100g: number;
+  protein_per_100g: number;
+  fat_per_100g: number;
+  micronutrients: Micronutrients | null;
+}
+
+function communityRowToFoodItem(row: CommunityBarcodeRow): FoodItem {
+  return {
+    id: row.barcode,
+    name: row.name,
+    brand: row.brand ?? undefined,
+    caloriesPerServing: toNonNegative(row.calories_per_100g),
+    macrosPerServing: {
+      carbs: toNonNegative(row.carbs_per_100g),
+      protein: toNonNegative(row.protein_per_100g),
+      fat: toNonNegative(row.fat_per_100g),
+    },
+    micronutrientsPerServing: row.micronutrients ?? {},
+    servingSize: 100,
+    servingUnit: 'g',
+    source: 'community',
+  };
+}
+
+/** Instant-cache lookup - best-effort: any Supabase error (offline, RLS, table not migrated yet) just falls through to Tier 2 rather than failing the whole scan. */
+async function fetchCommunityBarcode(barcode: string): Promise<FoodItem | null> {
+  const { data, error } = await supabase.from(COMMUNITY_BARCODE_TABLE).select('*').eq('barcode', barcode).maybeSingle();
+  if (error || !data) return null;
+  return communityRowToFoodItem(data as CommunityBarcodeRow);
+}
+
+/** Tier 1 text search - matches community-contributed products by name (case-insensitive substring), same table as the barcode cache. Best-effort, same as fetchCommunityBarcode. */
+async function searchCommunityFoods(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
+  const builder = supabase.from(COMMUNITY_BARCODE_TABLE).select('*').ilike('name', `%${query}%`).limit(MAX_RESULTS);
+  const { data, error } = await (signal ? builder.abortSignal(signal) : builder);
+  if (error || !data) return [];
+  return (data as CommunityBarcodeRow[]).map(communityRowToFoodItem);
+}
+
+/**
+ * Community Contribution Engine: upserts a manually-entered product into the shared
+ * barcode cache so every future scan of the same code - by any user - resolves
+ * instantly from Tier 1 instead of hitting Open Food Facts / USDA again. Fire-and-
+ * forget from the caller's perspective: a failure here (offline, RLS not migrated)
+ * must never block the user's own local save of the product they just created.
+ */
+export async function upsertCommunityBarcode(
+  barcode: string,
+  item: Pick<FoodItem, 'name' | 'brand' | 'caloriesPerServing' | 'macrosPerServing' | 'micronutrientsPerServing'>,
+): Promise<void> {
+  const trimmedBarcode = barcode.trim();
+  if (!trimmedBarcode) return;
+
+  try {
+    const { error } = await supabase.from(COMMUNITY_BARCODE_TABLE).upsert(
+      {
+        barcode: trimmedBarcode,
+        name: item.name,
+        brand: item.brand ?? null,
+        calories_per_100g: toNonNegative(item.caloriesPerServing),
+        carbs_per_100g: toNonNegative(item.macrosPerServing.carbs),
+        protein_per_100g: toNonNegative(item.macrosPerServing.protein),
+        fat_per_100g: toNonNegative(item.macrosPerServing.fat),
+        micronutrients: item.micronutrientsPerServing,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'barcode' },
+    );
+    if (error) console.error('[foodApi] Community-Barcode-Upsert fehlgeschlagen:', error);
+  } catch (error) {
+    console.error('[foodApi] Community-Barcode-Upsert fehlgeschlagen:', error);
+  }
+}
+
+// --- Tier 2: Open Food Facts ----------------------------------------------------
+
+/** Returns null on a clean 404 (product not in OFF) so the caller can fall through to Tier 3 - only a genuine network/parse failure throws. */
+async function fetchFromOff(barcode: string, signal?: AbortSignal): Promise<FoodItem | null> {
+  const url = `${PRODUCT_URL}/${encodeURIComponent(barcode)}.json`;
+  const data = await fetchJson<OffProductResponse>(url, signal);
+  if (data.status !== 1 || !data.product) return null;
+  return { ...normalizeFoodItem(data.product, barcode), source: 'off' };
+}
+
+// --- Tier 3: USDA FoodData Central backup ----------------------------------------
+
+interface UsdaNutrient {
+  nutrientId: number;
+  value: number;
+}
+
+interface UsdaFood {
+  gtinUpc?: string;
+  description?: string;
+  brandOwner?: string;
+  foodNutrients?: UsdaNutrient[];
+}
+
+interface UsdaSearchResponse {
+  foods?: UsdaFood[];
+}
+
+// USDA FoodData Central nutrient IDs (stable across the API) - values for Branded
+// foods are already reported per 100g, in the same units this app tracks (g for
+// macros/fiber/sugar, mg for minerals and most B-vitamins, µg for A/D/B7/B9/B12/K).
+const USDA_NUTRIENT_IDS = {
+  calories: 1008,
+  protein: 1003,
+  fat: 1004,
+  carbs: 1005,
+  fiber: 1079,
+  sugar: 2000,
+  saturatedFat: 1258,
+  sodium: 1093,
+  potassium: 1092,
+  calcium: 1087,
+  iron: 1089,
+  magnesium: 1090,
+  zinc: 1095,
+  vitaminA: 1106,
+  vitaminC: 1162,
+  vitaminD: 1114,
+  vitaminE: 1109,
+  vitaminK: 1185,
+  vitaminB12: 1178,
+} as const;
+
+function findUsdaNutrient(nutrients: UsdaNutrient[], nutrientId: number): number | undefined {
+  return nutrients.find((nutrient) => nutrient.nutrientId === nutrientId)?.value;
+}
+
+/** Strips leading zeros so a 12-digit UPC-A and its 13/14-digit GTIN padding compare equal. */
+function normalizeBarcodeForCompare(code: string): string {
+  return code.replace(/^0+/, '');
+}
+
+function normalizeUsdaFood(food: UsdaFood, fallbackId: string): FoodItem {
+  const nutrients = food.foodNutrients ?? [];
+  const get = (nutrientId: number) => findUsdaNutrient(nutrients, nutrientId);
+
+  return {
+    id: food.gtinUpc || fallbackId,
+    name: food.description || 'Unbekanntes Lebensmittel',
+    brand: food.brandOwner || undefined,
+    caloriesPerServing: Math.round(toNonNegative(get(USDA_NUTRIENT_IDS.calories))),
+    macrosPerServing: {
+      carbs: toNonNegative(get(USDA_NUTRIENT_IDS.carbs)),
+      protein: toNonNegative(get(USDA_NUTRIENT_IDS.protein)),
+      fat: toNonNegative(get(USDA_NUTRIENT_IDS.fat)),
+    },
+    micronutrientsPerServing: {
+      fiber: toNonNegative(get(USDA_NUTRIENT_IDS.fiber)),
+      sugar: toNonNegative(get(USDA_NUTRIENT_IDS.sugar)),
+      saturatedFat: get(USDA_NUTRIENT_IDS.saturatedFat),
+      sodium: get(USDA_NUTRIENT_IDS.sodium),
+      potassium: get(USDA_NUTRIENT_IDS.potassium),
+      calcium: get(USDA_NUTRIENT_IDS.calcium),
+      iron: get(USDA_NUTRIENT_IDS.iron),
+      magnesium: get(USDA_NUTRIENT_IDS.magnesium),
+      zinc: get(USDA_NUTRIENT_IDS.zinc),
+      vitaminA: get(USDA_NUTRIENT_IDS.vitaminA),
+      vitaminC: get(USDA_NUTRIENT_IDS.vitaminC),
+      vitaminD: get(USDA_NUTRIENT_IDS.vitaminD),
+      vitaminE: get(USDA_NUTRIENT_IDS.vitaminE),
+      vitaminK: get(USDA_NUTRIENT_IDS.vitaminK),
+      vitaminB12: get(USDA_NUTRIENT_IDS.vitaminB12),
+    },
+    servingSize: 100,
+    servingUnit: 'g',
+    source: 'usda',
+  };
+}
+
+/** Searches USDA's Branded Foods dataset for an exact GTIN/UPC match - a text-search hit whose barcode doesn't match the scanned one is treated as no result, never a fuzzy guess. */
+async function fetchFromUsda(barcode: string, signal?: AbortSignal): Promise<FoodItem | null> {
+  const url = `${USDA_SEARCH_URL}?api_key=${encodeURIComponent(USDA_API_KEY)}&query=${encodeURIComponent(barcode)}&dataType=Branded&pageSize=5`;
+  const data = await fetchJson<UsdaSearchResponse>(url, signal);
+  const target = normalizeBarcodeForCompare(barcode);
+  const match = (data.foods ?? []).find((food) => food.gtinUpc && normalizeBarcodeForCompare(food.gtinUpc) === target);
+  return match ? normalizeUsdaFood(match, barcode) : null;
+}
+
+/** Tier 3 text search - across every USDA dataset (Branded, Foundation, SR Legacy, Survey), not just Branded, to maximize coverage for generic/staple foods OFF rarely has. */
+async function searchUsda(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
+  const url = `${USDA_SEARCH_URL}?api_key=${encodeURIComponent(USDA_API_KEY)}&query=${encodeURIComponent(query)}&pageSize=${MAX_RESULTS}`;
+  const data = await fetchJson<UsdaSearchResponse>(url, signal, SEARCH_TIMEOUT_MS);
+  return (data.foods ?? [])
+    .filter((food) => (food.foodNutrients ?? []).length > 0)
+    .map((food, index) => normalizeUsdaFood(food, `usda-${index}`));
+}
+
+// --- Multi-tier hierarchy ---------------------------------------------------------
+
+/**
+ * Cascading barcode lookup - Tier 1 Supabase community cache (instant, populated by
+ * other users' manual entries), Tier 2 Open Food Facts (the global product DB), Tier
+ * 3 USDA FoodData Central (US-focused backup for products OFF hasn't indexed). No AI
+ * fallback here by design: an AI guess at a barcode's exact nutrition facts would be
+ * worse than admitting the product isn't found. Every tier is best-effort past Tier
+ * 1 - a single tier's failure just falls through to the next, so a scan only ever
+ * ends in a real product or a clean "not found" (never a raw network error).
+ */
 export async function getFoodByBarcode(barcode: string, signal?: AbortSignal): Promise<FoodItem> {
   const trimmedBarcode = barcode.trim();
   if (!trimmedBarcode) {
     throw new FoodApiError('Barcode darf nicht leer sein.');
   }
 
-  const url = `${PRODUCT_URL}/${encodeURIComponent(trimmedBarcode)}.json`;
-  const data = await fetchJson<OffProductResponse>(url, signal);
+  const communityMatch = await fetchCommunityBarcode(trimmedBarcode).catch(() => null);
+  if (communityMatch) return communityMatch;
 
-  if (data.status !== 1 || !data.product) {
-    throw new ProductNotFoundError(trimmedBarcode);
-  }
+  const offMatch = await fetchFromOff(trimmedBarcode, signal).catch(() => null);
+  if (offMatch) return offMatch;
 
-  return normalizeFoodItem(data.product, trimmedBarcode);
+  const usdaMatch = await fetchFromUsda(trimmedBarcode, signal).catch(() => null);
+  if (usdaMatch) return usdaMatch;
+
+  throw new ProductNotFoundError(trimmedBarcode);
 }

@@ -22,6 +22,7 @@ export default function BarcodeScannerScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
   const scannedRef = useRef(false);
   const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,11 +40,15 @@ export default function BarcodeScannerScreen() {
     Vibration.vibrate(100);
 
     try {
+      // Multi-tier lookup (Supabase community cache -> Open Food Facts -> USDA) -
+      // see services/foodApi.ts. Only a genuinely empty barcode string throws here;
+      // every tier failing just resolves to ProductNotFoundError below.
       const item = await getFoodByBarcode(data);
       setPendingSelection(item, mealType);
       router.replace('/log-quantity');
     } catch (err) {
       if (err instanceof ProductNotFoundError) {
+        setScannedBarcode(data);
         setNotFound(true);
       } else {
         setError(err instanceof FoodApiError ? err.message : 'Produkt konnte nicht geladen werden.');
@@ -62,7 +67,7 @@ export default function BarcodeScannerScreen() {
   }
 
   function handleManualAdd() {
-    router.replace({ pathname: '/add-food', params: { mealType } });
+    router.replace({ pathname: '/add-food', params: { mealType, barcode: scannedBarcode ?? undefined } });
   }
 
   return (

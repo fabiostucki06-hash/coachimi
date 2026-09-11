@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { NUTRIENT_META, NUTRIENT_ORDER } from '@/components/features/nutrientMeta';
 import { PortionUnitPicker } from '@/components/features/PortionUnitPicker';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -11,7 +12,8 @@ import { TextField } from '@/components/ui/TextField';
 import { addMealAndSync } from '@/services/diaryActions';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
-import type { MealType } from '@/types';
+import type { MealType, Micronutrients, NutrientKey } from '@/types';
+import { scaleNutrientsByServings } from '@/utils/nutritionCalculator';
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: 'Frühstück',
@@ -46,15 +48,21 @@ export default function LogQuantityScreen() {
       : validAmount
     : 0;
 
-  const computed = useMemo(() => {
-    if (!foodItem) return { kcal: 0, carbs: 0, protein: 0, fat: 0 };
-    return {
-      kcal: foodItem.caloriesPerServing * servings,
-      carbs: foodItem.macrosPerServing.carbs * servings,
-      protein: foodItem.macrosPerServing.protein * servings,
-      fat: foodItem.macrosPerServing.fat * servings,
-    };
+  // Single scaling engine for both macros and micronutrients, so a portion-shortcut
+  // tap or a typed gram amount recomputes the entire nutrient preview at once instead
+  // of macros and micros drifting through two separate calculations.
+  const scaled = useMemo(() => {
+    if (!foodItem) return null;
+    return scaleNutrientsByServings(foodItem, servings);
   }, [foodItem, servings]);
+
+  const isMicronutrientKey = (key: NutrientKey): key is keyof Micronutrients =>
+    key !== 'carbs' && key !== 'protein' && key !== 'fat';
+
+  const visibleMicronutrientKeys = useMemo(
+    () => NUTRIENT_ORDER.filter((key): key is keyof Micronutrients => isMicronutrientKey(key) && visibleNutrients[key]),
+    [visibleNutrients],
+  );
 
   function handleClose() {
     clearPendingSelection();
@@ -131,25 +139,40 @@ export default function LogQuantityScreen() {
           <View className="flex-row items-center justify-between">
             <Text className="text-sm text-slate-600 dark:text-slate-300">Kalorien</Text>
             <Text className="text-base font-bold text-slate-900 dark:text-white">
-              {Math.round(computed.kcal)} kcal
+              {(scaled?.calories ?? 0).toFixed(1)} kcal
             </Text>
           </View>
           {visibleNutrients.carbs && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-slate-600 dark:text-slate-300">Kohlenhydrate</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{Math.round(computed.carbs)} g</Text>
+              <Text className="text-sm text-slate-900 dark:text-white">{(scaled?.macros.carbs ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleNutrients.protein && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-slate-600 dark:text-slate-300">Eiweiß</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{Math.round(computed.protein)} g</Text>
+              <Text className="text-sm text-slate-900 dark:text-white">{(scaled?.macros.protein ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleNutrients.fat && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-slate-600 dark:text-slate-300">Fett</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{Math.round(computed.fat)} g</Text>
+              <Text className="text-sm text-slate-900 dark:text-white">{(scaled?.macros.fat ?? 0).toFixed(1)} g</Text>
+            </View>
+          )}
+          {visibleMicronutrientKeys.length > 0 && scaled && (
+            <View className="gap-3 border-t border-slate-200/60 pt-3 dark:border-slate-800/60">
+              {visibleMicronutrientKeys.map((key) => {
+                const meta = NUTRIENT_META[key];
+                return (
+                  <View key={key} className="flex-row items-center justify-between">
+                    <Text className="text-sm text-slate-600 dark:text-slate-300">{meta.label}</Text>
+                    <Text className="text-sm text-slate-900 dark:text-white">
+                      {scaled.micronutrients[key].toFixed(1)} {meta.unit}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           )}
         </Card>

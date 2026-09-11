@@ -1,4 +1,4 @@
-import type { Macros, Micronutrients, NutrientKey, NutrientVisibility } from '../types';
+import type { FoodItem, Macros, Micronutrients, NutrientKey, NutrientVisibility } from '../types';
 
 export type Gender = 'male' | 'female';
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active';
@@ -127,6 +127,51 @@ export const MICRONUTRIENT_GOALS: Required<Micronutrients> = {
   vitaminE: 15,
   vitaminK: 120,
 };
+
+const MICRONUTRIENT_KEYS = Object.keys(MICRONUTRIENT_GOALS) as (keyof Micronutrients)[];
+
+type ScalableFood = Pick<FoodItem, 'caloriesPerServing' | 'macrosPerServing' | 'micronutrientsPerServing' | 'servingSize'>;
+
+export interface ScaledNutrients {
+  calories: number;
+  macros: Macros;
+  micronutrients: Required<Micronutrients>;
+}
+
+/** Multiplies every macro/micronutrient of a food by `factor`, defaulting any missing micronutrient to 0 so downstream math (sums, %DV bars) never has to guard against `undefined` itself. */
+function scaleByFactor(food: ScalableFood, factor: number): ScaledNutrients {
+  const { macrosPerServing, micronutrientsPerServing } = food;
+  const micronutrients = {} as Required<Micronutrients>;
+  for (const key of MICRONUTRIENT_KEYS) {
+    micronutrients[key] = (micronutrientsPerServing[key] ?? 0) * factor;
+  }
+  return {
+    calories: food.caloriesPerServing * factor,
+    macros: {
+      carbs: macrosPerServing.carbs * factor,
+      protein: macrosPerServing.protein * factor,
+      fat: macrosPerServing.fat * factor,
+    },
+    micronutrients,
+  };
+}
+
+/**
+ * Unified scaling engine: `(valuePer100g * weightGrams) / 100`, generalized to the
+ * food's own base serving size (almost always 100g, but not assumed to be) so every
+ * macro AND micronutrient scales together from one call - portion shortcuts and
+ * custom gram inputs both route through this so a preview can never show macros and
+ * micros computed from two different code paths going out of sync.
+ */
+export function calculateScaledNutrients(food: ScalableFood, weightGrams: number): ScaledNutrients {
+  const baseSize = food.servingSize || 100;
+  return scaleByFactor(food, weightGrams / baseSize);
+}
+
+/** Same engine expressed as a serving multiplier - used for logged diary entries, which store `servings` rather than a raw gram amount (gram-based foods just have `servings = grams / servingSize` already baked in). */
+export function scaleNutrientsByServings(food: ScalableFood, servings: number): ScaledNutrients {
+  return scaleByFactor(food, servings);
+}
 
 export const DEFAULT_VISIBLE_NUTRIENTS: NutrientVisibility = {
   carbs: true,

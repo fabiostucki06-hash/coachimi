@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { SkeletonListRow } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
 import { fuzzyFilterFoodItems, normalizeSearchText, searchLocalFoods } from '@/data/foodDatabase';
-import { FoodApiError, FoodApiUnavailableError, searchFood } from '@/services/foodApi';
+import { FoodApiError, FoodApiUnavailableError, looksLikeBarcode, searchFood, upsertCommunityBarcode } from '@/services/foodApi';
 import { getCachedSearch, setCachedSearch } from '@/services/searchCache';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { getRecentFoods } from '@/store/diaryStore';
@@ -21,6 +21,8 @@ const SOURCE_BADGES: Partial<Record<NonNullable<FoodItem['source']>, string>> = 
   recent: 'Zuletzt',
   custom: 'Eigene',
   ai: 'KI-Schätzung',
+  community: 'Community',
+  usda: 'USDA',
 };
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -59,8 +61,9 @@ function mergeUnique(lists: FoodItem[][]): FoodItem[] {
 }
 
 export default function AddFoodScreen() {
-  const params = useLocalSearchParams<{ mealType: MealType }>();
+  const params = useLocalSearchParams<{ mealType: MealType; barcode?: string }>();
   const mealType = params.mealType ?? 'breakfast';
+  const prefillBarcode = params.barcode?.trim() || undefined;
   const setPendingSelection = useUiStore((state) => state.setPendingSelection);
   const customFoods = useCustomFoodStore((state) => state.customFoods);
   const addCustomFood = useCustomFoodStore((state) => state.addCustomFood);
@@ -68,10 +71,13 @@ export default function AddFoodScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(
+    prefillBarcode ? { message: `Barcode ${prefillBarcode} wurde in keiner Datenbank gefunden. Bitte trag das Produkt einmalig ein.`, severity: 'warning' } : null,
+  );
+  const [showCustomForm, setShowCustomForm] = useState(Boolean(prefillBarcode));
   const [customName, setCustomName] = useState('');
   const [customBrand, setCustomBrand] = useState('');
+  const [customBarcode, setCustomBarcode] = useState(prefillBarcode ?? '');
   const [customKcal, setCustomKcal] = useState('');
   const [customCarbs, setCustomCarbs] = useState('');
   const [customProtein, setCustomProtein] = useState('');
@@ -176,8 +182,14 @@ export default function AddFoodScreen() {
   }
 
   function handleOpenCustomForm() {
-    setCustomName(query.trim());
+    const trimmedQuery = query.trim();
+    // A barcode typed straight into the search bar (rather than scanned) hits the
+    // same "not found" empty state - pre-fill it as a barcode, not as the product
+    // name, so the 404 fallback stays seamless either way.
+    const typedBarcode = looksLikeBarcode(trimmedQuery) ? trimmedQuery : undefined;
+    setCustomName(typedBarcode ? '' : trimmedQuery);
     setCustomBrand('');
+    setCustomBarcode(prefillBarcode ?? typedBarcode ?? '');
     setCustomKcal('');
     setCustomCarbs('');
     setCustomProtein('');
@@ -204,6 +216,13 @@ export default function AddFoodScreen() {
       servingSize: 100,
       servingUnit: 'g',
     });
+
+    // Community Contribution Engine: only a barcode-linked entry gets cached - a
+    // barcode-less custom food has nothing to key the shared cache on.
+    const trimmedBarcode = customBarcode.trim();
+    if (trimmedBarcode) {
+      upsertCommunityBarcode(trimmedBarcode, foodItem).catch(() => {});
+    }
 
     setShowCustomForm(false);
     handleSelect(foodItem);
@@ -285,8 +304,15 @@ export default function AddFoodScreen() {
 
         {showCustomForm && (
           <Card className="gap-4">
-            <TextField label="Name" value={customName} onChangeText={setCustomName} placeholder="z. B. Omas Kuchen" autoFocus />
+            <TextField label="Name" value={customName} onChangeText={setCustomName} placeholder="z. B. Omas Kuchen" autoFocus={!prefillBarcode} />
             <TextField label="Marke (optional)" value={customBrand} onChangeText={setCustomBrand} placeholder="z. B. Bio-Hof Müller" />
+            <TextField
+              label="Barcode (optional)"
+              value={customBarcode}
+              onChangeText={setCustomBarcode}
+              placeholder="z. B. 4008400123456"
+              keyboardType="number-pad"
+            />
             <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">Nährwerte pro 100g</Text>
             <View className="flex-row gap-3">
               <View className="flex-1">

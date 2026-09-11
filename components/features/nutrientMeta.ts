@@ -26,7 +26,8 @@ import {
 } from 'lucide-react-native';
 import type { ComponentType } from 'react';
 
-import type { MealEntry, NutrientCategory, NutrientKey } from '@/types';
+import type { MealEntry, Micronutrients, NutrientCategory, NutrientKey } from '@/types';
+import { scaleNutrientsByServings } from '@/utils/nutritionCalculator';
 
 interface IconProps {
   color?: string;
@@ -121,17 +122,17 @@ export const NUTRIENT_ORDER: NutrientKey[] = [
   'iodine',
 ];
 
-/** Sums every tracked nutrient (macros + optional micronutrients, treating a missing value as 0) across a set of diary entries, scaled by each entry's servings. */
+/** Sums every tracked nutrient (macros + optional micronutrients, treating a missing value as 0) across a set of diary entries, scaled by each entry's servings via the shared scaling engine. */
 export function sumEntryNutrients(entries: MealEntry[]): Record<NutrientKey, number> {
   const totals = Object.fromEntries(NUTRIENT_ORDER.map((key) => [key, 0])) as Record<NutrientKey, number>;
   for (const entry of entries) {
-    const { macrosPerServing, micronutrientsPerServing } = entry.foodItem;
-    totals.carbs += macrosPerServing.carbs * entry.servings;
-    totals.protein += macrosPerServing.protein * entry.servings;
-    totals.fat += macrosPerServing.fat * entry.servings;
+    const scaled = scaleNutrientsByServings(entry.foodItem, entry.servings);
+    totals.carbs += scaled.macros.carbs;
+    totals.protein += scaled.macros.protein;
+    totals.fat += scaled.macros.fat;
     for (const key of NUTRIENT_ORDER) {
       if (key === 'carbs' || key === 'protein' || key === 'fat') continue;
-      totals[key] += (micronutrientsPerServing[key] ?? 0) * entry.servings;
+      totals[key] += scaled.micronutrients[key as keyof Micronutrients];
     }
   }
   return totals;
