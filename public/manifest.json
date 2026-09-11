@@ -1,0 +1,16 @@
+{
+  "name": "Coach imi",
+  "short_name": "Coach imi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F6F8",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_klein.png",
+      "sizes": "84x88",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

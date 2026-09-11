@@ -6,6 +6,15 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 // web page during static rendering.
 // The contents of this function only run in Node.js environments and
 // do not have access to the DOM or browser APIs.
+
+// The compact/app-icon logo - used for the favicon, the PWA homescreen icon
+// (referenced again from public/manifest.json) and the iOS "add to home
+// screen" icon. Unlike app.json's `icon`/`web.favicon` fields (which must be
+// local files Expo's build bundles and rasterizes into favicon.ico), a plain
+// <link> tag is resolved by the browser at page-load time, so it can point
+// straight at the Supabase-hosted asset.
+const SMALL_LOGO_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_klein.png';
+
 export default function Root({ children }: { children: React.ReactNode }) {
 
   // This is only required for server-side rendering.
@@ -46,6 +55,10 @@ export default function Root({ children }: { children: React.ReactNode }) {
           However, body scrolling is often nice to have for mobile web. If you want to enable it, remove this line.
         */}
         <ScrollViewStyleReset />
+
+        <link rel="icon" type="image/png" href={SMALL_LOGO_URL} />
+        <link rel="apple-touch-icon" href={SMALL_LOGO_URL} />
+        <link rel="manifest" href="/manifest.json" />
 
         {/*
           iOS Safari / WebKit touch tuning for the web build. RNW's own ScrollView already
