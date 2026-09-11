@@ -30,7 +30,13 @@ export default function LogQuantityScreen() {
 
   const isGramBased = foodItem?.servingUnit === 'g';
   const [amount, setAmount] = useState(isGramBased ? String(foodItem?.servingSize ?? 100) : '1');
+  const [selectedPortionId, setSelectedPortionId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  function handleAmountChange(value: string) {
+    setAmount(value);
+    setSelectedPortionId(null);
+  }
 
   const parsedAmount = Number.parseFloat(amount.replace(',', '.'));
   const validAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 0;
@@ -104,12 +110,21 @@ export default function LogQuantityScreen() {
           label={isGramBased ? 'Menge in Gramm' : `Anzahl ${foodItem.servingUnit}`}
           keyboardType="decimal-pad"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={handleAmountChange}
           suffix={isGramBased ? 'g' : foodItem.servingUnit}
           autoFocus
         />
 
-        {isGramBased && <PortionUnitPicker onSelect={(grams) => setAmount(String(grams))} />}
+        {isGramBased && (
+          <PortionUnitPicker
+            foodName={foodItem.name}
+            selectedId={selectedPortionId}
+            onSelect={(unit) => {
+              setAmount(String(unit.grams));
+              setSelectedPortionId(unit.id);
+            }}
+          />
+        )}
 
         <Card className="gap-3">
           <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Nährwerte</Text>

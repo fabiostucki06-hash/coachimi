@@ -42,7 +42,13 @@ export default function EditMealEntryScreen() {
     entry ? String(isGramBased ? Math.round(entry.foodItem.servingSize * entry.servings) : Math.round(entry.servings * 100) / 100) : '',
   );
   const [mealType, setMealType] = useState<MealType>(entry?.mealType ?? 'breakfast');
+  const [selectedPortionId, setSelectedPortionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function handleAmountChange(value: string) {
+    setAmount(value);
+    setSelectedPortionId(null);
+  }
 
   const parsedAmount = Number.parseFloat(amount.replace(',', '.'));
   const validAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 0;
@@ -106,12 +112,21 @@ export default function EditMealEntryScreen() {
           label={isGramBased ? 'Menge in Gramm' : `Anzahl ${entry.foodItem.servingUnit}`}
           keyboardType="decimal-pad"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={handleAmountChange}
           suffix={isGramBased ? 'g' : entry.foodItem.servingUnit}
           autoFocus
         />
 
-        {isGramBased && <PortionUnitPicker onSelect={(grams) => setAmount(String(grams))} />}
+        {isGramBased && (
+          <PortionUnitPicker
+            foodName={entry.foodItem.name}
+            selectedId={selectedPortionId}
+            onSelect={(unit) => {
+              setAmount(String(unit.grams));
+              setSelectedPortionId(unit.id);
+            }}
+          />
+        )}
 
         <View className="gap-2">
           <Text className="text-xs font-medium tracking-tight text-slate-500 dark:text-slate-400">Mahlzeit</Text>
