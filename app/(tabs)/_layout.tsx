@@ -1,8 +1,9 @@
-import { BookOpen, ChartColumn, Dumbbell, Sparkles, User } from 'lucide-react-native';
+import { BookOpen, ChartColumn, Dumbbell, User } from 'lucide-react-native';
 import { Link, Tabs, usePathname } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { Logo } from '@/components/ui/Logo';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 
@@ -41,12 +42,7 @@ function DesktopSidebar() {
 
   return (
     <View className="w-64 shrink-0 gap-1 border-r border-white/40 bg-white/60 p-4 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60 dark:shadow-black/40">
-      <View className="mb-4 flex-row items-center gap-2.5 px-2 pt-1">
-        <View className="h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500 shadow-md shadow-emerald-500/25">
-          <Sparkles color="#ffffff" size={16} />
-        </View>
-        <Text className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Coach imi</Text>
-      </View>
+      <Logo className="mb-4 px-2 pt-1" />
       {SIDEBAR_LINKS.map(({ href, label, Icon }) => {
         const isFocused = pathname === href;
         return (

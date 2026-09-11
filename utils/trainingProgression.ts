@@ -1,4 +1,4 @@
-import type { LoggedExercise } from '@/types';
+import type { LoggedExercise, LoggedSet } from '@/types';
 
 export interface ProgressionComparison {
   volumeKg: number;
@@ -37,6 +37,13 @@ export function compareToPrevious(current: LoggedExercise, previous: LoggedExerc
     previousTopSetKg,
     strengthPct: previous ? pctChange(topSetKg, previousTopSetKg) : null,
   };
+}
+
+/** The heaviest logged set (by weight) from the previous session of this exercise, for the "Letztes Mal: 80 kg × 8 Wdh." indicator on the exercise card - null if there's no prior session with a logged set. */
+export function getLastPerformance(previous: LoggedExercise | null): LoggedSet | null {
+  const loggedSets = (previous?.sets ?? []).filter((set) => (set?.reps ?? 0) > 0);
+  if (loggedSets.length === 0) return null;
+  return loggedSets.reduce((best, set) => (set.weightKg > best.weightKg ? set : best), loggedSets[0]);
 }
 
 /** Double-progression coaching tip: climb reps within the target range first, only add weight once every set hits the top of the range; flag stagnation across the last few sessions so a deload/volume cut gets suggested instead of grinding the same numbers forever. */

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PortionUnitPicker } from '@/components/features/PortionUnitPicker';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
@@ -107,6 +108,8 @@ export default function LogQuantityScreen() {
           suffix={isGramBased ? 'g' : foodItem.servingUnit}
           autoFocus
         />
+
+        {isGramBased && <PortionUnitPicker onSelect={(grams) => setAmount(String(grams))} />}
 
         <Card className="gap-3">
           <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Nährwerte</Text>

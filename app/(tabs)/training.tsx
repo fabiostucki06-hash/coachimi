@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { useTrainingStore, getSessionsForExercise } from '@/store/trainingStore';
 import { useUiStore } from '@/store/uiStore';
 import type { LoggedExercise, WorkoutSession } from '@/types';
-import { compareToPrevious, generateProgressionTip } from '@/utils/trainingProgression';
+import { compareToPrevious, generateProgressionTip, getLastPerformance } from '@/utils/trainingProgression';
 
 /** Stable reference for the "no sessions" case - an inline `[]` fallback in a zustand selector returns a new array every read, which trips React's getSnapshot-must-be-cached check and causes an infinite render loop (error #185). */
 const EMPTY_SESSIONS: WorkoutSession[] = [];
@@ -54,6 +54,7 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
   const history = getSessionsForExercise(exercise.name, session.date).map((entry) => entry.exercise);
   const comparison = compareToPrevious(exercise, history[0] ?? null);
   const tip = generateProgressionTip(exercise, history);
+  const lastPerformance = getLastPerformance(history[0] ?? null);
 
   return (
     <View className="gap-3 border-t border-slate-200/50 pt-3 dark:border-slate-800/60">
@@ -63,6 +64,12 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
           Ziel: {exercise.targetRepsMin}-{exercise.targetRepsMax} Wdh.
         </Text>
       </View>
+
+      {lastPerformance && (
+        <Text className="text-[11px] text-slate-400">
+          Letztes Mal: {lastPerformance.weightKg} kg × {lastPerformance.reps} Wdh.
+        </Text>
+      )}
 
       <View className="flex-row flex-wrap gap-2">
         <DeltaBadge label="Volumen" pct={comparison.volumePct} />

@@ -26,7 +26,7 @@ jest.mock('@/lib/supabase', () => ({
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { addMealAndSync, updateMealAndSync } from '@/services/diaryActions';
+import { addMealAndSync, copyEntryAndSync, copyMealAndSync, updateMealAndSync } from '@/services/diaryActions';
 import { useDiaryStore, todayKey } from '@/store/diaryStore';
 import { useSyncStore } from '@/store/syncStore';
 
@@ -87,6 +87,55 @@ it('serializes back-to-back meal additions so neither push drops the other', asy
   expect(mockUpsert).toHaveBeenCalledTimes(2);
   const secondPushPayload = mockUpsert.mock.calls[1][0];
   expect(secondPushPayload.data.entriesByDate[date]).toHaveLength(2);
+});
+
+describe('copyEntryAndSync', () => {
+  it('duplicates a single entry onto the target date, keeping the source entry intact', async () => {
+    useSyncStore.setState({ session: null });
+
+    const fromDate = todayKey();
+    const toDate = '2026-01-05';
+    useDiaryStore.getState().addEntry(fromDate, foodA, 'breakfast', 1.5);
+    const entryId = useDiaryStore.getState().entriesByDate[fromDate][0].id;
+
+    await copyEntryAndSync(fromDate, entryId, toDate);
+
+    expect(useDiaryStore.getState().entriesByDate[fromDate]).toHaveLength(1);
+    const copied = useDiaryStore.getState().entriesByDate[toDate];
+    expect(copied).toHaveLength(1);
+    expect(copied[0].foodItem.id).toBe('food-a');
+    expect(copied[0].servings).toBe(1.5);
+    expect(copied[0].mealType).toBe('breakfast');
+    expect(copied[0].id).not.toBe(entryId);
+  });
+
+  it('is a no-op when the source entry no longer exists', async () => {
+    useSyncStore.setState({ session: null });
+    const toDate = '2026-01-06';
+
+    await copyEntryAndSync(todayKey(), 'missing-entry', toDate);
+
+    expect(useDiaryStore.getState().entriesByDate[toDate] ?? []).toHaveLength(0);
+  });
+});
+
+describe('copyMealAndSync', () => {
+  it('duplicates every entry of one meal section onto the target date', async () => {
+    useSyncStore.setState({ session: null });
+
+    const fromDate = todayKey();
+    const toDate = '2026-01-07';
+    useDiaryStore.getState().addEntry(fromDate, foodA, 'lunch', 1);
+    useDiaryStore.getState().addEntry(fromDate, foodB, 'lunch', 2);
+    useDiaryStore.getState().addEntry(fromDate, foodA, 'dinner', 1);
+
+    await copyMealAndSync(fromDate, 'lunch', toDate);
+
+    const copied = useDiaryStore.getState().entriesByDate[toDate];
+    expect(copied).toHaveLength(2);
+    expect(copied.every((entry) => entry.mealType === 'lunch')).toBe(true);
+    expect(copied.map((entry) => entry.foodItem.id).sort()).toEqual(['food-a', 'food-b']);
+  });
 });
 
 describe('updateMealAndSync', () => {

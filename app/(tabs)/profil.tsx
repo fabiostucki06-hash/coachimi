@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CloudSyncCard } from '@/components/features/CloudSyncCard';
 import { HealthAdvisor } from '@/components/features/HealthAdvisor';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
+import { PatchNotes } from '@/components/features/PatchNotes';
 import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
 import { ACTIVITY_OPTIONS, ChipGroup, GENDER_OPTIONS, GOAL_OPTIONS, THEME_OPTIONS } from '@/components/features/ProfileOptions';
 import { Button } from '@/components/ui/Button';
@@ -433,6 +434,8 @@ export default function ProfilScreen() {
             </>
           )}
         </Card>
+
+        <PatchNotes />
 
         {session && (
           <Pressable

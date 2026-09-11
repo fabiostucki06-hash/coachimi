@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
-import { Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Logo } from '@/components/ui/Logo';
 import { TextField } from '@/components/ui/TextField';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useSyncStore } from '@/store/syncStore';
@@ -78,12 +78,7 @@ export default function OnboardingScreen() {
       </View>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerClassName="flex-grow justify-center gap-8 px-6 py-8" keyboardShouldPersistTaps="handled">
-          <View className="items-center gap-4">
-            <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-emerald-500 shadow-lg shadow-emerald-500/30">
-              <Sparkles color="#ffffff" size={32} />
-            </View>
-            <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Coach imi</Text>
-          </View>
+          <Logo size="lg" direction="column" />
 
           <Card className="gap-4">
             <View className="items-center gap-1">

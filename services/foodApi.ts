@@ -1,3 +1,4 @@
+import { parseJsonLoose } from '@/services/aiJson';
 import type { FoodItem } from '@/types';
 
 const SEARCH_URL = 'https://de.openfoodfacts.org/cgi/search.pl';
@@ -19,9 +20,9 @@ const AI_ESTIMATE_TIMEOUT_MS = 8000;
 
 const AI_ESTIMATE_PROMPT = `Du bist ein Ernährungsexperte. Der Nutzer sucht nach einem Lebensmittel, das in keiner Datenbank
 gefunden wurde. Schätze anhand des Suchbegriffs (auch bei Tippfehlern oder unvollständigen Begriffen) die durchschnittlichen
-Nährwerte pro 100g für ein typisches/durchschnittliches Exemplar. Antworte ausschließlich mit kompaktem JSON ohne Markdown,
-ohne Erklärung, in genau diesem Schema:
-{"name": string, "isFood": boolean, "caloriesPer100g": number, "carbsPer100g": number, "proteinPer100g": number, "fatPer100g": number}
+Nährwerte pro 100g für ein typisches/durchschnittliches Exemplar, inklusive Eisengehalt (ironPer100g in mg). Antworte
+ausschließlich mit kompaktem JSON ohne Markdown, ohne Erklärung, in genau diesem Schema:
+{"name": string, "isFood": boolean, "caloriesPer100g": number, "carbsPer100g": number, "proteinPer100g": number, "fatPer100g": number, "ironPer100g": number}
 "name" ist der normalisierte, korrekt geschriebene deutsche Name des Lebensmittels. Falls der Suchbegriff erkennbar KEIN
 Lebensmittel ist, setze "isFood" auf false.`;
 
@@ -32,6 +33,7 @@ interface AiEstimateJson {
   carbsPer100g?: number;
   proteinPer100g?: number;
   fatPer100g?: number;
+  ironPer100g?: number;
 }
 
 function toNonNegative(value: number | undefined): number {
@@ -75,8 +77,8 @@ async function fetchAiEstimate(query: string, signal?: AbortSignal): Promise<Foo
     const content = data.choices?.[0]?.message?.content;
     if (!content) return null;
 
-    const parsed = JSON.parse(content) as AiEstimateJson;
-    if (parsed.isFood === false) return null;
+    const parsed = parseJsonLoose<AiEstimateJson>(content);
+    if (!parsed || parsed.isFood === false) return null;
 
     return {
       id: `ai-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
@@ -87,7 +89,7 @@ async function fetchAiEstimate(query: string, signal?: AbortSignal): Promise<Foo
         protein: toNonNegative(parsed.proteinPer100g),
         fat: toNonNegative(parsed.fatPer100g),
       },
-      micronutrientsPerServing: {},
+      micronutrientsPerServing: { iron: toNonNegative(parsed.ironPer100g) },
       servingSize: 100,
       servingUnit: 'g',
       source: 'ai',

@@ -117,12 +117,14 @@ export const useTrainingStore = create<TrainingState>()(
             templateId: template.id,
             templateName: template.name,
             date,
+            // Starts with zero sets, not `targetSets` pre-filled empty rows - reps/sets only
+            // appear once the user actively taps "Satz hinzufügen" during the session.
             exercises: template.exercises.map((exercise) => ({
               id: exercise.id,
               name: exercise.name,
               targetRepsMin: exercise.targetRepsMin,
               targetRepsMax: exercise.targetRepsMax,
-              sets: Array.from({ length: exercise.targetSets }, () => ({ weightKg: 0, reps: 0 })),
+              sets: [],
             })),
           };
           return { sessionsByDate: mapSessionsForDate(state.sessionsByDate, date, (sessions) => [...sessions, session]) };

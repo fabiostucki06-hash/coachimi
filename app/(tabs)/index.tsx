@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiRecommendationCard } from '@/components/features/AiRecommendationCard';
 import { DateSelector } from '@/components/features/DateSelector';
+import { DeficitAnalyzerCard } from '@/components/features/DeficitAnalyzerCard';
 import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
@@ -299,6 +300,7 @@ export default function DiaryScreen() {
                 remainingMacros={remainingMacros}
                 visibleNutrients={user.visibleNutrients}
               />
+              <DeficitAnalyzerCard />
             </View>
           </View>
 

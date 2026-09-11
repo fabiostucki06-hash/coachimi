@@ -1,3 +1,4 @@
+import { parseJsonLoose } from '@/services/aiJson';
 import type { Macros, Micronutrients } from '@/types';
 
 export interface DetectedFoodItem {
@@ -81,7 +82,8 @@ Antworte ausschließlich mit kompaktem JSON in genau diesem Schema, ohne weitere
       "fiberPer100g": number,
       "sugarPer100g": number,
       "sodiumPer100gMg": number,
-      "vitaminCPer100gMg": number
+      "vitaminCPer100gMg": number,
+      "ironPer100gMg": number
     }
   ]
 }`;
@@ -99,6 +101,7 @@ interface OpenAiVisionItemJson {
   sugarPer100g?: number;
   sodiumPer100gMg?: number;
   vitaminCPer100gMg?: number;
+  ironPer100gMg?: number;
 }
 
 interface OpenAiVisionJson {
@@ -135,6 +138,7 @@ function normalizeDetectedItem(raw: OpenAiVisionItemJson): DetectedFoodItem {
       sugar: toNonNegative(raw.sugarPer100g, 0),
       sodium: toNonNegative(raw.sodiumPer100gMg, 0),
       vitaminC: toNonNegative(raw.vitaminCPer100gMg, 0),
+      iron: toNonNegative(raw.ironPer100gMg, 0),
     },
     confidence,
     needsVerification: confidence < LOW_CONFIDENCE_THRESHOLD,
@@ -196,11 +200,9 @@ async function analyzeWithOpenAi(base64Image: string): Promise<VisionAnalysisRes
     throw new VisionAnalysisError('Keine Antwort von der Vision-API erhalten.');
   }
 
-  let parsed: OpenAiVisionJson;
-  try {
-    parsed = JSON.parse(content) as OpenAiVisionJson;
-  } catch (error) {
-    throw new VisionAnalysisError('Antwort der Vision-API war kein gültiges JSON.', error);
+  const parsed = parseJsonLoose<OpenAiVisionJson>(content);
+  if (!parsed) {
+    throw new VisionAnalysisError('Antwort der Vision-API war kein gültiges JSON.');
   }
 
   if (parsed.isFoodImage === false || !parsed.items?.length) {

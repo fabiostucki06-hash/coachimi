@@ -115,6 +115,21 @@ export function removeMealAndSync(date: string, entryId: string): Promise<void> 
   });
 }
 
+/** Duplicates one already-logged entry onto `toDate` (same or a different day) - reuses `addMealsAndSync` so it gets the same sync/reward handling as any other new entry. No-op if the source entry no longer exists. */
+export function copyEntryAndSync(fromDate: string, entryId: string, toDate: string): Promise<void> {
+  const entry = useDiaryStore.getState().entriesByDate[fromDate]?.find((candidate) => candidate.id === entryId);
+  if (!entry) return Promise.resolve();
+  return addMealsAndSync(toDate, [{ foodItem: entry.foodItem, mealType: entry.mealType, servings: entry.servings }]);
+}
+
+/** Duplicates every entry of one meal section (e.g. all of Frühstück) onto `toDate` as a single sync push. No-op if the section is empty. */
+export function copyMealAndSync(fromDate: string, mealType: MealType, toDate: string): Promise<void> {
+  const entries = (useDiaryStore.getState().entriesByDate[fromDate] ?? []).filter((entry) => entry.mealType === mealType);
+  if (entries.length === 0) return Promise.resolve();
+  const meals: PendingMeal[] = entries.map((entry) => ({ foodItem: entry.foodItem, mealType, servings: entry.servings }));
+  return addMealsAndSync(toDate, meals);
+}
+
 /** Edits an already-logged entry in place (weight/grams, meal type, ...) - same push-then-commit guarantee as add/remove. */
 export function updateMealAndSync(date: string, entryId: string, changes: MealEntryUpdate): Promise<void> {
   const session = useSyncStore.getState().session;
