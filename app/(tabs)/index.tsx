@@ -224,7 +224,7 @@ export default function DiaryScreen() {
   }, [entries, user]);
 
   return (
-    <SafeAreaView className="relative flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
         <View className="flex-row items-start justify-between">
           <View>
@@ -300,7 +300,6 @@ export default function DiaryScreen() {
                 remainingMacros={remainingMacros}
                 visibleNutrients={user.visibleNutrients}
               />
-              <DeficitAnalyzerCard />
             </View>
           </View>
 
@@ -313,11 +312,13 @@ export default function DiaryScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
 
-      <Text className="absolute bottom-24 left-4 rounded-md bg-slate-50/90 px-1.5 py-0.5 text-[10px] text-slate-400 dark:bg-background-dark/90 lg:bottom-6">
-        App-Build: {getLastUpdatedLabel()} Uhr
-      </Text>
+        <DeficitAnalyzerCard />
+
+        <Text className="mb-6 self-start rounded-md bg-slate-50/90 px-1.5 py-0.5 text-[10px] text-slate-400 dark:bg-background-dark/90">
+          App-Build: {getLastUpdatedLabel()} Uhr
+        </Text>
+      </ScrollView>
     </SafeAreaView>
   );
 }
