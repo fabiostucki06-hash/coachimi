@@ -13,7 +13,11 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 // local files Expo's build bundles and rasterizes into favicon.ico), a plain
 // <link> tag is resolved by the browser at page-load time, so it can point
 // straight at the Supabase-hosted asset.
-const SMALL_LOGO_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_klein.png';
+// `?v=2` is a cache-buster: iOS Safari (and CDNs in front of Supabase Storage)
+// aggressively cache the apple-touch-icon by URL, so after replacing the
+// uploaded file at this same path, bump this version query param to force a
+// fresh fetch instead of iOS reusing its old cached (fallback-letter) icon.
+const SMALL_LOGO_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_klein.png?v=2';
 
 export default function Root({ children }: { children: React.ReactNode }) {
 
@@ -57,7 +61,15 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <ScrollViewStyleReset />
 
         <link rel="icon" type="image/png" href={SMALL_LOGO_URL} />
+        {/*
+          iOS Safari's "Add to Home Screen" reads only these apple-touch-icon
+          links (it ignores manifest.json entirely) - both a bare fallback and
+          an explicit 180x180 (Apple's documented iPhone home-screen size) are
+          declared so Safari has a directly-matching size to pick instead of
+          falling back to its auto-generated site-initial tile.
+        */}
         <link rel="apple-touch-icon" href={SMALL_LOGO_URL} />
+        <link rel="apple-touch-icon" sizes="180x180" href={SMALL_LOGO_URL} />
         <link rel="manifest" href="/manifest.json" />
 
         {/*
