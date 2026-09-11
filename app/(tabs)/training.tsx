@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { DateSelector } from '@/components/features/DateSelector';
+import { TrainingScienceTips } from '@/components/features/TrainingScienceTips';
 import { TrainingSyncBanner } from '@/components/features/TrainingSyncBanner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -244,6 +245,8 @@ export default function TrainingScreen() {
             onPress={() => setShowAttachSheet(true)}
           />
         )}
+
+        <TrainingScienceTips />
       </ScrollView>
     </SafeAreaView>
   );
