@@ -22,6 +22,30 @@ function parseNumber(value: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+/**
+ * Keeps its own text state instead of deriving `value` from `weightKg` on every render.
+ * A controlled input bound directly to `String(weightKg)` re-parses on each keystroke and
+ * snaps back to the number's string form, which strips a trailing "." or "," before the
+ * user can type the fraction digit - decimals could never be entered.
+ */
+function WeightInput({ weightKg, onChange }: { weightKg: number; onChange: (weightKg: number) => void }) {
+  const [text, setText] = useState(weightKg ? String(weightKg) : '');
+
+  return (
+    <TextInput
+      className="flex-1 rounded-xl border border-slate-200/70 bg-[#EDF2F7] px-3 py-2 text-sm text-slate-900 dark:border-slate-800/60 dark:bg-white/5 dark:text-white"
+      keyboardType="decimal-pad"
+      value={text}
+      placeholder="kg"
+      placeholderTextColor="#94a3b8"
+      onChangeText={(value) => {
+        setText(value);
+        onChange(parseNumber(value, 0));
+      }}
+    />
+  );
+}
+
 function DeltaBadge({ label, pct }: { label: string; pct: number | null }) {
   if (pct === null) {
     return (
@@ -82,13 +106,9 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
         {(exercise.sets ?? []).map((set, index) => (
           <View key={index} className="flex-row items-center gap-2">
             <Text className="w-5 text-xs text-slate-400">{index + 1}</Text>
-            <TextInput
-              className="flex-1 rounded-xl border border-slate-200/70 bg-[#EDF2F7] px-3 py-2 text-sm text-slate-900 dark:border-slate-800/60 dark:bg-white/5 dark:text-white"
-              keyboardType="decimal-pad"
-              value={set.weightKg ? String(set.weightKg) : ''}
-              placeholder="kg"
-              placeholderTextColor="#94a3b8"
-              onChangeText={(text) => updateSet(session.date, session.id, exercise.id, index, { weightKg: parseNumber(text, 0) })}
+            <WeightInput
+              weightKg={set.weightKg}
+              onChange={(weightKg) => updateSet(session.date, session.id, exercise.id, index, { weightKg })}
             />
             <TextInput
               className="flex-1 rounded-xl border border-slate-200/70 bg-[#EDF2F7] px-3 py-2 text-sm text-slate-900 dark:border-slate-800/60 dark:bg-white/5 dark:text-white"

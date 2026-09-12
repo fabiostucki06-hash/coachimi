@@ -1,6 +1,7 @@
 import '@/global.css';
 
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
@@ -12,6 +13,11 @@ import { useThemeSync } from '@/hooks/useThemeSync';
 import { useWidgetDeepLinks } from '@/hooks/useWidgetDeepLinks';
 import { useWidgetSync } from '@/hooks/useWidgetSync';
 import { useSyncStore } from '@/store/syncStore';
+
+// Per expo-splash-screen's docs, call this in global scope (not inside the component) so
+// it can't run after the splash has already auto-hidden. app/index.tsx calls hideAsync()
+// once store hydration and the session check are both done.
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const init = useSyncStore((state) => state.init);

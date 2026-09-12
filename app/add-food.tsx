@@ -70,6 +70,9 @@ export default function AddFoodScreen() {
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
+  // Snapshot at mount - a "recently used" quick-pick row shown before the user types
+  // anything, so re-logging the same handful of foods doesn't need a search each time.
+  const [recentFoods] = useState<FoodItem[]>(() => getRecentFoods(8));
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(
     prefillBarcode ? { message: `Barcode ${prefillBarcode} wurde in keiner Datenbank gefunden. Bitte trag das Produkt einmalig ein.`, severity: 'warning' } : null,
@@ -228,8 +231,10 @@ export default function AddFoodScreen() {
     handleSelect(foodItem);
   }
 
-  const showEmptyState = !loading && query.trim().length > 0 && results.length === 0;
-  const showSkeletons = loading && query.trim().length > 0 && results.length === 0;
+  const isSearching = query.trim().length > 0;
+  const showEmptyState = !loading && isSearching && results.length === 0;
+  const showSkeletons = loading && isSearching && results.length === 0;
+  const listData = isSearching ? results : recentFoods;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
@@ -344,10 +349,15 @@ export default function AddFoodScreen() {
 
       <FlatList
         className="flex-1 px-6 pt-4"
-        data={results}
+        data={listData}
         keyExtractor={(item) => item.id}
         contentContainerClassName="gap-2 pb-12"
         keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          !isSearching && recentFoods.length > 0 ? (
+            <Text className="pb-2 text-xs font-medium text-slate-400">Zuletzt verwendet</Text>
+          ) : null
+        }
         ListEmptyComponent={
           showSkeletons ? (
             <View className="gap-2">
