@@ -28,9 +28,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#22c55e",
+          "backgroundColor": "#090D16",
           "image": "https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png",
-          "imageWidth": 76
+          "imageWidth": 120,
+          "resizeMode": "contain"
         }
       ],
       [
