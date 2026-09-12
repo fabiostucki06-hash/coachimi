@@ -43,14 +43,16 @@
     </script>
 
     <!--
-      The compact/app-icon logo, served from this same public/ directory
-      (copied verbatim into the export root) rather than the Supabase-hosted
-      URL directly - a same-origin file sidesteps any iOS Safari cross-origin
-      quirk around fetching the touch-icon, and cache lifetime is controlled
-      entirely by this app's own deploy. `?v=N` is a cache-buster - bump it
-      whenever public/apple-touch-icon.png's contents change.
+      The compact/app-icon logo, served directly from Supabase Storage so it
+      stays in sync with the same asset used for the native app icons - no
+      redeploy needed to update it, just re-upload and bump `?v=N`. Note: a
+      prior version of this file used a same-origin /apple-touch-icon.png
+      copy instead, specifically to sidestep an iOS Safari quirk around
+      fetching cross-origin touch-icons unreliably; reverted back to the
+      Supabase URL on request, so watch for that symptom (iOS "Add to Home
+      Screen" falling back to a plain letter tile) if it resurfaces.
     -->
-    <link rel="icon" type="image/png" href="/apple-touch-icon.png?v=10" />
+    <link rel="icon" type="image/png" href="https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=4" />
     <!--
       iOS Safari's "Add to Home Screen" reads only these apple-touch-icon
       links (it ignores manifest.json entirely) - both a bare fallback and an
@@ -58,8 +60,8 @@
       declared so Safari has a directly-matching size to pick instead of
       falling back to its auto-generated site-initial tile.
     -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=10" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=10" />
+    <link rel="apple-touch-icon" href="https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=4" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=4" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->

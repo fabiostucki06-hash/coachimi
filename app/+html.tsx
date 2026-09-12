@@ -9,16 +9,15 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 
 // The compact/app-icon logo - used for the favicon, the PWA homescreen icon
 // (referenced again from public/manifest.json) and the iOS "add to home
-// screen" icon. Served from public/apple-touch-icon.png (copied verbatim into
-// the web export root, same as public/manifest.json already is) rather than
-// the Supabase-hosted URL directly: a same-origin file sidesteps any iOS
-// Safari cross-origin quirk around fetching the touch-icon, and its cache
-// lifetime is now controlled entirely by this app's own deploy, not by
-// Supabase Storage's/any CDN's caching in front of it.
-// `?v=N` is a cache-buster - bump it whenever public/apple-touch-icon.png's
-// contents change, so browsers that already cached the old file by URL are
-// forced to refetch instead of reusing a stale (fallback-letter) icon.
-const APPLE_TOUCH_ICON_URL = '/apple-touch-icon.png?v=10';
+// screen" icon. Served straight from Supabase Storage so it stays in sync
+// with the same asset used for the native app icons.
+// Note: this file is currently dead code for the actual web build (see
+// public/index.html, which is what `web.output: "single"` really uses) - kept
+// in sync anyway in case output mode ever changes back to "static"/"server".
+// `?v=N` is a cache-buster - bump it whenever the Supabase asset's contents
+// change, so browsers that already cached the old file by URL are forced to
+// refetch instead of reusing a stale (fallback-letter) icon.
+const APPLE_TOUCH_ICON_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=4';
 
 export default function Root({ children }: { children: React.ReactNode }) {
 

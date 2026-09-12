@@ -7,7 +7,7 @@ interface LogoProps {
 }
 
 const FULL_LOGO_URL =
-  'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi.png';
+  'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png';
 
 const SIZE_CONFIG = {
   sm: 'h-9',
@@ -22,7 +22,7 @@ export function Logo({ size = 'sm', direction = 'row', className = '' }: LogoPro
         source={{ uri: FULL_LOGO_URL }}
         accessibilityLabel="Coach imi"
         resizeMode="contain"
-        className={`${SIZE_CONFIG[size]} aspect-[391/255]`}
+        className={`${SIZE_CONFIG[size]} aspect-square`}
       />
     </View>
   );
