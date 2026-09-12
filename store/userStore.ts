@@ -8,6 +8,7 @@ import {
   calculateDailyTargets,
   calculateMacros,
   calculateTDEE,
+  caloriesFromMacros,
   DEFAULT_VISIBLE_NUTRIENTS,
   MACRO_RATIO_PRESET_VALUES,
   MICRONUTRIENT_FOCUS_KEYS,
@@ -94,10 +95,14 @@ export const useUserStore = create<UserState>()(
           heightCm: input.heightCm,
         });
         const tdee = calculateTDEE(bmr, input.activityLevel);
-        const dailyCalorieGoal = calculateDailyTargets(tdee, input.goal);
+        const targetCalories = calculateDailyTargets(tdee, input.goal);
         const macroRatioPreset = input.macroRatioPreset ?? get().user.macroRatioPreset ?? 'balanced';
         const ratio = macroRatioPreset === 'custom' ? input.customMacroRatio ?? MACRO_RATIO_PRESET_VALUES.balanced : MACRO_RATIO_PRESET_VALUES[macroRatioPreset];
-        const dailyMacroGoal = calculateMacros(dailyCalorieGoal, ratio);
+        const dailyMacroGoal = calculateMacros(targetCalories, ratio);
+        // Re-derived from the rounded macro grams (not `targetCalories` directly) so the
+        // displayed calorie goal always exactly matches carbs*4 + protein*4 + fat*9 - see
+        // caloriesFromMacros.
+        const dailyCalorieGoal = caloriesFromMacros(dailyMacroGoal);
 
         set((state) => ({
           user: {

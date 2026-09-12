@@ -3,6 +3,7 @@ import {
   calculateDailyTargets,
   calculateMacros,
   calculateTDEE,
+  caloriesFromMacros,
   type ActivityLevel,
   type Gender,
   type Goal,
@@ -111,5 +112,19 @@ describe('calculateMacros', () => {
   it('throws for zero or negative calories', () => {
     expect(() => calculateMacros(0)).toThrow();
     expect(() => calculateMacros(-100)).toThrow();
+  });
+});
+
+describe('caloriesFromMacros', () => {
+  it('re-derives calories from grams using 4/4/9 kcal-per-gram', () => {
+    expect(caloriesFromMacros({ carbs: 200, protein: 150, fat: 67 })).toBe(2003);
+  });
+
+  it('reconciles the drift left by calculateMacros rounding each macro independently', () => {
+    // 2200 kcal balanced (30/40/30) -> protein 165g, carbs 220g, fat 73g,
+    // which sum back to 2197 kcal, not the original 2200.
+    const macros = calculateMacros(2200);
+    expect(macros).toEqual({ protein: 165, carbs: 220, fat: 73 });
+    expect(caloriesFromMacros(macros)).toBe(2197);
   });
 });

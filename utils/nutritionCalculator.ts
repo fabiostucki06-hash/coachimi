@@ -96,6 +96,17 @@ export function calculateMacros(calories: number, ratio: MacroRatio = MACRO_RATI
   };
 }
 
+/**
+ * Re-derives a calorie total from already-rounded macro grams. `calculateMacros` rounds
+ * each macro independently, so e.g. a 2200 kcal target can produce grams that sum back
+ * to only 2197 kcal - callers that display both a calorie goal and its macro
+ * breakdown should show this reconciled number instead of the pre-rounding target, so
+ * the two never visibly disagree.
+ */
+export function caloriesFromMacros(macros: Macros): number {
+  return Math.round(macros.carbs * 4 + macros.protein * 4 + macros.fat * 9);
+}
+
 /** Reference daily intake (standard adult %DV) used as the progress-bar goal for each micronutrient. */
 export const MICRONUTRIENT_GOALS: Required<Micronutrients> = {
   fiber: 30,

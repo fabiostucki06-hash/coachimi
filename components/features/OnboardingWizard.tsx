@@ -19,6 +19,7 @@ import {
   calculateDailyTargets,
   calculateMacros,
   calculateTDEE,
+  caloriesFromMacros,
   MACRO_RATIO_PRESET_VALUES,
   type ActivityLevel,
   type Gender,
@@ -106,7 +107,10 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
         ? { protein: (parsedCustomProtein || 0) / 100, carbs: (parsedCustomCarbs || 0) / 100, fat: (parsedCustomFat || 0) / 100 }
         : MACRO_RATIO_PRESET_VALUES[macroPreset];
     const macros = calculateMacros(calories, ratio);
-    return { calories, macros };
+    // Shown together in the preview below - reconciled so it always matches
+    // macros.carbs*4 + macros.protein*4 + macros.fat*9 exactly (see caloriesFromMacros),
+    // rather than the pre-rounding TDEE target the two would otherwise silently disagree with.
+    return { calories: caloriesFromMacros(macros), macros };
   }, [isBasicsValid, parsedAge, gender, parsedWeight, parsedHeight, activityLevel, goal, macroPreset, parsedCustomProtein, parsedCustomCarbs, parsedCustomFat]);
 
   function handleBack() {
