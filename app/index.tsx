@@ -6,27 +6,49 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { useSyncStore } from '@/store/syncStore';
 import { useUserStore } from '@/store/userStore';
 
+// The custom LoadingScreen's pulse/glow and rotating tip need real time on screen to
+// read as intentional rather than a flicker - hydration and the session check often
+// both finish in well under 100ms, which isn't enough to see either animation.
+const MIN_LOADING_MS = 1200;
+
+type Phase = 'loading' | 'fadingOut' | 'done';
+
 export default function Index() {
   const session = useSyncStore((state) => state.session);
   const sessionChecked = useSyncStore((state) => state.sessionChecked);
   const hasOnboarded = useUserStore((state) => state.hasOnboarded);
   const [hasHydrated, setHasHydrated] = useState(useUserStore.persist.hasHydrated());
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [phase, setPhase] = useState<Phase>('loading');
 
   useEffect(() => {
     if (hasHydrated) return;
     return useUserStore.persist.onFinishHydration(() => setHasHydrated(true));
   }, [hasHydrated]);
 
-  const isReady = hasHydrated && sessionChecked;
+  useEffect(() => {
+    const timer = setTimeout(() => setMinTimeElapsed(true), MIN_LOADING_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Hands off from the native splash to this custom screen as soon as it mounts,
+  // rather than waiting for `isReady` - the native splash previously stayed up for
+  // this entire screen's lifetime and only lifted the instant this component swapped
+  // straight to <Redirect>, so the custom pulse/glow/tip animation was rendered the
+  // whole time but never actually visible to anyone.
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
+  const isReady = hasHydrated && sessionChecked && minTimeElapsed;
 
   useEffect(() => {
-    // Keeps the native splash up (see app/_layout.tsx's preventAutoHideAsync) until we
-    // actually know where to route - hiding it earlier would flash the blank root view
-    // for the same window LoadingScreen below covers on web.
-    if (isReady) SplashScreen.hideAsync();
-  }, [isReady]);
+    if (isReady && phase === 'loading') setPhase('fadingOut');
+  }, [isReady, phase]);
 
-  if (!isReady) return <LoadingScreen />;
+  if (phase !== 'done') {
+    return <LoadingScreen fadeOut={phase === 'fadingOut'} onFadeOutComplete={() => setPhase('done')} />;
+  }
 
   const destination = !session ? '/onboarding' : hasOnboarded ? '/(tabs)' : '/setup';
   return <Redirect href={destination} />;

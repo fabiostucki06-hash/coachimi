@@ -92,16 +92,32 @@ function RotatingTip() {
   );
 }
 
+interface LoadingScreenProps {
+  /** True once app/index.tsx is ready to hand off to the real destination - plays a
+   * brief opacity fade-out and calls onFadeOutComplete when it finishes, instead of
+   * getting yanked off-screen by an abrupt unmount. */
+  fadeOut?: boolean;
+  onFadeOutComplete?: () => void;
+}
+
 /**
- * Shown for the brief window between the native splash screen hiding and the
- * app finishing store hydration / session checks (app/index.tsx). Deliberately
- * always dark (independent of the user's light/dark preference) to match the
- * native splash (see app.json's expo-splash-screen config, same background +
- * Kiwi logo) - app/index.tsx swaps straight from this to <Redirect> in one
- * render with no intermediate screen, so there's nothing else to flicker.
+ * Shown from the moment the native splash screen hides until the app finishes
+ * store hydration / session checks (app/index.tsx). Deliberately always dark
+ * (independent of the user's light/dark preference) to match the native splash
+ * (see app.json's expo-splash-screen config, same background + Kiwi logo).
  */
-export function LoadingScreen() {
+export function LoadingScreen({ fadeOut = false, onFadeOutComplete }: LoadingScreenProps) {
   const pulse = useRef(new Animated.Value(0)).current;
+  const screenOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!fadeOut) return;
+    Animated.timing(screenOpacity, { toValue: 0, duration: 350, easing: Easing.out(Easing.ease), useNativeDriver: true }).start(
+      ({ finished }) => {
+        if (finished) onFadeOutComplete?.();
+      },
+    );
+  }, [fadeOut, screenOpacity, onFadeOutComplete]);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -119,7 +135,7 @@ export function LoadingScreen() {
   const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.08] });
 
   return (
-    <View className="flex-1 items-center justify-center gap-10" style={{ backgroundColor: BACKGROUND }}>
+    <Animated.View className="flex-1 items-center justify-center gap-10" style={{ backgroundColor: BACKGROUND, opacity: screenOpacity }}>
       <GlowBackdrop />
 
       <View className="items-center justify-center" style={{ width: LOGO_SIZE * 1.6, height: LOGO_SIZE * 1.6 }}>
@@ -142,6 +158,6 @@ export function LoadingScreen() {
 
       <LoadingBar />
       <RotatingTip />
-    </View>
+    </Animated.View>
   );
 }

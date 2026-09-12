@@ -16,7 +16,8 @@ import { useSyncStore } from '@/store/syncStore';
 
 // Per expo-splash-screen's docs, call this in global scope (not inside the component) so
 // it can't run after the splash has already auto-hidden. app/index.tsx calls hideAsync()
-// once store hydration and the session check are both done.
+// as soon as it mounts, handing off to its own custom LoadingScreen rather than leaving
+// the native splash up until routing is actually ready.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
