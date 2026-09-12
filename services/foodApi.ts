@@ -3,6 +3,11 @@ import type { FoodItem, Micronutrients } from '@/types';
 
 const SEARCH_URL = 'https://de.openfoodfacts.org/cgi/search.pl';
 const SEARCH_URL_WORLD = 'https://world.openfoodfacts.org/cgi/search.pl';
+// Open Food Facts' newer "Search-a-licious" API - faster and more reliable than the
+// legacy Perl cgi/search.pl tiers below, and (unlike them) supports filtering by
+// `countries_tags` so a Migros/Coop/Denner product actually surfaces for Swiss users
+// instead of being drowned out by German search results.
+const SEARCH_URL_SALICIOUS = 'https://search.openfoodfacts.org/search';
 const PRODUCT_URL = 'https://world.openfoodfacts.org/api/v2/product';
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -106,6 +111,19 @@ interface OffProduct {
 
 interface OffSearchResponse {
   products?: OffProduct[];
+}
+
+/** A hit from the Search-a-licious API - same `nutriments` shape as the legacy search, but top-level `hits` instead of `products`, and `brands` as a string array instead of a comma-joined string. */
+interface SalaciousHit {
+  code?: string;
+  product_name?: string;
+  product_name_de?: string;
+  brands?: string[];
+  nutriments?: OffNutriments;
+}
+
+interface SalaciousResponse {
+  hits?: SalaciousHit[];
 }
 
 interface OffProductResponse {
@@ -224,6 +242,20 @@ async function runSearchTier(url: string, signal?: AbortSignal): Promise<FoodIte
     .map((product, index) => ({ ...normalizeFoodItem(product, `search-${index}`), source: 'off' as const }));
 }
 
+/** Swiss-market tier via Search-a-licious - same field mapping as `normalizeFoodItem`, just adapted for `hits`/array-brands instead of `products`/string-brands. */
+async function runSwissSearchTier(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
+  const url = `${SEARCH_URL_SALICIOUS}?q=${encodeURIComponent(query)}&langs=de&countries_tags=en:switzerland&page_size=${MAX_RESULTS}`;
+  const data = await fetchJson<SalaciousResponse>(url, signal, SEARCH_TIMEOUT_MS);
+  const hits = data.hits ?? [];
+
+  return hits
+    .filter((hit) => (hit.product_name || hit.product_name_de) && hasAnyMacro(hit.nutriments ?? {}))
+    .map((hit, index) => ({
+      ...normalizeFoodItem({ code: hit.code, product_name: hit.product_name, product_name_de: hit.product_name_de, brands: hit.brands?.join(', '), nutriments: hit.nutriments }, `ch-${index}`),
+      source: 'off' as const,
+    }));
+}
+
 /** Concatenates result lists, keeping first occurrence by id - later (broader) tiers only fill in gaps the earlier ones missed. */
 function mergeUniqueById(lists: FoodItem[][]): FoodItem[] {
   const seen = new Set<string>();
@@ -242,15 +274,16 @@ function mergeUniqueById(lists: FoodItem[][]): FoodItem[] {
 /**
  * Cascading search: a bare barcode goes straight to product lookup (its own Tier
  * 1/2/3 cascade, see getFoodByBarcode); otherwise - Tier 1 Supabase community cache
- * by name, additive and best-effort; Tier 2 up to three progressively broader Open
- * Food Facts tiers, stopping as soon as one has enough hits - (a) DE-hosted mirror,
- * exact terms, fastest and best match quality for German products; (b) global
- * product base scoped to German locale/country tags, for regional brands the DE
- * mirror hasn't synced yet; (c) global, no country restriction, last resort for
- * imported/obscure products; Tier 3 USDA FoodData Central, only once Tier 1 and
- * every OFF tier came back completely empty. No AI fallback by design. Every tier
- * past the first OFF call is best-effort: a failure there just means we keep
- * whatever the earlier tier(s) already found instead of failing the whole search.
+ * by name, additive and best-effort; Tier 2 up to four progressively broader Open
+ * Food Facts tiers, stopping as soon as one has enough hits - (a) Swiss-market search
+ * via Search-a-licious, for Migros/Coop/Denner products the tiers below rarely
+ * surface; (b) DE-hosted legacy mirror, exact terms, fastest and best match quality
+ * for German products; (c) global product base scoped to German locale/country tags,
+ * for regional brands the DE mirror hasn't synced yet; (d) global, no country
+ * restriction, last resort for imported/obscure products; Tier 3 USDA FoodData
+ * Central, only once Tier 1 and every OFF tier came back completely empty. No AI
+ * fallback by design. Every OFF tier is best-effort: a failure there just means we
+ * keep whatever the earlier tier(s) already found instead of failing the whole search.
  */
 export async function searchFood(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
   const trimmedQuery = query.trim();
@@ -277,9 +310,17 @@ export async function searchFood(query: string, signal?: AbortSignal): Promise<F
   const communityResults = await searchCommunityFoods(cleanQuery, signal).catch(() => [] as FoodItem[]);
   if (communityResults.length >= MIN_RESULTS_BEFORE_FALLBACK) return communityResults;
 
-  // Tier 2: Open Food Facts.
+  // Tier 2a: Swiss-market search (Search-a-licious, `countries_tags=en:switzerland`) -
+  // tried first since this app's users are primarily in Switzerland, where the
+  // DE-hosted legacy mirror below under-indexes local retailers (Migros, Coop, Denner).
+  const swiss = await runSwissSearchTier(cleanQuery, signal).catch(() => [] as FoodItem[]);
+  let results = mergeUniqueById([communityResults, swiss]);
+  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
+
+  // Tier 2b: Open Food Facts legacy search (DE-hosted mirror).
   const primaryUrl = `${SEARCH_URL}?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=${MAX_RESULTS}`;
-  let results = mergeUniqueById([communityResults, await runSearchTier(primaryUrl, signal)]);
+  const primary = await runSearchTier(primaryUrl, signal).catch(() => [] as FoodItem[]);
+  results = mergeUniqueById([results, primary]);
   if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
 
   const secondaryUrl = `${SEARCH_URL_WORLD}?search_terms=${encoded}&search_simple=1&action=process&json=1&lc=de&cc=de&page_size=${MAX_RESULTS}`;
