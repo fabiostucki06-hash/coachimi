@@ -17,7 +17,7 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 // `?v=N` is a cache-buster - bump it whenever the Supabase asset's contents
 // change, so browsers that already cached the old file by URL are forced to
 // refetch instead of reusing a stale (fallback-letter) icon.
-const APPLE_TOUCH_ICON_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=4';
+const APPLE_TOUCH_ICON_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=5';
 
 export default function Root({ children }: { children: React.ReactNode }) {
 
