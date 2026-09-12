@@ -28,7 +28,6 @@ export default function OnboardingScreen() {
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const trimmedName = name.trim();
   const trimmedEmail = email.trim();
@@ -39,14 +38,12 @@ export default function OnboardingScreen() {
   function selectMode(nextMode: AuthMode) {
     setMode(nextMode);
     setFormError(null);
-    setConfirmationSent(false);
   }
 
   async function handleAccountSubmit() {
     if (!isAccountValid || submitting) return;
     setSubmitting(true);
     setFormError(null);
-    setConfirmationSent(false);
     try {
       if (mode === 'login') {
         await signIn(trimmedEmail, password);
@@ -54,12 +51,10 @@ export default function OnboardingScreen() {
         return;
       }
 
-      const { needsEmailConfirmation } = await signUp(trimmedEmail, password);
-      if (needsEmailConfirmation) {
-        setConfirmationSent(true);
-        setMode('login');
-        return;
-      }
+      // No "check your email and confirm first" gate - registration goes straight
+      // into the app. See store/syncStore.ts's signUp for what happens if the
+      // Supabase project still has email confirmation enabled server-side.
+      await signUp(trimmedEmail, password);
       // Persist the name right away — /setup only asks for body/goal data, so
       // this is the only place the name is ever captured for a fresh signup.
       updateAccount({ name: trimmedName, email: trimmedEmail });
@@ -134,11 +129,6 @@ export default function OnboardingScreen() {
             <TextField label="Passwort" placeholder="Mind. 6 Zeichen" value={password} onChangeText={setPassword} secureTextEntry />
 
             {formError && <Text className="text-xs text-red-500">{formError}</Text>}
-            {confirmationSent && (
-              <Text className="text-xs text-emerald-600 dark:text-emerald-400">
-                Bestätige deine E-Mail-Adresse über den Link, den wir dir geschickt haben, und melde dich anschließend an.
-              </Text>
-            )}
 
             <Text className="text-center text-[10px] text-slate-400 dark:text-slate-500">
               Zuletzt aktualisiert: {getLastUpdatedLabel()} Uhr

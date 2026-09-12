@@ -28,7 +28,7 @@ interface SyncState {
   lastSyncedAt: string | null;
   remoteUpdatedAt: string | null;
   init: () => void;
-  signUp: (email: string, password: string) => Promise<{ needsEmailConfirmation: boolean }>;
+  signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
@@ -259,11 +259,14 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     }
   },
 
+  // Registration proceeds straight into the app without a "confirm your email
+  // first" gate - if the Supabase project still has email confirmation enabled,
+  // no session comes back here and the auto-sync/auth listener in `init()` simply
+  // stays signed-out until the user later logs in with the same credentials.
   signUp: async (email, password) =>
     withFriendlyAuthErrors(async () => {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
-      return { needsEmailConfirmation: !data.session };
     }),
 
   signIn: async (email, password) =>
