@@ -6,7 +6,11 @@ import type { FoodItem, MealType } from '@/types';
 interface UiState {
   pendingFoodItem: FoodItem | null;
   pendingMealType: MealType;
-  setPendingSelection: (foodItem: FoodItem, mealType: MealType) => void;
+  // Whether the pending selection came from the barcode scanner - log-quantity uses
+  // this to preselect a matching portion chip (e.g. "1 Riegel") only for scans, since a
+  // manually searched-and-picked food has no reason to jump away from its 100g default.
+  pendingFromScan: boolean;
+  setPendingSelection: (foodItem: FoodItem, mealType: MealType, options?: { fromScan?: boolean }) => void;
   clearPendingSelection: () => void;
   // The day currently shown in the diary (Tagebuch) view, picked via
   // DateSelector. Global rather than per-screen state so meal-detail,
@@ -19,9 +23,11 @@ interface UiState {
 export const useUiStore = create<UiState>()((set) => ({
   pendingFoodItem: null,
   pendingMealType: 'breakfast',
+  pendingFromScan: false,
   selectedDate: todayKey(),
 
-  setPendingSelection: (foodItem, mealType) => set({ pendingFoodItem: foodItem, pendingMealType: mealType }),
-  clearPendingSelection: () => set({ pendingFoodItem: null }),
+  setPendingSelection: (foodItem, mealType, options) =>
+    set({ pendingFoodItem: foodItem, pendingMealType: mealType, pendingFromScan: options?.fromScan ?? false }),
+  clearPendingSelection: () => set({ pendingFoodItem: null, pendingFromScan: false }),
   setSelectedDate: (date) => set({ selectedDate: date }),
 }));

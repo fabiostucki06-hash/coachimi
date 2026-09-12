@@ -14,6 +14,7 @@ import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { MealType, Micronutrients, NutrientKey } from '@/types';
 import { scaleNutrientsByServings } from '@/utils/nutritionCalculator';
+import { getDefaultPortionUnit } from '@/utils/portionUnits';
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: 'Frühstück',
@@ -26,13 +27,19 @@ const MEAL_LABELS: Record<MealType, string> = {
 export default function LogQuantityScreen() {
   const foodItem = useUiStore((state) => state.pendingFoodItem);
   const mealType = useUiStore((state) => state.pendingMealType);
+  const fromScan = useUiStore((state) => state.pendingFromScan);
   const clearPendingSelection = useUiStore((state) => state.clearPendingSelection);
   const selectedDate = useUiStore((state) => state.selectedDate);
   const visibleNutrients = useUserStore((state) => state.user.visibleNutrients);
 
   const isGramBased = foodItem?.servingUnit === 'g';
-  const [amount, setAmount] = useState(isGramBased ? String(foodItem?.servingSize ?? 100) : '1');
-  const [selectedPortionId, setSelectedPortionId] = useState<string | null>(null);
+  // Preselects the portion chip matching this food (e.g. a scanned bar defaults to "1
+  // Riegel") instead of a blanket 100g, so a single tap on "Bestätigen" is often enough.
+  const defaultPortionUnit = isGramBased && foodItem && fromScan ? getDefaultPortionUnit(foodItem.name) : null;
+  const [amount, setAmount] = useState(
+    isGramBased ? String(defaultPortionUnit?.grams ?? foodItem?.servingSize ?? 100) : '1',
+  );
+  const [selectedPortionId, setSelectedPortionId] = useState<string | null>(defaultPortionUnit?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
 
   function handleAmountChange(value: string) {

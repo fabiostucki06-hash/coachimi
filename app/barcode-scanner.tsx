@@ -44,7 +44,7 @@ export default function BarcodeScannerScreen() {
       // see services/foodApi.ts. Only a genuinely empty barcode string throws here;
       // every tier failing just resolves to ProductNotFoundError below.
       const item = await getFoodByBarcode(data);
-      setPendingSelection(item, mealType);
+      setPendingSelection(item, mealType, { fromScan: true });
       router.replace('/log-quantity');
     } catch (err) {
       if (err instanceof ProductNotFoundError) {

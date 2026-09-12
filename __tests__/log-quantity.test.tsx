@@ -52,3 +52,24 @@ it('commits the entry to the diary and dismisses back to meal-detail on confirm'
   expect(mockDismissTo).toHaveBeenCalledWith({ pathname: '/meal-detail', params: { mealType: 'lunch' } });
   expect(useUiStore.getState().pendingFoodItem).toBeNull();
 });
+
+// Regression: a barcode scan should preselect a matching portion (e.g. "1 Riegel")
+// instead of defaulting to a blanket 100g, so confirming without editing the amount
+// logs a realistic quantity for that product.
+it('preselects a matching portion chip when the selection came from a barcode scan', async () => {
+  const barItem = { ...foodItem, id: 'food-2', name: 'Proteinriegel Schoko' };
+  useUiStore.getState().setPendingSelection(barItem, 'snack', { fromScan: true });
+
+  let tree!: ReturnType<typeof create>;
+  act(() => {
+    tree = create(<LogQuantityScreen />);
+  });
+
+  await act(async () => {
+    await tree.root.findByProps({ label: 'Bestätigen' }).props.onPress();
+  });
+
+  const entries = useDiaryStore.getState().entriesByDate[todayKey()] ?? [];
+  const entry = entries.find((e) => e.foodItem.id === 'food-2');
+  expect(entry).toMatchObject({ servings: 0.45 });
+});

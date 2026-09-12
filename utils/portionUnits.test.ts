@@ -1,4 +1,4 @@
-import { getPortionUnitsForFood } from '@/utils/portionUnits';
+import { getDefaultPortionUnit, getPortionUnitsForFood } from '@/utils/portionUnits';
 
 describe('getPortionUnitsForFood', () => {
   it('matches apple/pear-type fruit', () => {
@@ -30,5 +30,22 @@ describe('getPortionUnitsForFood', () => {
   it('falls back to generic portion-size presets for anything unrecognized', () => {
     expect(getPortionUnitsForFood('Reis').map((u) => u.id)).toEqual(['portion_small', 'portion_medium', 'portion_large']);
     expect(getPortionUnitsForFood('Hähnchenbrust').map((u) => u.id)).toEqual(['portion_small', 'portion_medium', 'portion_large']);
+  });
+});
+
+describe('getDefaultPortionUnit', () => {
+  it('defaults a scanned bar to one whole bar, not a half', () => {
+    expect(getDefaultPortionUnit('Proteinriegel Schoko').id).toBe('bar_whole');
+  });
+
+  it('defaults matched categories to their typical size', () => {
+    expect(getDefaultPortionUnit('Apfel').id).toBe('apple_medium');
+    expect(getDefaultPortionUnit('Banane').id).toBe('banana_medium');
+    expect(getDefaultPortionUnit('Vollkornbrot').id).toBe('slice_medium');
+    expect(getDefaultPortionUnit('Ei').id).toBe('egg_m');
+  });
+
+  it('defaults unrecognized foods to a normal-sized generic portion', () => {
+    expect(getDefaultPortionUnit('Hähnchenbrust').id).toBe('portion_medium');
   });
 });
