@@ -5,7 +5,6 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FriendActivityCard } from '@/components/features/FriendActivityCard';
-import { UsernameEditor } from '@/components/features/UsernameEditor';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
@@ -42,7 +41,12 @@ function SignedOutPrompt() {
   );
 }
 
-/** Top-of-screen glance at the caller's own handle - the whole point of a friends feature built on @username is that people need to see and share their own before they can be found, so this sits above everything else rather than waiting inside the profile settings card below. */
+/**
+ * Top-of-screen glance at the caller's own handle - read-only here on purpose.
+ * @username can only be changed on the Profil screen (components/features/
+ * UsernameEditor.tsx lives there now); this is a styled badge, not an input,
+ * and the no-username state is a link out rather than an inline editor.
+ */
 function SelfUsernameHeader({ profile }: { profile: FriendProfile | null }) {
   if (profile?.username) {
     return (
@@ -58,12 +62,12 @@ function SelfUsernameHeader({ profile }: { profile: FriendProfile | null }) {
       className="flex-row items-center justify-between rounded-2xl bg-amber-500/10 px-4 py-3 active:opacity-80"
     >
       <Text className="flex-1 pr-3 text-sm text-amber-600 dark:text-amber-400">Du hast noch keinen @username.</Text>
-      <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400">Jetzt im Profil festlegen</Text>
+      <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400">Username im Profil festlegen -&gt;</Text>
     </Pressable>
   );
 }
 
-function ProfileSettingsCard({ myId, email, profile }: { myId: string; email: string; profile: FriendProfile | null }) {
+function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendProfile | null }) {
   const showToast = useToastStore((state) => state.show);
   const updateProfile = useProfileStore((state) => state.updateProfile);
   const [isPublic, setIsPublic] = useState(profile?.isProfilePublic ?? true);
@@ -87,7 +91,6 @@ function ProfileSettingsCard({ myId, email, profile }: { myId: string; email: st
   return (
     <Card className="gap-3">
       <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dein Profil</Text>
-      <UsernameEditor myId={myId} email={email} />
       <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-slate-100/70 px-4 py-3 dark:bg-white/5">
         <View className="flex-1 pr-3">
           <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Profil öffentlich</Text>
@@ -162,7 +165,6 @@ export default function FriendsScreen() {
   const [searching, setSearching] = useState(false);
 
   const myId = session?.user.id;
-  const myEmail = session?.user.email ?? '';
 
   const loadFriends = useCallback(async () => {
     if (!myId) return;
@@ -244,7 +246,7 @@ export default function FriendsScreen() {
 
         <SelfUsernameHeader profile={myProfile} />
 
-        <ProfileSettingsCard myId={myId} email={myEmail} profile={myProfile} />
+        <ProfileSettingsCard myId={myId} profile={myProfile} />
 
         <Card className="gap-3">
           <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Freunde finden</Text>
