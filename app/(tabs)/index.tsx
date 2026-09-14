@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Camera, ChevronDown, Plus, RefreshCw, Sparkles } from 'lucide-react-native';
+import { Camera, Plus, RefreshCw, Sparkles } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -82,77 +82,51 @@ function NutrientTile({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey;
 
 function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntry[] }) {
   const { label, Icon } = MEAL_TYPE_META[mealType];
-  const [expanded, setExpanded] = useState(entries.length > 0);
   const kcal = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
   const protein = entries.reduce((sum, entry) => sum + entry.foodItem.macrosPerServing.protein * entry.servings, 0);
 
   return (
-    <View className="rounded-[28px] border border-slate-200/60 bg-white/70 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-black/20">
-      <Pressable
-        className="flex-row items-center justify-between p-4 active:opacity-80"
-        onPress={() => setExpanded((current) => !current)}
-        accessibilityRole="button"
-        accessibilityLabel={`${label} ${expanded ? 'einklappen' : 'ausklappen'}`}
-      >
-        <View className="flex-1 flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-            <Icon color={ACCENT} size={18} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{label}</Text>
-            <Text className="text-xs text-slate-400" numberOfLines={1}>
-              {entries.length > 0 ? `${Math.round(kcal)} kcal · ${Math.round(protein)}g P` : 'Noch keine Einträge'}
-            </Text>
-          </View>
+    <Pressable
+      className="flex-row items-center justify-between rounded-[28px] border border-slate-200/60 bg-white/70 p-4 shadow-xl shadow-slate-900/5 backdrop-blur-xl active:opacity-90 dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-black/20"
+      onPress={() => router.push({ pathname: '/meal-detail', params: { mealType } })}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} Details öffnen`}
+    >
+      <View className="flex-1 flex-row items-center gap-3">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
+          <Icon color={ACCENT} size={18} />
         </View>
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
-            onPress={() => router.push({ pathname: '/meal-parser', params: { mealType } })}
-            accessibilityLabel="Per KI erfassen"
-          >
-            <Sparkles color={ACCENT} size={16} />
-          </Pressable>
-          <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
-            onPress={() => router.push({ pathname: '/analyze-food', params: { mealType } })}
-            accessibilityLabel="Per Foto erfassen"
-          >
-            <Camera color={ACCENT} size={16} />
-          </Pressable>
-          <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500 shadow-md shadow-emerald-500/30 active:opacity-90 active:bg-emerald-600"
-            onPress={() => router.push({ pathname: '/add-food', params: { mealType } })}
-            accessibilityLabel={`Zu ${label} hinzufügen`}
-          >
-            <Plus color="#ffffff" size={16} />
-          </Pressable>
-          {entries.length > 0 && (
-            <View style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}>
-              <ChevronDown color="#94a3b8" size={16} />
-            </View>
-          )}
+        <View className="flex-1">
+          <Text className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{label}</Text>
+          <Text className="text-xs text-slate-400" numberOfLines={1}>
+            {entries.length > 0 ? `${Math.round(kcal)} kcal · ${Math.round(protein)}g P` : 'Noch keine Einträge'}
+          </Text>
         </View>
-      </Pressable>
-
-      {expanded && entries.length > 0 && (
+      </View>
+      <View className="flex-row items-center gap-2">
         <Pressable
-          className="gap-2 border-t border-slate-200/50 px-4 pb-4 pt-3 dark:border-slate-800/60"
-          onPress={() => router.push({ pathname: '/meal-detail', params: { mealType } })}
+          className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
+          onPress={() => router.push({ pathname: '/meal-parser', params: { mealType } })}
+          accessibilityLabel="Per KI erfassen"
         >
-          {entries.map((entry) => (
-            <View key={entry.id} className="flex-row items-center justify-between">
-              <Text className="flex-1 text-sm text-slate-600 dark:text-slate-300" numberOfLines={1}>
-                {entry.foodItem.name}
-              </Text>
-              <Text className="text-sm text-slate-400">
-                {Math.round(entry.foodItem.caloriesPerServing * entry.servings)} kcal
-              </Text>
-            </View>
-          ))}
+          <Sparkles color={ACCENT} size={16} />
         </Pressable>
-      )}
-    </View>
+        <Pressable
+          className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
+          onPress={() => router.push({ pathname: '/analyze-food', params: { mealType } })}
+          accessibilityLabel="Per Foto erfassen"
+        >
+          <Camera color={ACCENT} size={16} />
+        </Pressable>
+        <Pressable
+          className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500 shadow-md shadow-emerald-500/30 active:opacity-90 active:bg-emerald-600"
+          onPress={() => router.push({ pathname: '/add-food', params: { mealType } })}
+          accessibilityLabel={`Zu ${label} hinzufügen`}
+        >
+          <Plus color="#ffffff" size={16} />
+        </Pressable>
+      </View>
+    </Pressable>
   );
 }
 
