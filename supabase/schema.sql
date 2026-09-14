@@ -1,4 +1,8 @@
 -- Run this once in the Supabase SQL Editor (https://supabase.com/dashboard/project/nejndycalbepcfmmuiai/sql/new)
+-- Incremental fixes/hardening after the initial run go in supabase/migrations/
+-- (numbered, idempotent via drop-policy-if-exists) instead of editing history here,
+-- since plain `create policy` below isn't safe to re-run and this file had drifted
+-- from what was actually applied live - see supabase/migrations/0001_friends_readonly_access.sql.
 -- Stores one JSON snapshot of app state (profile, goals, diary, water, fasting,
 -- gamification rewards: Goldbarren/Streaks/Ränge/Schutzschilde) per user.
 

@@ -90,6 +90,22 @@ function defaultUsernameFor(userId: string): string {
   return `user_${userId.replace(/-/g, '').slice(0, 10)}`;
 }
 
+/**
+ * Service-level guard, on top of (not instead of) the DB-level RLS write
+ * policies (supabase/migrations/0001_friends_readonly_access.sql), which
+ * scope every profiles/user_data write to auth.uid() = id/user_id: catches
+ * a caller accidentally passing a friend's id into a write function (e.g. a
+ * stale `userId` from a wrong closure) with a clear error instead of a
+ * silent RLS-denied no-op. getSession() reads the locally persisted
+ * session, so this doesn't add a network round trip.
+ */
+async function assertIsSelf(targetUserId: string): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  if (data.session?.user.id !== targetUserId) {
+    throw new Error('Nicht erlaubt: Schreibzugriff nur auf die eigenen Daten.');
+  }
+}
+
 /** Creates the caller's public.profiles row on first sign-in if it doesn't exist yet - a no-op (ignoreDuplicates) on every later call, so it's safe to call on every session start. */
 export async function ensureProfile(userId: string, email: string): Promise<void> {
   const { error } = await supabase
@@ -125,6 +141,7 @@ export async function fetchMyProfile(userId: string): Promise<FriendProfile | nu
  * (session.user.email), same as ensureProfile does.
  */
 export async function updateUsername(userId: string, email: string, rawUsername: string): Promise<void> {
+  await assertIsSelf(userId);
   const username = normalizeUsernameInput(rawUsername);
   if (!USERNAME_PATTERN.test(username)) {
     throw new Error(`Username muss ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} Zeichen lang sein (a-z, 0-9, _).`);
@@ -140,6 +157,7 @@ export async function updateUsername(userId: string, email: string, rawUsername:
 }
 
 export async function setProfilePublic(userId: string, isPublic: boolean): Promise<void> {
+  await assertIsSelf(userId);
   const { error } = await supabase.from('profiles').update({ is_profile_public: isPublic }).eq('id', userId);
   if (error) throw error;
 }
