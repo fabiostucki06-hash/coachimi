@@ -236,3 +236,19 @@ export async function fetchFriendActivity(friendIds: string[], dateKey: string):
   if (error) throw error;
   return (data ?? []).map((row) => summarizeSnapshot(row.user_id as string, row.data as CloudSnapshot, dateKey));
 }
+
+/**
+ * Full synced snapshot for one friend, for the read-only profile/activity view
+ * (FriendProfileModal) - same `user_data` row fetchFriendActivity summarizes,
+ * but returned whole so the modal can show a per-meal breakdown and the
+ * friend's own goals rather than just today's totals. Gated by the same
+ * "Accepted friends can read each other's synced data" RLS policy, so this
+ * silently returns null (not a thrown error) for a non-friend or a friend
+ * with no synced data yet - RLS makes the row simply not come back, it
+ * doesn't error.
+ */
+export async function fetchFriendSnapshot(friendId: string): Promise<CloudSnapshot | null> {
+  const { data, error } = await supabase.from('user_data').select('data').eq('user_id', friendId).maybeSingle();
+  if (error) throw error;
+  return (data?.data as CloudSnapshot | undefined) ?? null;
+}

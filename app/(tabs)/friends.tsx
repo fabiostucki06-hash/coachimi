@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FriendActivityCard } from '@/components/features/FriendActivityCard';
+import { FriendProfileModal } from '@/components/features/FriendProfileModal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
@@ -164,6 +165,8 @@ export default function FriendsScreen() {
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
   const [searching, setSearching] = useState(false);
 
+  const [viewedFriend, setViewedFriend] = useState<FriendProfile | null>(null);
+
   const myId = session?.user.id;
 
   const loadFriends = useCallback(async () => {
@@ -307,11 +310,15 @@ export default function FriendsScreen() {
             <Text className="text-sm text-text-secondary">Noch keine Freunde - suche oben nach jemandem.</Text>
           ) : (
             accepted.map((item) => (
-              <FriendActivityCard key={item.friendshipId} profile={item.profile} activity={activityByFriendId[item.profile.id]} />
+              <Pressable key={item.friendshipId} onPress={() => setViewedFriend(item.profile)}>
+                <FriendActivityCard profile={item.profile} activity={activityByFriendId[item.profile.id]} />
+              </Pressable>
             ))
           )}
         </View>
       </ScrollView>
+
+      <FriendProfileModal friend={viewedFriend} onClose={() => setViewedFriend(null)} />
     </SafeAreaView>
   );
 }
