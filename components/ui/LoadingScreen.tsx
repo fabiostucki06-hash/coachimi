@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Text, View } from 'react-native';
+import { Animated, Easing, Image, View } from 'react-native';
 
 const KIWI_LOGO_URL = 'https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png';
 const BACKGROUND = '#090D16';
-const ACCENT = '#10b981';
-const LOGO_SIZE = 120;
+const TRACK_COLOR = '#1F2937';
+const ACCENT = '#10B981';
+const LOGO_SIZE = 140;
+const BAR_WIDTH = 200;
+const BAR_HEIGHT = 6;
 const TIP_INTERVAL_MS = 2500;
 const TIP_FADE_MS = 300;
 
@@ -18,48 +21,40 @@ const TIPS = [
   'EFSA empfiehlt 300–350mg Magnesium/Tag für Muskelregeneration und ATP-Synthese.',
 ];
 
-/** Concentric low-opacity circles behind the logo - approximates a soft radial glow without a gradient library, since this needs to render identically on native and web. */
-function GlowBackdrop() {
-  return (
-    <View className="absolute items-center justify-center" style={{ width: 520, height: 520 }} pointerEvents="none">
-      <View className="absolute rounded-full" style={{ width: 520, height: 520, backgroundColor: ACCENT, opacity: 0.04 }} />
-      <View className="absolute rounded-full" style={{ width: 340, height: 340, backgroundColor: ACCENT, opacity: 0.06 }} />
-      <View className="absolute rounded-full" style={{ width: 200, height: 200, backgroundColor: ACCENT, opacity: 0.1 }} />
-    </View>
-  );
-}
-
-/** Indeterminate loading bar - a short highlight sliding back and forth inside a track, since startup has no real progress percentage to report. */
+/** Indeterminate loading bar - a fixed-width fill pulsing in opacity inside a track, since startup has no real progress percentage to report. */
 function LoadingBar() {
-  const slide = useRef(new Animated.Value(0)).current;
-  const trackWidth = 160;
-  const barWidth = 56;
+  const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(slide, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(slide, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ]),
     );
     loop.start();
     return () => loop.stop();
-  }, [slide]);
+  }, [pulse]);
 
-  const translateX = slide.interpolate({ inputRange: [0, 1], outputRange: [-barWidth, trackWidth] });
+  const fillOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
 
   return (
     <View
-      className="overflow-hidden rounded-full"
-      style={{ width: trackWidth, height: 4, backgroundColor: 'rgba(255,255,255,0.12)' }}
+      style={{
+        width: BAR_WIDTH,
+        height: BAR_HEIGHT,
+        borderRadius: BAR_HEIGHT / 2,
+        backgroundColor: TRACK_COLOR,
+        overflow: 'hidden',
+      }}
     >
       <Animated.View
         style={{
-          width: barWidth,
-          height: 4,
-          borderRadius: 2,
+          width: '100%',
+          height: '100%',
+          borderRadius: BAR_HEIGHT / 2,
           backgroundColor: ACCENT,
-          transform: [{ translateX }],
+          opacity: fillOpacity,
         }}
       />
     </View>
@@ -83,8 +78,14 @@ function RotatingTip() {
 
   return (
     <Animated.Text
-      style={{ opacity }}
-      className="px-10 text-center text-xs leading-5 text-white/60"
+      style={{
+        opacity,
+        color: '#FFFFFF',
+        fontSize: 16,
+        textAlign: 'center',
+        lineHeight: 24,
+        fontStyle: 'italic',
+      }}
       numberOfLines={3}
     >
       {TIPS[index]}
@@ -107,7 +108,6 @@ interface LoadingScreenProps {
  * (see app.json's expo-splash-screen config, same background + Kiwi logo).
  */
 export function LoadingScreen({ fadeOut = false, onFadeOutComplete }: LoadingScreenProps) {
-  const pulse = useRef(new Animated.Value(0)).current;
   const screenOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -119,45 +119,30 @@ export function LoadingScreen({ fadeOut = false, onFadeOutComplete }: LoadingScr
     );
   }, [fadeOut, screenOpacity, onFadeOutComplete]);
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
-
-  const logoScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
-  const ringScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.22] });
-  const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.08] });
-
   return (
-    <Animated.View className="flex-1 items-center justify-center gap-10" style={{ backgroundColor: BACKGROUND, opacity: screenOpacity }}>
-      <GlowBackdrop />
-
-      <View className="items-center justify-center" style={{ width: LOGO_SIZE * 1.6, height: LOGO_SIZE * 1.6 }}>
-        <Animated.View
-          className="absolute rounded-full"
-          style={{
-            width: LOGO_SIZE * 1.35,
-            height: LOGO_SIZE * 1.35,
-            backgroundColor: ACCENT,
-            opacity: ringOpacity,
-            transform: [{ scale: ringScale }],
-          }}
-        />
-        <Animated.Image
+    <Animated.View
+      style={{
+        flex: 1,
+        width: '100%',
+        height: '100%',
+        backgroundColor: BACKGROUND,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40,
+        opacity: screenOpacity,
+      }}
+    >
+      <View style={{ alignItems: 'center', gap: 32 }}>
+        <Image
           source={{ uri: KIWI_LOGO_URL }}
-          style={{ width: LOGO_SIZE, height: LOGO_SIZE, transform: [{ scale: logoScale }] }}
+          style={{ width: LOGO_SIZE, height: LOGO_SIZE }}
           resizeMode="contain"
         />
-      </View>
 
-      <LoadingBar />
-      <RotatingTip />
+        <LoadingBar />
+
+        <RotatingTip />
+      </View>
     </Animated.View>
   );
 }
