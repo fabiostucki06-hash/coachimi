@@ -64,7 +64,7 @@ export interface User {
   visibleNutrients: NutrientVisibility;
 }
 
-export type FoodItemSource = 'local' | 'recent' | 'off' | 'custom' | 'ai' | 'community' | 'usda';
+export type FoodItemSource = 'local' | 'recent' | 'off' | 'custom' | 'ai' | 'community' | 'usda' | 'fatsecret';
 
 export interface FoodItem {
   id: string;

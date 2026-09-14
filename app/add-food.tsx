@@ -9,7 +9,8 @@ import { Card } from '@/components/ui/Card';
 import { SkeletonListRow } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
 import { fuzzyFilterFoodItems, normalizeSearchText, searchLocalFoods } from '@/data/foodDatabase';
-import { FoodApiError, FoodApiUnavailableError, looksLikeBarcode, searchFood, upsertCommunityBarcode } from '@/services/foodApi';
+import { FoodApiError, FoodApiUnavailableError, looksLikeBarcode, upsertCommunityBarcode } from '@/services/foodApi';
+import { cacheFoodItem, searchFoodHybrid } from '@/services/foodSearch';
 import { getCachedSearch, setCachedSearch } from '@/services/searchCache';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { getRecentFoods } from '@/store/diaryStore';
@@ -22,7 +23,8 @@ const SOURCE_BADGES: Partial<Record<NonNullable<FoodItem['source']>, string>> = 
   custom: 'Eigene',
   ai: 'KI-Schätzung',
   community: 'Community',
-  usda: 'USDA',
+  usda: 'USDA Verifiziert',
+  fatsecret: 'FatSecret',
 };
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -146,7 +148,7 @@ export default function AddFoodScreen() {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const remoteItems = await searchFood(trimmed, controller.signal);
+        const remoteItems = await searchFoodHybrid(trimmed, controller.signal);
         if (requestIdRef.current !== requestId) return;
         setCachedSearch(normalizedQuery, remoteItems);
         startTransition(() => {
@@ -176,6 +178,9 @@ export default function AddFoodScreen() {
   useEffect(() => () => abortRef.current?.abort(), []);
 
   function handleSelect(item: FoodItem) {
+    // Auto-caching: a FatSecret/USDA pick lands in the local `foods` table (Tier 1)
+    // so the next search for it is instant. No-op for every other source.
+    cacheFoodItem(item).catch(() => {});
     setPendingSelection(item, mealType);
     router.push('/log-quantity');
   }

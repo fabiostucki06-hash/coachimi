@@ -179,3 +179,51 @@ create policy "Accepted friends can read each other's synced data"
           or (f.friend_id = auth.uid() and f.user_id = user_data.user_id))
     )
   );
+
+-- Tier 1 of the hybrid food search (services/foodSearch.ts): the app's own growing
+-- food database. Seeded empty and filled two ways - (a) auto-caching, any item a
+-- user picks from Tier 2 (FatSecret) or Tier 3 (translated USDA) gets upserted here
+-- so the next search for it is instant and free, (b) manual contribution, same
+-- open/anon-friendly pattern as community_barcodes above. pg_trgm backs the ILIKE
+-- '%term%' search foods.ts runs - a plain btree index can't do that, trigram can.
+create extension if not exists pg_trgm;
+
+create table if not exists public.foods (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  brand text,
+  calories_per_100g numeric not null default 0,
+  carbs_per_100g numeric not null default 0,
+  protein_per_100g numeric not null default 0,
+  fat_per_100g numeric not null default 0,
+  micronutrients jsonb not null default '{}'::jsonb,
+  -- Where the row came from, so a re-cached item never duplicates. 'local' = seeded/manual.
+  source text not null default 'local' check (source in ('local', 'fatsecret', 'usda')),
+  -- The origin API's own id (FatSecret food_id / USDA fdcId) - null for hand-entered rows.
+  external_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists foods_name_trgm_idx on public.foods using gin (name gin_trgm_ops);
+
+-- Re-selecting the same FatSecret/USDA item twice updates the cached row instead of
+-- inserting a duplicate - null external_id (local rows) is exempt since NULL never
+-- equals NULL in a unique index.
+create unique index if not exists foods_source_external_id_idx
+  on public.foods (source, external_id) where external_id is not null;
+
+alter table public.foods enable row level security;
+
+create policy "Anyone can read foods"
+  on public.foods for select
+  using (true);
+
+create policy "Anyone can cache a food"
+  on public.foods for insert
+  with check (true);
+
+create policy "Anyone can update a cached food"
+  on public.foods for update
+  using (true)
+  with check (true);
