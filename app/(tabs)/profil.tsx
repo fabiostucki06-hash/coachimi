@@ -16,7 +16,7 @@ import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
-import { fetchMyProfile, type FriendProfile } from '@/services/friends';
+import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -169,16 +169,7 @@ export default function ProfilScreen() {
   const activeRank = useRewardStore((state) => state.activeRank);
   const activeRankName = RANKS.find((rank) => rank.id === activeRank)?.name ?? RANKS[0].name;
   const myId = session?.user.id;
-
-  const [friendProfile, setFriendProfile] = useState<FriendProfile | null>(null);
-
-  useEffect(() => {
-    if (!myId) {
-      setFriendProfile(null);
-      return;
-    }
-    fetchMyProfile(myId).then(setFriendProfile).catch(() => setFriendProfile(null));
-  }, [myId]);
+  const friendProfile = useProfileStore((state) => state.profile);
 
   async function handleSignOut() {
     await signOut();
@@ -337,7 +328,7 @@ export default function ProfilScreen() {
           />
           {myId && (
             <View className="gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
-              <UsernameEditor myId={myId} profile={friendProfile} onUpdated={setFriendProfile} />
+              <UsernameEditor myId={myId} />
             </View>
           )}
         </Card>

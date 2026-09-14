@@ -50,6 +50,14 @@ interface FriendshipRow {
   status: FriendshipStatus;
 }
 
+/** The one place every friends-UI surface (search results, requests, friends list, activity feed) formats a profile for display, so "Name (@handle)" never drifts into slightly different shapes across components. Falls back to just the handle, or the email, if a real name isn't set. */
+export function formatFriendLabel(profile: FriendProfile): string {
+  const name = profile.name?.trim();
+  if (name && profile.username) return `${name} (@${profile.username})`;
+  if (profile.username) return `@${profile.username}`;
+  return name || profile.email;
+}
+
 function mapProfile(row: ProfileRow): FriendProfile {
   return {
     id: row.id,

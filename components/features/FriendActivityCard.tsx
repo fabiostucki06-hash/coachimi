@@ -2,19 +2,19 @@ import { Dumbbell } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
-import type { FriendActivitySummary, FriendProfile } from '@/services/friends';
+import { formatFriendLabel, type FriendActivitySummary, type FriendProfile } from '@/services/friends';
 
-function displayName(profile: FriendProfile): string {
+function shortName(profile: FriendProfile): string {
   return profile.name?.trim() || profile.username?.trim() || profile.email;
 }
 
 function initialsOf(profile: FriendProfile): string {
-  return displayName(profile).slice(0, 2).toUpperCase();
+  return shortName(profile).slice(0, 2).toUpperCase();
 }
 
 /** One friend's today-summary row for the activity feed - "hat heute Xg Protein erreicht & ein Y-Workout absolviert", derived from their synced snapshot (services/friends.ts fetchFriendActivity). */
 export function FriendActivityCard({ profile, activity }: { profile: FriendProfile; activity: FriendActivitySummary | undefined }) {
-  const name = displayName(profile);
+  const name = shortName(profile);
   const proteinG = activity?.proteinG ?? 0;
   const hasLoggedFood = proteinG > 0 || (activity?.calories ?? 0) > 0;
   const workoutNames = activity?.completedWorkoutNames ?? [];
@@ -30,7 +30,7 @@ export function FriendActivityCard({ profile, activity }: { profile: FriendProfi
         <Text className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{initialsOf(profile)}</Text>
       </View>
       <View className="flex-1 gap-1">
-        {profile.username && <Text className="text-xs text-slate-400">@{profile.username}</Text>}
+        <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400">{formatFriendLabel(profile)}</Text>
         <Text className="text-sm text-slate-700 dark:text-slate-200">{sentence}</Text>
         {activity && (activity.calorieGoal > 0 || activity.proteinGoalG > 0) ? (
           <View className="flex-row items-center gap-3">

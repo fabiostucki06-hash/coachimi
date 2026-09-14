@@ -12,9 +12,10 @@ import {
   shouldApplyRemote,
   subscribeToRemoteChanges,
 } from '@/services/cloudSync';
-import { ensureProfile } from '@/services/friends';
+import { ensureProfile, fetchMyProfile } from '@/services/friends';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
+import { useProfileStore } from '@/store/profileStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { useTrainingStore } from '@/store/trainingStore';
 import { useUserStore } from '@/store/userStore';
@@ -190,9 +191,14 @@ async function afterSessionEstablished(session: Session) {
   // Best-effort, same reasoning as the realtime-subscribe guard below: a
   // profile row is only needed for the friends feature, so a failure here
   // (e.g. RLS not yet applied on an older Supabase project) must never block
-  // sign-in from completing.
+  // sign-in from completing. Populates the shared profileStore once the row
+  // exists so the Profil and Freunde screens both start from the same
+  // @username without either having to fetch it themselves.
   if (session.user.email) {
-    ensureProfile(session.user.id, session.user.email).catch((err) => console.error('[friends] ensureProfile failed', err));
+    ensureProfile(session.user.id, session.user.email)
+      .then(() => fetchMyProfile(session.user.id))
+      .then((profile) => useProfileStore.getState().setProfile(profile))
+      .catch((err) => console.error('[friends] ensureProfile failed', err));
   }
 
   await pullAndApply(session);
@@ -224,6 +230,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       } else {
         stopAutoSyncWatchers();
         set({ status: 'offline', lastSyncedAt: null, remoteUpdatedAt: null, error: null });
+        useProfileStore.getState().setProfile(null);
       }
     });
 

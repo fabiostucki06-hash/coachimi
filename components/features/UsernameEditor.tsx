@@ -3,14 +3,8 @@ import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
-import {
-  checkUsernameAvailable,
-  normalizeUsernameInput,
-  updateUsername,
-  USERNAME_MAX_LENGTH,
-  USERNAME_MIN_LENGTH,
-  type FriendProfile,
-} from '@/services/friends';
+import { checkUsernameAvailable, normalizeUsernameInput, updateUsername, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from '@/services/friends';
+import { useProfileStore } from '@/store/profileStore';
 import { useToastStore } from '@/store/toastStore';
 
 const CHECK_DEBOUNCE_MS = 400;
@@ -25,17 +19,11 @@ const STATUS_COLOR: Record<Status, string> = {
   invalid: 'text-red-500',
 };
 
-/** Required @username field with live uniqueness checking, reused on the Profil screen and the Freunde tab so both places share one validation/debounce implementation. */
-export function UsernameEditor({
-  myId,
-  profile,
-  onUpdated,
-}: {
-  myId: string;
-  profile: FriendProfile | null;
-  onUpdated: (profile: FriendProfile) => void;
-}) {
+/** Required @username field with live uniqueness checking, reused on the Profil screen and the Freunde tab. Reads/writes the shared profileStore directly (rather than taking profile/onUpdated props) so a save on either screen is instantly visible on the other. */
+export function UsernameEditor({ myId }: { myId: string }) {
   const showToast = useToastStore((state) => state.show);
+  const profile = useProfileStore((state) => state.profile);
+  const updateProfile = useProfileStore((state) => state.updateProfile);
   const [value, setValue] = useState(profile?.username ?? '');
   const [status, setStatus] = useState<Status>('idle');
   const [saving, setSaving] = useState(false);
@@ -81,7 +69,7 @@ export function UsernameEditor({
     setSaving(true);
     try {
       await updateUsername(myId, value);
-      onUpdated(profile ? { ...profile, username: value } : { id: myId, email: '', username: value, name: null, isProfilePublic: true });
+      updateProfile({ username: value });
       showToast('Username gespeichert', 'success');
       setStatus('idle');
     } catch (err) {

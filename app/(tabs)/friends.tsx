@@ -12,7 +12,7 @@ import { TextField } from '@/components/ui/TextField';
 import {
   fetchFriendActivity,
   fetchFriendships,
-  fetchMyProfile,
+  formatFriendLabel,
   removeFriendship,
   respondToRequest,
   searchUsers,
@@ -22,17 +22,10 @@ import {
   type FriendListItem,
   type FriendProfile,
 } from '@/services/friends';
+import { useProfileStore } from '@/store/profileStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
 import { getLocalDateKey } from '@/utils/calendarDates';
-
-function displayName(profile: FriendProfile): string {
-  return profile.name?.trim() || profile.email;
-}
-
-function usernameHandle(profile: FriendProfile): string | null {
-  return profile.username ? `@${profile.username}` : null;
-}
 
 function SignedOutPrompt() {
   return (
@@ -49,8 +42,9 @@ function SignedOutPrompt() {
   );
 }
 
-function ProfileSettingsCard({ myId, profile, onUpdated }: { myId: string; profile: FriendProfile | null; onUpdated: (profile: FriendProfile) => void }) {
+function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendProfile | null }) {
   const showToast = useToastStore((state) => state.show);
+  const updateProfile = useProfileStore((state) => state.updateProfile);
   const [isPublic, setIsPublic] = useState(profile?.isProfilePublic ?? true);
 
   useEffect(() => {
@@ -62,7 +56,7 @@ function ProfileSettingsCard({ myId, profile, onUpdated }: { myId: string; profi
     setIsPublic(next);
     try {
       await setProfilePublic(myId, next);
-      if (profile) onUpdated({ ...profile, isProfilePublic: next });
+      updateProfile({ isProfilePublic: next });
     } catch (err) {
       setIsPublic(!next);
       showToast(err instanceof Error ? err.message : 'Einstellung konnte nicht gespeichert werden');
@@ -72,7 +66,13 @@ function ProfileSettingsCard({ myId, profile, onUpdated }: { myId: string; profi
   return (
     <Card className="gap-3">
       <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dein Profil</Text>
-      <UsernameEditor myId={myId} profile={profile} onUpdated={onUpdated} />
+      {profile?.username && (
+        <View className="rounded-2xl bg-emerald-500/10 px-4 py-3">
+          <Text className="text-xs text-emerald-600 dark:text-emerald-400">Dein Handle - teile ihn mit Freunden</Text>
+          <Text className="text-lg font-bold text-emerald-600 dark:text-emerald-400">@{profile.username}</Text>
+        </View>
+      )}
+      <UsernameEditor myId={myId} />
       <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-slate-100/70 px-4 py-3 dark:bg-white/5">
         <View className="flex-1 pr-3">
           <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Profil öffentlich</Text>
@@ -102,8 +102,7 @@ function SearchResultRow({ profile, onSend, sent }: { profile: FriendProfile; on
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{displayName(profile)}</Text>
-        {usernameHandle(profile) && <Text className="text-xs text-slate-400">{usernameHandle(profile)}</Text>}
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatFriendLabel(profile)}</Text>
       </View>
       <Pressable
         onPress={handlePress}
@@ -120,8 +119,7 @@ function IncomingRequestRow({ item, onRespond }: { item: FriendListItem; onRespo
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{displayName(item.profile)}</Text>
-        {usernameHandle(item.profile) && <Text className="text-xs text-slate-400">{usernameHandle(item.profile)}</Text>}
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatFriendLabel(item.profile)}</Text>
       </View>
       <View className="flex-row gap-2">
         <Pressable onPress={() => onRespond(true)} className="h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
@@ -139,7 +137,7 @@ export default function FriendsScreen() {
   const session = useSyncStore((state) => state.session);
   const showToast = useToastStore((state) => state.show);
 
-  const [myProfile, setMyProfile] = useState<FriendProfile | null>(null);
+  const myProfile = useProfileStore((state) => state.profile);
   const [friendships, setFriendships] = useState<FriendListItem[]>([]);
   const [activityByFriendId, setActivityByFriendId] = useState<Record<string, FriendActivitySummary>>({});
   const [loading, setLoading] = useState(true);
@@ -154,8 +152,7 @@ export default function FriendsScreen() {
     if (!myId) return;
     setLoading(true);
     try {
-      const [profile, items] = await Promise.all([fetchMyProfile(myId), fetchFriendships(myId)]);
-      setMyProfile(profile);
+      const items = await fetchFriendships(myId);
       setFriendships(items);
 
       const acceptedIds = items.filter((item) => item.status === 'accepted').map((item) => item.profile.id);
@@ -229,7 +226,7 @@ export default function FriendsScreen() {
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
         <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Freunde</Text>
 
-        <ProfileSettingsCard myId={myId} profile={myProfile} onUpdated={setMyProfile} />
+        <ProfileSettingsCard myId={myId} profile={myProfile} />
 
         <Card className="gap-3">
           <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Freunde finden</Text>
@@ -273,10 +270,7 @@ export default function FriendsScreen() {
             <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ausstehend</Text>
             {outgoing.map((item) => (
               <View key={item.friendshipId} className="flex-row items-center justify-between py-2">
-                <View>
-                  <Text className="text-sm text-slate-600 dark:text-slate-300">{displayName(item.profile)}</Text>
-                  {usernameHandle(item.profile) && <Text className="text-xs text-slate-400">{usernameHandle(item.profile)}</Text>}
-                </View>
+                <Text className="text-sm text-slate-600 dark:text-slate-300">{formatFriendLabel(item.profile)}</Text>
                 <Pressable onPress={() => handleRemove(item.friendshipId)}>
                   <Text className="text-xs font-semibold text-red-500">Zurückziehen</Text>
                 </Pressable>
