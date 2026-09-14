@@ -12,6 +12,7 @@ import {
   shouldApplyRemote,
   subscribeToRemoteChanges,
 } from '@/services/cloudSync';
+import { ensureProfile } from '@/services/friends';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
@@ -186,6 +187,14 @@ async function afterSessionEstablished(session: Session) {
   // against the remote row - i.e. exactly the "device overwrites remote with
   // stale local state on load" bug. Subscribing only after the initial
   // fetch-and-compare has finished closes that window entirely.
+  // Best-effort, same reasoning as the realtime-subscribe guard below: a
+  // profile row is only needed for the friends feature, so a failure here
+  // (e.g. RLS not yet applied on an older Supabase project) must never block
+  // sign-in from completing.
+  if (session.user.email) {
+    ensureProfile(session.user.id, session.user.email).catch((err) => console.error('[friends] ensureProfile failed', err));
+  }
+
   await pullAndApply(session);
   startAutoSyncWatchers(session);
 }

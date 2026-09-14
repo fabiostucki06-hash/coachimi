@@ -63,3 +63,102 @@ create policy "Anyone can update a community barcode"
   on public.community_barcodes for update
   using (true)
   with check (true);
+
+-- Friends system: public-facing profile row per auth user (id/email always present;
+-- username/name/avatar are optional and filled in later from the app). Rows are
+-- created client-side on first sign-in (services/friends.ts ensureProfile) rather
+-- than via a database trigger, matching this project's "client drives every table"
+-- convention (see community_barcodes above) instead of introducing server-side
+-- functions this codebase has none of elsewhere.
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  email text not null,
+  username text unique,
+  name text,
+  avatar_url text,
+  is_profile_public boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+-- A profile is readable by its own owner, by anyone if it opted into
+-- is_profile_public (needed for username/email search), and by an accepted
+-- friend even if they later flipped their profile private (so an existing
+-- friend's name doesn't disappear from your friends list).
+create policy "Profiles are readable per privacy settings"
+  on public.profiles for select
+  using (
+    auth.uid() = id
+    or is_profile_public = true
+    or exists (
+      select 1 from public.friendships f
+      where f.status = 'accepted'
+        and ((f.user_id = auth.uid() and f.friend_id = profiles.id)
+          or (f.friend_id = auth.uid() and f.user_id = profiles.id))
+    )
+  );
+
+create policy "Users can create their own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+create policy "Users can update their own profile"
+  on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+-- One row per requested/accepted/rejected friendship, directional
+-- (user_id = requester, friend_id = recipient).
+create table if not exists public.friendships (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  friend_id uuid not null references public.profiles (id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected')),
+  created_at timestamptz not null default now(),
+  constraint friendships_no_self_friend check (user_id <> friend_id),
+  constraint friendships_unique_pair unique (user_id, friend_id)
+);
+
+alter table public.friendships enable row level security;
+
+-- Both sides of a friendship (requester and recipient) need to see the row:
+-- the recipient to find it in their incoming-requests list, the requester to
+-- see it went to 'pending'/'accepted' in their own outgoing list.
+create policy "Participants can read their friendships"
+  on public.friendships for select
+  using (auth.uid() = user_id or auth.uid() = friend_id);
+
+create policy "Users can send a friend request"
+  on public.friendships for insert
+  with check (auth.uid() = user_id);
+
+-- Either side may change status (recipient accepts/declines; requester can
+-- also flip it, e.g. re-sending after a decline) - scoped narrowly enough
+-- that a participant can only ever touch a row they're already part of.
+create policy "Participants can update their friendship status"
+  on public.friendships for update
+  using (auth.uid() = user_id or auth.uid() = friend_id)
+  with check (auth.uid() = user_id or auth.uid() = friend_id);
+
+create policy "Participants can delete their friendship"
+  on public.friendships for delete
+  using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Extends user_data's existing "owner only" select policy (RLS policies for
+-- the same command are OR'd together) so an accepted friend can also read
+-- your synced snapshot - this is how the activity feed reads today's macros/
+-- workouts, since diary and training entries live inside that JSONB blob
+-- rather than their own relational tables (see CloudSnapshot in
+-- services/cloudSync.ts). Friendship status is re-checked on every read, so
+-- unfriending immediately cuts off access.
+create policy "Accepted friends can read each other's synced data"
+  on public.user_data for select
+  using (
+    exists (
+      select 1 from public.friendships f
+      where f.status = 'accepted'
+        and ((f.user_id = auth.uid() and f.friend_id = user_data.user_id)
+          or (f.friend_id = auth.uid() and f.user_id = user_data.user_id))
+    )
+  );
