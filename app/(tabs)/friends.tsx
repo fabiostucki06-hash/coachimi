@@ -42,6 +42,27 @@ function SignedOutPrompt() {
   );
 }
 
+/** Top-of-screen glance at the caller's own handle - the whole point of a friends feature built on @username is that people need to see and share their own before they can be found, so this sits above everything else rather than waiting inside the profile settings card below. */
+function SelfUsernameHeader({ profile }: { profile: FriendProfile | null }) {
+  if (profile?.username) {
+    return (
+      <View className="flex-row items-center justify-between rounded-2xl bg-emerald-500/10 px-4 py-3">
+        <Text className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Dein Nutzername: @{profile.username}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={() => router.push('/profil')}
+      className="flex-row items-center justify-between rounded-2xl bg-amber-500/10 px-4 py-3 active:opacity-80"
+    >
+      <Text className="flex-1 pr-3 text-sm text-amber-600 dark:text-amber-400">Du hast noch keinen @username.</Text>
+      <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400">Jetzt im Profil festlegen</Text>
+    </Pressable>
+  );
+}
+
 function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendProfile | null }) {
   const showToast = useToastStore((state) => state.show);
   const updateProfile = useProfileStore((state) => state.updateProfile);
@@ -66,12 +87,6 @@ function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendP
   return (
     <Card className="gap-3">
       <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dein Profil</Text>
-      {profile?.username && (
-        <View className="rounded-2xl bg-emerald-500/10 px-4 py-3">
-          <Text className="text-xs text-emerald-600 dark:text-emerald-400">Dein Handle - teile ihn mit Freunden</Text>
-          <Text className="text-lg font-bold text-emerald-600 dark:text-emerald-400">@{profile.username}</Text>
-        </View>
-      )}
       <UsernameEditor myId={myId} />
       <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-slate-100/70 px-4 py-3 dark:bg-white/5">
         <View className="flex-1 pr-3">
@@ -225,6 +240,8 @@ export default function FriendsScreen() {
     <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
         <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Freunde</Text>
+
+        <SelfUsernameHeader profile={myProfile} />
 
         <ProfileSettingsCard myId={myId} profile={myProfile} />
 
