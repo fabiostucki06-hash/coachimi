@@ -113,12 +113,23 @@ export async function fetchMyProfile(userId: string): Promise<FriendProfile | nu
   return data ? mapProfile(data as ProfileRow) : null;
 }
 
-export async function updateUsername(userId: string, rawUsername: string): Promise<void> {
+/**
+ * Upsert, not update: if the caller edits their username before ensureProfile's
+ * own (fire-and-forget, best-effort) row-creation upsert has landed - a real
+ * race, since that call isn't awaited by anything the UI waits on - a plain
+ * UPDATE here would match zero rows and silently no-op. No error, no visible
+ * failure, but nothing persisted: the edit only ever existed in profileStore's
+ * optimistic local state and vanishes on the next reload/fetchMyProfile. Needs
+ * `email` for that same reason - a fresh insert-on-conflict-absent still has to
+ * satisfy the NOT NULL column - so callers must always have it on hand
+ * (session.user.email), same as ensureProfile does.
+ */
+export async function updateUsername(userId: string, email: string, rawUsername: string): Promise<void> {
   const username = normalizeUsernameInput(rawUsername);
   if (!USERNAME_PATTERN.test(username)) {
     throw new Error(`Username muss ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} Zeichen lang sein (a-z, 0-9, _).`);
   }
-  const { error } = await supabase.from('profiles').update({ username }).eq('id', userId);
+  const { error } = await supabase.from('profiles').upsert({ id: userId, email, username }, { onConflict: 'id' });
   if (error) {
     // Postgres unique_violation - the DB is still the source of truth for
     // uniqueness even though the UI already live-checks via checkUsernameAvailable,

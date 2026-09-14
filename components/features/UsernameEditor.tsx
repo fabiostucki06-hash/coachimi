@@ -19,11 +19,12 @@ const STATUS_COLOR: Record<Status, string> = {
   invalid: 'text-red-500',
 };
 
-/** Required @username field with live uniqueness checking, reused on the Profil screen and the Freunde tab. Reads/writes the shared profileStore directly (rather than taking profile/onUpdated props) so a save on either screen is instantly visible on the other. */
-export function UsernameEditor({ myId }: { myId: string }) {
+/** Required @username field with live uniqueness checking, reused on the Profil screen and the Freunde tab. Reads/writes the shared profileStore directly (rather than taking profile/onUpdated props) so a save on either screen is instantly visible on the other. `email` is needed because saving upserts (see updateUsername) - it may have to create the profiles row on the spot, not just update an existing one. */
+export function UsernameEditor({ myId, email }: { myId: string; email: string }) {
   const showToast = useToastStore((state) => state.show);
   const profile = useProfileStore((state) => state.profile);
   const updateProfile = useProfileStore((state) => state.updateProfile);
+  const setProfile = useProfileStore((state) => state.setProfile);
   const [value, setValue] = useState(profile?.username ?? '');
   const [status, setStatus] = useState<Status>('idle');
   const [saving, setSaving] = useState(false);
@@ -68,8 +69,17 @@ export function UsernameEditor({ myId }: { myId: string }) {
     if (status !== 'available' || saving) return;
     setSaving(true);
     try {
-      await updateUsername(myId, value);
-      updateProfile({ username: value });
+      await updateUsername(myId, email, value);
+      // updateProfile no-ops while profileStore hasn't loaded a profile yet (a
+      // real race - the initial sign-in fetch and this save aren't sequenced
+      // against each other). Fall back to seeding the store outright so the
+      // save is reflected immediately either way, not just once the next
+      // sign-in's fetch happens to catch up.
+      if (profile) {
+        updateProfile({ username: value });
+      } else {
+        setProfile({ id: myId, email, username: value, name: null, isProfilePublic: true });
+      }
       showToast('Username gespeichert', 'success');
       setStatus('idle');
     } catch (err) {

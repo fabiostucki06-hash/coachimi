@@ -169,6 +169,7 @@ export default function ProfilScreen() {
   const activeRank = useRewardStore((state) => state.activeRank);
   const activeRankName = RANKS.find((rank) => rank.id === activeRank)?.name ?? RANKS[0].name;
   const myId = session?.user.id;
+  const myEmail = session?.user.email ?? '';
   const friendProfile = useProfileStore((state) => state.profile);
 
   async function handleSignOut() {
@@ -328,7 +329,7 @@ export default function ProfilScreen() {
           />
           {myId && (
             <View className="gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
-              <UsernameEditor myId={myId} />
+              <UsernameEditor myId={myId} email={myEmail} />
             </View>
           )}
         </Card>

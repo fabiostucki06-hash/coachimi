@@ -63,7 +63,7 @@ function SelfUsernameHeader({ profile }: { profile: FriendProfile | null }) {
   );
 }
 
-function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendProfile | null }) {
+function ProfileSettingsCard({ myId, email, profile }: { myId: string; email: string; profile: FriendProfile | null }) {
   const showToast = useToastStore((state) => state.show);
   const updateProfile = useProfileStore((state) => state.updateProfile);
   const [isPublic, setIsPublic] = useState(profile?.isProfilePublic ?? true);
@@ -87,7 +87,7 @@ function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendP
   return (
     <Card className="gap-3">
       <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dein Profil</Text>
-      <UsernameEditor myId={myId} />
+      <UsernameEditor myId={myId} email={email} />
       <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-slate-100/70 px-4 py-3 dark:bg-white/5">
         <View className="flex-1 pr-3">
           <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Profil öffentlich</Text>
@@ -162,6 +162,7 @@ export default function FriendsScreen() {
   const [searching, setSearching] = useState(false);
 
   const myId = session?.user.id;
+  const myEmail = session?.user.email ?? '';
 
   const loadFriends = useCallback(async () => {
     if (!myId) return;
@@ -243,7 +244,7 @@ export default function FriendsScreen() {
 
         <SelfUsernameHeader profile={myProfile} />
 
-        <ProfileSettingsCard myId={myId} profile={myProfile} />
+        <ProfileSettingsCard myId={myId} email={myEmail} profile={myProfile} />
 
         <Card className="gap-3">
           <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Freunde finden</Text>
