@@ -28,11 +28,11 @@ import { getLocalDateKey } from '@/utils/calendarDates';
 
 function SignedOutPrompt() {
   return (
-    <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 items-center justify-center gap-4 px-8">
-        <Users color="#94a3b8" size={40} />
-        <Text className="text-center text-lg font-semibold text-slate-900 dark:text-white">Freunde brauchen ein Konto</Text>
-        <Text className="text-center text-sm text-slate-500 dark:text-slate-400">
+        <Users color="#A1A1AA" size={40} />
+        <Text className="text-center text-lg font-semibold text-white">Freunde brauchen ein Konto</Text>
+        <Text className="text-center text-sm text-text-secondary">
           Melde dich an, um Freunde zu suchen, Anfragen zu verwalten und ihren Fortschritt zu sehen.
         </Text>
         <Button label="Anmelden" onPress={() => router.push('/onboarding')} />
@@ -50,8 +50,8 @@ function SignedOutPrompt() {
 function SelfUsernameHeader({ profile }: { profile: FriendProfile | null }) {
   if (profile?.username) {
     return (
-      <View className="flex-row items-center justify-between rounded-2xl bg-emerald-500/10 px-4 py-3">
-        <Text className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Dein Nutzername: @{profile.username}</Text>
+      <View className="flex-row items-center justify-between rounded-2xl bg-primary/10 px-4 py-3">
+        <Text className="text-sm font-semibold text-primary">Dein Nutzername: @{profile.username}</Text>
       </View>
     );
   }
@@ -61,8 +61,8 @@ function SelfUsernameHeader({ profile }: { profile: FriendProfile | null }) {
       onPress={() => router.push('/profil')}
       className="flex-row items-center justify-between rounded-2xl bg-amber-500/10 px-4 py-3 active:opacity-80"
     >
-      <Text className="flex-1 pr-3 text-sm text-amber-600 dark:text-amber-400">Du hast noch keinen @username.</Text>
-      <Text className="text-sm font-semibold text-amber-600 dark:text-amber-400">Username im Profil festlegen -&gt;</Text>
+      <Text className="flex-1 pr-3 text-sm text-amber-400">Du hast noch keinen @username.</Text>
+      <Text className="text-sm font-semibold text-amber-400">Username im Profil festlegen -&gt;</Text>
     </Pressable>
   );
 }
@@ -90,13 +90,13 @@ function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendP
 
   return (
     <Card className="gap-3">
-      <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dein Profil</Text>
-      <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-slate-100/70 px-4 py-3 dark:bg-white/5">
+      <Text className="text-sm font-semibold text-text-secondary">Dein Profil</Text>
+      <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
         <View className="flex-1 pr-3">
-          <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Profil öffentlich</Text>
-          <Text className="text-xs text-slate-400">Andere können dich per @username finden und dir eine Anfrage senden.</Text>
+          <Text className="text-sm font-medium text-white">Profil öffentlich</Text>
+          <Text className="text-xs text-text-secondary">Andere können dich per @username finden und dir eine Anfrage senden.</Text>
         </View>
-        <View className={`h-7 w-12 justify-center rounded-full px-0.5 ${isPublic ? 'items-end bg-emerald-500' : 'items-start bg-slate-300 dark:bg-slate-700'}`}>
+        <View className={`h-7 w-12 justify-center rounded-full px-0.5 ${isPublic ? 'items-end bg-primary' : 'items-start bg-white/10'}`}>
           <View className="h-6 w-6 rounded-full bg-white" />
         </View>
       </Pressable>
@@ -120,14 +120,14 @@ function SearchResultRow({ profile, onSend, sent }: { profile: FriendProfile; on
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatFriendLabel(profile)}</Text>
+        <Text className="text-sm font-semibold text-white">{formatFriendLabel(profile)}</Text>
       </View>
       <Pressable
         onPress={handlePress}
         disabled={sending || sent}
-        className={`h-9 w-9 items-center justify-center rounded-full ${sent ? 'bg-slate-100 dark:bg-white/5' : 'bg-emerald-500/10'}`}
+        className={`h-9 w-9 items-center justify-center rounded-full ${sent ? 'bg-white/5' : 'bg-primary/10'}`}
       >
-        {sending ? <ActivityIndicator size="small" color="#10b981" /> : sent ? <Check color="#94a3b8" size={16} /> : <UserPlus color="#10b981" size={16} />}
+        {sending ? <ActivityIndicator size="small" color="#6366F1" /> : sent ? <Check color="#A1A1AA" size={16} /> : <UserPlus color="#6366F1" size={16} />}
       </Pressable>
     </View>
   );
@@ -137,11 +137,11 @@ function IncomingRequestRow({ item, onRespond }: { item: FriendListItem; onRespo
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatFriendLabel(item.profile)}</Text>
+        <Text className="text-sm font-semibold text-white">{formatFriendLabel(item.profile)}</Text>
       </View>
       <View className="flex-row gap-2">
-        <Pressable onPress={() => onRespond(true)} className="h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-          <Check color="#10b981" size={16} />
+        <Pressable onPress={() => onRespond(true)} className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+          <Check color="#6366F1" size={16} />
         </Pressable>
         <Pressable onPress={() => onRespond(false)} className="h-9 w-9 items-center justify-center rounded-full bg-red-500/10">
           <X color="#ef4444" size={16} />
@@ -240,16 +240,16 @@ export default function FriendsScreen() {
   const existingFriendIds = new Set(friendships.map((item) => item.profile.id));
 
   return (
-    <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
-        <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Freunde</Text>
+        <Text className="text-3xl font-bold tracking-tight text-white">Freunde</Text>
 
         <SelfUsernameHeader profile={myProfile} />
 
         <ProfileSettingsCard myId={myId} profile={myProfile} />
 
         <Card className="gap-3">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Freunde finden</Text>
+          <Text className="text-sm font-semibold text-text-secondary">Freunde finden</Text>
           <View className="flex-row items-end gap-2">
             <View className="flex-1">
               <TextField
@@ -260,10 +260,10 @@ export default function FriendsScreen() {
                 onSubmitEditing={handleSearch}
               />
             </View>
-            <Button label="Suchen" variant="secondary" icon={<Search color="#10b981" size={16} />} loading={searching} onPress={handleSearch} className="mb-0" />
+            <Button label="Suchen" variant="secondary" icon={<Search color="#6366F1" size={16} />} loading={searching} onPress={handleSearch} className="mb-0" />
           </View>
           {searchResults.length > 0 && (
-            <View className="gap-1 border-t border-slate-100 pt-2 dark:border-white/5">
+            <View className="gap-1 border-t border-surface-border pt-2">
               {searchResults.map((profile) => (
                 <SearchResultRow
                   key={profile.id}
@@ -278,7 +278,7 @@ export default function FriendsScreen() {
 
         {incoming.length > 0 && (
           <Card className="gap-1">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Anfragen</Text>
+            <Text className="text-sm font-semibold text-text-secondary">Anfragen</Text>
             {incoming.map((item) => (
               <IncomingRequestRow key={item.friendshipId} item={item} onRespond={(accept) => handleRespond(item.friendshipId, accept)} />
             ))}
@@ -287,10 +287,10 @@ export default function FriendsScreen() {
 
         {outgoing.length > 0 && (
           <Card className="gap-1">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ausstehend</Text>
+            <Text className="text-sm font-semibold text-text-secondary">Ausstehend</Text>
             {outgoing.map((item) => (
               <View key={item.friendshipId} className="flex-row items-center justify-between py-2">
-                <Text className="text-sm text-slate-600 dark:text-slate-300">{formatFriendLabel(item.profile)}</Text>
+                <Text className="text-sm text-text-secondary">{formatFriendLabel(item.profile)}</Text>
                 <Pressable onPress={() => handleRemove(item.friendshipId)}>
                   <Text className="text-xs font-semibold text-red-500">Zurückziehen</Text>
                 </Pressable>
@@ -300,11 +300,11 @@ export default function FriendsScreen() {
         )}
 
         <View className="gap-3">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Aktivität deiner Freunde</Text>
+          <Text className="text-sm font-semibold text-text-secondary">Aktivität deiner Freunde</Text>
           {loading ? (
-            <ActivityIndicator color="#10b981" />
+            <ActivityIndicator color="#6366F1" />
           ) : accepted.length === 0 ? (
-            <Text className="text-sm text-slate-400">Noch keine Freunde - suche oben nach jemandem.</Text>
+            <Text className="text-sm text-text-secondary">Noch keine Freunde - suche oben nach jemandem.</Text>
           ) : (
             accepted.map((item) => (
               <FriendActivityCard key={item.friendshipId} profile={item.profile} activity={activityByFriendId[item.profile.id]} />

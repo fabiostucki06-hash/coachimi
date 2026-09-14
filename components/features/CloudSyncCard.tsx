@@ -30,22 +30,22 @@ export function CloudSyncCard() {
     <Card className="gap-3">
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100/70 dark:bg-white/5">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
             {status === 'syncing' ? (
               <ActivityIndicator size="small" color="#f59e0b" />
             ) : status === 'error' ? (
               <AlertCircle color="#ef4444" size={18} />
             ) : status === 'synced' ? (
-              <Check color="#10b981" size={18} />
+              <Check color="#6366F1" size={18} />
             ) : (
-              <Cloud color="#64748b" size={18} />
+              <Cloud color="#A1A1AA" size={18} />
             )}
           </View>
           <View>
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Cloud-Sync</Text>
+            <Text className="text-sm font-semibold text-text-secondary">Cloud-Sync</Text>
             {status === 'synced' && (remoteUpdatedAt || lastSyncedAt) && (
               <View className="flex-row items-center gap-1.5">
-                <Text className="text-xs text-slate-400">
+                <Text className="text-xs text-text-secondary">
                   Zuletzt synchronisiert: {formatSyncedAt(remoteUpdatedAt ?? lastSyncedAt!)}
                 </Text>
                 <Pressable
@@ -54,7 +54,7 @@ export function CloudSyncCard() {
                   accessibilityLabel="Jetzt aktualisieren"
                   className="h-5 w-5 items-center justify-center rounded-full active:opacity-60"
                 >
-                  <RefreshCw color="#94a3b8" size={12} />
+                  <RefreshCw color="#A1A1AA" size={12} />
                 </Pressable>
               </View>
             )}
@@ -63,9 +63,9 @@ export function CloudSyncCard() {
 
         <Pressable
           onPress={handleSignOut}
-          className="h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
         >
-          <LogOut color="#64748b" size={18} />
+          <LogOut color="#A1A1AA" size={18} />
         </Pressable>
       </View>
 
@@ -76,7 +76,7 @@ export function CloudSyncCard() {
           </Text>
           <Pressable
             onPress={() => syncNow()}
-            className="rounded-xl border border-red-300/60 bg-white/70 px-3 py-1.5 active:opacity-80 dark:border-red-500/30 dark:bg-white/5"
+            className="rounded-xl border border-red-300/60 bg-surface px-3 py-1.5 active:opacity-80 dark:border-red-500/30 "
           >
             <Text className="text-xs font-semibold text-red-600 dark:text-red-400">Erneut versuchen</Text>
           </Pressable>

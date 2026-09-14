@@ -18,12 +18,12 @@ function TransactionRow({ transaction }: { transaction: RewardTransaction }) {
   return (
     <View className="flex-row items-center justify-between py-2">
       <View className="flex-1 pr-3">
-        <Text className="text-sm text-slate-700 dark:text-slate-200" numberOfLines={1}>
+        <Text className="text-sm text-white" numberOfLines={1}>
           {transaction.reason}
         </Text>
-        <Text className="text-xs text-slate-400">{formatTransactionDate(transaction.date)}</Text>
+        <Text className="text-xs text-text-secondary">{formatTransactionDate(transaction.date)}</Text>
       </View>
-      <Text className={`text-sm font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+      <Text className={`text-sm font-bold ${isPositive ? 'text-primary' : 'text-text-secondary'}`}>
         {isPositive ? '+' : ''}
         {transaction.amount} 🪙
       </Text>
@@ -43,32 +43,32 @@ function ShopItemRow({
   onUnlock: (id: BadgeId) => void;
 }) {
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 dark:border-slate-800/60 dark:bg-slate-900/60">
+    <View className="flex-row items-center gap-3 rounded-2xl border border-surface-border bg-surface p-3.5  ">
       <View
         className={`h-10 w-10 items-center justify-center rounded-full ${
-          unlocked ? 'bg-emerald-500/15' : 'bg-amber-400/15'
+          unlocked ? 'bg-primary/15' : 'bg-amber-400/15'
         }`}
       >
-        {unlocked ? <Check color="#10b981" size={18} /> : <Lock color="#d97706" size={16} />}
+        {unlocked ? <Check color="#6366F1" size={18} /> : <Lock color="#d97706" size={16} />}
       </View>
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{item.name}</Text>
-        <Text className="text-xs text-slate-400" numberOfLines={2}>
+        <Text className="text-sm font-semibold text-white">{item.name}</Text>
+        <Text className="text-xs text-text-secondary" numberOfLines={2}>
           {item.description}
         </Text>
       </View>
       {unlocked ? (
-        <Text className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Freigeschaltet</Text>
+        <Text className="text-xs font-semibold text-primary">Freigeschaltet</Text>
       ) : (
         <Pressable
           disabled={!affordable}
           onPress={() => onUnlock(item.id)}
           className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
-            affordable ? 'bg-amber-400 active:opacity-80' : 'bg-slate-100 dark:bg-white/5'
+            affordable ? 'bg-amber-400 active:opacity-80' : 'bg-white/5'
           }`}
         >
           <Text className="text-xs">🪙</Text>
-          <Text className={`text-xs font-bold ${affordable ? 'text-amber-950' : 'text-slate-400'}`}>{item.cost}</Text>
+          <Text className={`text-xs font-bold ${affordable ? 'text-amber-950' : 'text-text-secondary'}`}>{item.cost}</Text>
         </Pressable>
       )}
     </View>
@@ -89,35 +89,35 @@ function RankRow({
   onSelect: (id: RankId) => void;
 }) {
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 dark:border-slate-800/60 dark:bg-slate-900/60">
+    <View className="flex-row items-center gap-3 rounded-2xl border border-surface-border bg-surface p-3.5  ">
       <View
         className={`h-10 w-10 items-center justify-center rounded-full ${
-          isActive ? 'bg-emerald-500/15' : isUnlocked ? 'bg-slate-100 dark:bg-white/5' : 'bg-amber-400/15'
+          isActive ? 'bg-primary/15' : isUnlocked ? 'bg-white/5' : 'bg-amber-400/15'
         }`}
       >
-        {isUnlocked ? <Check color={isActive ? '#10b981' : '#94a3b8'} size={18} /> : <Lock color="#d97706" size={16} />}
+        {isUnlocked ? <Check color={isActive ? '#6366F1' : '#A1A1AA'} size={18} /> : <Lock color="#d97706" size={16} />}
       </View>
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{rank.name}</Text>
-        {isActive && <Text className="text-xs text-emerald-500">Aktiv</Text>}
+        <Text className="text-sm font-semibold text-white">{rank.name}</Text>
+        {isActive && <Text className="text-xs text-primary">Aktiv</Text>}
       </View>
       {isActive ? null : isUnlocked ? (
         <Pressable
           onPress={() => onSelect(rank.id)}
-          className="rounded-full bg-slate-100 px-3 py-2 active:opacity-80 dark:bg-white/5"
+          className="rounded-full bg-white/5 px-3 py-2 active:opacity-80"
         >
-          <Text className="text-xs font-bold text-slate-600 dark:text-slate-300">Ausrüsten</Text>
+          <Text className="text-xs font-bold text-text-secondary">Ausrüsten</Text>
         </Pressable>
       ) : (
         <Pressable
           disabled={!affordable}
           onPress={() => onSelect(rank.id)}
           className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
-            affordable ? 'bg-amber-400 active:opacity-80' : 'bg-slate-100 dark:bg-white/5'
+            affordable ? 'bg-amber-400 active:opacity-80' : 'bg-white/5'
           }`}
         >
           <Text className="text-xs">🪙</Text>
-          <Text className={`text-xs font-bold ${affordable ? 'text-amber-950' : 'text-slate-400'}`}>{rank.cost}</Text>
+          <Text className={`text-xs font-bold ${affordable ? 'text-amber-950' : 'text-text-secondary'}`}>{rank.cost}</Text>
         </Pressable>
       )}
     </View>
@@ -170,14 +170,14 @@ export default function RewardsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
-        <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Belohnungen</Text>
+        <Text className="text-lg font-bold tracking-tight text-white">Belohnungen</Text>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md active:scale-95 active:opacity-80  "
           onPress={() => router.back()}
         >
-          <X color="#64748b" size={18} />
+          <X color="#A1A1AA" size={18} />
         </Pressable>
       </View>
 
@@ -187,46 +187,46 @@ export default function RewardsScreen() {
             <View className="h-11 w-11 items-center justify-center rounded-full bg-amber-400/15">
               <Coins color="#d97706" size={20} />
             </View>
-            <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{goldBars}</Text>
-            <Text className="text-xs text-slate-400">Goldbarren</Text>
+            <Text className="text-2xl font-bold tracking-tight text-white">{goldBars}</Text>
+            <Text className="text-xs text-text-secondary">Goldbarren</Text>
           </Card>
           <Card className="flex-1 items-center gap-1.5 py-5">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-orange-400/15">
               <Flame color="#f97316" size={20} />
             </View>
             <View className="flex-row items-center gap-1">
-              <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{streak}</Text>
+              <Text className="text-2xl font-bold tracking-tight text-white">{streak}</Text>
               {streakSavers > 0 && <ShieldCheck color="#38bdf8" size={16} />}
             </View>
-            <Text className="text-xs text-slate-400">Tage-Streak</Text>
+            <Text className="text-xs text-text-secondary">Tage-Streak</Text>
           </Card>
         </View>
 
         <Button label="Tägliche Belohnung abholen (+5 🪙)" onPress={handleClaim} />
 
         <Card className="gap-3">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Streak-Schutzschild</Text>
-          <View className="flex-row items-center gap-3 rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 dark:border-slate-800/60 dark:bg-slate-900/60">
+          <Text className="text-sm font-semibold text-text-secondary">Streak-Schutzschild</Text>
+          <View className="flex-row items-center gap-3 rounded-2xl border border-surface-border bg-surface p-3.5  ">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-sky-400/15">
               <Shield color="#0ea5e9" size={18} />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+              <Text className="text-sm font-semibold text-white">
                 {streakSavers} / {MAX_STREAK_SAVERS} Schilde
               </Text>
-              <Text className="text-xs text-slate-400">Rettet deinen Streak automatisch bei einem verpassten Tag.</Text>
+              <Text className="text-xs text-text-secondary">Rettet deinen Streak automatisch bei einem verpassten Tag.</Text>
             </View>
             <Pressable
               disabled={streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST}
               onPress={handleBuyStreakSaver}
               className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
-                streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'bg-slate-100 dark:bg-white/5' : 'bg-amber-400 active:opacity-80'
+                streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'bg-white/5' : 'bg-amber-400 active:opacity-80'
               }`}
             >
               <Text className="text-xs">🪙</Text>
               <Text
                 className={`text-xs font-bold ${
-                  streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'text-slate-400' : 'text-amber-950'
+                  streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'text-text-secondary' : 'text-amber-950'
                 }`}
               >
                 {STREAK_SAVER_COST}
@@ -236,7 +236,7 @@ export default function RewardsScreen() {
         </Card>
 
         <Card className="gap-1">
-          <Text className="pb-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Ränge &amp; Titel</Text>
+          <Text className="pb-1 text-sm font-semibold text-text-secondary">Ränge &amp; Titel</Text>
           <View className="gap-2">
             {RANKS.map((rank) => (
               <RankRow
@@ -252,7 +252,7 @@ export default function RewardsScreen() {
         </Card>
 
         <Card className="gap-1">
-          <Text className="pb-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Meilensteine &amp; Shop</Text>
+          <Text className="pb-1 text-sm font-semibold text-text-secondary">Meilensteine &amp; Shop</Text>
           <View className="gap-2">
             {SHOP_ITEMS.map((item) => (
               <ShopItemRow
@@ -267,11 +267,11 @@ export default function RewardsScreen() {
         </Card>
 
         <Card className="gap-1">
-          <Text className="pb-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Verlauf</Text>
+          <Text className="pb-1 text-sm font-semibold text-text-secondary">Verlauf</Text>
           {transactionHistory.length === 0 ? (
-            <Text className="py-2 text-sm text-slate-400">Noch keine Goldbarren verdient.</Text>
+            <Text className="py-2 text-sm text-text-secondary">Noch keine Goldbarren verdient.</Text>
           ) : (
-            <View className="divide-y divide-slate-200/60 dark:divide-slate-800/60">
+            <View className="divide-y divide-surface-border">
               {transactionHistory.slice(0, 15).map((transaction) => (
                 <TransactionRow key={transaction.id} transaction={transaction} />
               ))}

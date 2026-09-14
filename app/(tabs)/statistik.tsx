@@ -33,9 +33,9 @@ function getLastNDays(days: number): { key: string; label: string }[] {
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-1 gap-1 rounded-2xl border border-slate-200/60 bg-white/70 p-4 shadow-md shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
-      <Text className="text-xs text-slate-500 dark:text-slate-400">{label}</Text>
-      <Text className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{value}</Text>
+    <View className="flex-1 gap-1 rounded-2xl border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl">
+      <Text className="text-xs text-text-secondary">{label}</Text>
+      <Text className="text-xl font-bold tracking-tight text-white">{value}</Text>
     </View>
   );
 }
@@ -72,9 +72,9 @@ export default function StatistikScreen() {
   const weightChangeLabel = weightHistory.length >= 2 ? `${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg` : '—';
 
   return (
-    <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
-        <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Statistik</Text>
+        <Text className="text-3xl font-bold tracking-tight text-white">Statistik</Text>
 
         <View className="gap-6 lg:flex-row lg:items-start">
           <View className="gap-4 lg:w-72 lg:shrink-0">
@@ -89,8 +89,8 @@ export default function StatistikScreen() {
             </View>
           </View>
 
-          <View className="flex-1 gap-4 rounded-[28px] border border-slate-200/60 bg-white/70 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Kalorien letzte 7 Tage</Text>
+          <View className="flex-1 gap-4 rounded-[28px] border border-surface-border bg-surface p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
+            <Text className="text-sm font-semibold text-text-secondary">Kalorien letzte 7 Tage</Text>
 
             <View style={{ height: CHART_HEIGHT }} className="flex-row items-end justify-between">
               {weekStats.map((day) => {
@@ -107,7 +107,7 @@ export default function StatistikScreen() {
                         backgroundColor: !hasEntries ? EMPTY_COLOR : isOverGoal ? OVER_GOAL_COLOR : IN_GOAL_COLOR,
                       }}
                     />
-                    <Text className="text-xs text-slate-400">{day.label}</Text>
+                    <Text className="text-xs text-text-secondary">{day.label}</Text>
                   </View>
                 );
               })}
@@ -116,15 +116,15 @@ export default function StatistikScreen() {
             <View className="flex-row items-center gap-4 pt-1">
               <View className="flex-row items-center gap-1.5">
                 <View className="h-2 w-2 rounded-full" style={{ backgroundColor: IN_GOAL_COLOR }} />
-                <Text className="text-xs text-slate-500 dark:text-slate-400">Im Ziel</Text>
+                <Text className="text-xs text-text-secondary">Im Ziel</Text>
               </View>
               <View className="flex-row items-center gap-1.5">
                 <View className="h-2 w-2 rounded-full" style={{ backgroundColor: OVER_GOAL_COLOR }} />
-                <Text className="text-xs text-slate-500 dark:text-slate-400">Über Ziel</Text>
+                <Text className="text-xs text-text-secondary">Über Ziel</Text>
               </View>
               <View className="flex-row items-center gap-1.5">
                 <View className="h-2 w-2 rounded-full" style={{ backgroundColor: EMPTY_COLOR }} />
-                <Text className="text-xs text-slate-500 dark:text-slate-400">Keine Daten</Text>
+                <Text className="text-xs text-text-secondary">Keine Daten</Text>
               </View>
             </View>
           </View>

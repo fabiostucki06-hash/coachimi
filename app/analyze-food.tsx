@@ -278,60 +278,60 @@ export default function AnalyzeFoodScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View>
-          <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">KI-Foto-Analyse</Text>
-          <Text className="text-xs text-slate-400">{MEAL_LABELS[mealType]}</Text>
+          <Text className="text-lg font-bold tracking-tight text-white">KI-Foto-Analyse</Text>
+          <Text className="text-xs text-text-secondary">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
-          <X color="#64748b" size={18} />
+          <X color="#A1A1AA" size={18} />
         </Pressable>
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 pt-4 pb-12">
         {!imageUri ? (
-          <View className="gap-4 rounded-[28px] border border-dashed border-slate-300/70 bg-white/40 p-5 dark:border-slate-700/70 dark:bg-white/5">
+          <View className="gap-4 rounded-[28px] border border-dashed border-surface-border bg-white/5 p-5">
             <View className="items-center gap-1.5 pb-1">
-              <View className="h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
-                <Sparkles color="#10b981" size={20} />
+              <View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <Sparkles color="#6366F1" size={20} />
               </View>
-              <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300">Mahlzeit fotografieren</Text>
-              <Text className="text-center text-xs text-slate-400">
+              <Text className="text-sm font-semibold text-text-secondary">Mahlzeit fotografieren</Text>
+              <Text className="text-center text-xs text-text-secondary">
                 Coach imi erkennt Lebensmittel und Nährwerte automatisch.
               </Text>
             </View>
             <Pressable
-              className="flex-row items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-4 shadow-md shadow-emerald-500/20 transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-90 active:bg-emerald-600"
+              className="flex-row items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 shadow-md shadow-primary/20 transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-90 active:bg-[#4F46E5]"
               onPress={handleTakePhoto}
             >
               <Camera color="#ffffff" size={18} />
               <Text className="text-base font-semibold text-white">Foto aufnehmen</Text>
             </Pressable>
             <Pressable
-              className="flex-row items-center justify-center gap-2 rounded-2xl border border-slate-200/60 bg-white/70 px-5 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+              className="flex-row items-center justify-center gap-2 rounded-2xl border border-surface-border bg-surface px-5 py-4 shadow-sm shadow-black/20 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80  "
               onPress={handlePickFromLibrary}
             >
-              <ImagePlus color="#10b981" size={18} />
-              <Text className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+              <ImagePlus color="#6366F1" size={18} />
+              <Text className="text-base font-semibold text-primary">
                 Aus Galerie wählen
               </Text>
             </Pressable>
           </View>
         ) : (
           <View className="gap-3">
-            <View className="aspect-[4/3] w-full overflow-hidden rounded-[28px] border border-slate-200/60 bg-slate-200 dark:border-slate-800/60">
+            <View className="aspect-[4/3] w-full overflow-hidden rounded-[28px] border border-surface-border bg-white/10 ">
               <Image source={{ uri: imageUri }} className="h-full w-full" resizeMode="cover" />
             </View>
             <Pressable
-              className="flex-row items-center justify-center gap-2 rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-2.5 shadow-sm shadow-slate-900/5 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+              className="flex-row items-center justify-center gap-2 rounded-2xl border border-surface-border bg-surface px-4 py-2.5 shadow-sm shadow-black/20 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80  "
               onPress={handleReset}
             >
-              <RotateCcw color="#64748b" size={16} />
-              <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300">Anderes Foto wählen</Text>
+              <RotateCcw color="#A1A1AA" size={16} />
+              <Text className="text-sm font-semibold text-text-secondary">Anderes Foto wählen</Text>
             </Pressable>
           </View>
         )}
@@ -339,15 +339,15 @@ export default function AnalyzeFoodScreen() {
         {pickerError && <Text className="text-sm text-red-500">{pickerError}</Text>}
 
         {analyzing && (
-          <View className="items-center gap-3 rounded-[28px] border border-slate-200/60 bg-white/70 p-6 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
-            <ActivityIndicator color="#10b981" size="large" />
-            <Text className="text-sm text-slate-500 dark:text-slate-400">Mahlzeit wird analysiert...</Text>
+          <View className="items-center gap-3 rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl shadow-black/20 backdrop-blur-xl  ">
+            <ActivityIndicator color="#6366F1" size="large" />
+            <Text className="text-sm text-text-secondary">Mahlzeit wird analysiert...</Text>
           </View>
         )}
 
         {analysisSource && !analyzing && (
           <>
-            <View className="gap-3 rounded-[28px] border border-white/20 bg-emerald-500/90 p-4 shadow-2xl shadow-emerald-500/30 backdrop-blur-xl">
+            <View className="gap-3 rounded-[28px] border border-white/20 bg-primary/90 p-4 shadow-2xl shadow-primary/30 backdrop-blur-xl">
               <View className="flex-row items-center gap-3">
                 <View className="h-9 w-9 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
                   <Sparkles color="#ffffff" size={16} />
@@ -366,16 +366,16 @@ export default function AnalyzeFoodScreen() {
             {notice && (
               <View className="flex-row items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3">
                 <AlertTriangle color="#d97706" size={16} />
-                <Text className="flex-1 text-xs text-amber-700 dark:text-amber-400">{notice}</Text>
+                <Text className="flex-1 text-xs text-amber-400">{notice}</Text>
               </View>
             )}
 
             {items.length === 0 && (
               <Card className="items-center gap-3">
-                <Text className="text-center text-sm text-slate-500 dark:text-slate-400">
+                <Text className="text-center text-sm text-text-secondary">
                   Es wurde kein Lebensmittel erkannt.
                 </Text>
-                <Button label="Manuell hinzufügen" variant="secondary" icon={<Plus color="#10b981" size={16} />} onPress={addManualItem} />
+                <Button label="Manuell hinzufügen" variant="secondary" icon={<Plus color="#6366F1" size={16} />} onPress={addManualItem} />
               </Card>
             )}
 
@@ -392,21 +392,21 @@ export default function AnalyzeFoodScreen() {
                         placeholder="Name"
                       />
                       {item.cookingMethod && (
-                        <Text className="pt-1 text-xs text-slate-400">Zubereitung: {item.cookingMethod}</Text>
+                        <Text className="pt-1 text-xs text-text-secondary">Zubereitung: {item.cookingMethod}</Text>
                       )}
                     </View>
                     <Pressable
-                      className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-slate-100/60 active:opacity-80 dark:bg-white/5"
+                      className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80 "
                       onPress={() => removeItem(item.id)}
                     >
-                      <X color="#64748b" size={14} />
+                      <X color="#A1A1AA" size={14} />
                     </Pressable>
                   </View>
 
                   {item.needsVerification && (
                     <View className="flex-row items-center gap-1.5 self-start rounded-full bg-amber-500/10 px-2.5 py-1">
                       <AlertTriangle color="#d97706" size={12} />
-                      <Text className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                      <Text className="text-[11px] font-medium text-amber-400">
                         Unsicher ({Math.round(item.confidence * 100)}% Konfidenz) – bitte prüfen
                       </Text>
                     </View>
@@ -414,25 +414,25 @@ export default function AnalyzeFoodScreen() {
 
                   <View className="flex-row items-start gap-2">
                     <Pressable
-                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-slate-100/70 active:opacity-80 dark:bg-white/5"
+                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-white/5 active:opacity-80 "
                       onPress={() => updateItem(item.id, { grams: String(Math.max(0, parseNumber(item.grams, 0) - GRAM_STEP)) })}
                       accessibilityLabel="Menge verringern"
                     >
-                      <Minus color="#64748b" size={16} />
+                      <Minus color="#A1A1AA" size={16} />
                     </Pressable>
                     <View className="flex-1">
                       <TextField label="Menge" keyboardType="decimal-pad" value={item.grams} onChangeText={(text) => updateItem(item.id, { grams: text })} suffix="g" />
                     </View>
                     <Pressable
-                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-slate-100/70 active:opacity-80 dark:bg-white/5"
+                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-white/5 active:opacity-80 "
                       onPress={() => updateItem(item.id, { grams: String(parseNumber(item.grams, 0) + GRAM_STEP) })}
                       accessibilityLabel="Menge erhöhen"
                     >
-                      <Plus color="#64748b" size={16} />
+                      <Plus color="#A1A1AA" size={16} />
                     </Pressable>
                   </View>
 
-                  <Text className="pt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <Text className="pt-1 text-xs font-medium text-text-secondary">
                     Nährwerte pro 100g (bearbeitbar)
                   </Text>
                   <View className="flex-row gap-3">
@@ -452,7 +452,7 @@ export default function AnalyzeFoodScreen() {
                     </View>
                   </View>
 
-                  <Text className="text-right text-xs text-slate-400">
+                  <Text className="text-right text-xs text-text-secondary">
                     {Math.round(totals.kcal)} kcal für {Math.round(totals.grams)}g
                   </Text>
                 </Card>
@@ -461,11 +461,11 @@ export default function AnalyzeFoodScreen() {
 
             {items.length > 0 && (
               <Pressable
-                className="flex-row items-center justify-center gap-2 rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 shadow-md shadow-slate-900/5 backdrop-blur-xl active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+                className="flex-row items-center justify-center gap-2 rounded-2xl border border-surface-border bg-surface px-4 py-3 shadow-md shadow-black/20 backdrop-blur-xl active:opacity-80  "
                 onPress={addManualItem}
               >
-                <Plus color="#10b981" size={16} />
-                <Text className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                <Plus color="#6366F1" size={16} />
+                <Text className="text-sm font-semibold text-primary">
                   Weiteres Lebensmittel hinzufügen
                 </Text>
               </Pressable>
@@ -473,29 +473,29 @@ export default function AnalyzeFoodScreen() {
 
             {items.length > 0 && (
               <Card className="gap-2">
-                <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Gesamt</Text>
+                <Text className="text-sm font-semibold text-text-secondary">Gesamt</Text>
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-slate-600 dark:text-slate-300">Kalorien</Text>
-                  <Text className="text-base font-bold text-slate-900 dark:text-white">
+                  <Text className="text-sm text-text-secondary">Kalorien</Text>
+                  <Text className="text-base font-bold text-white">
                     {Math.round(grandTotal.kcal)} kcal
                   </Text>
                 </View>
                 {visibleNutrients.carbs && (
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-slate-600 dark:text-slate-300">Kohlenhydrate</Text>
-                    <Text className="text-sm text-slate-900 dark:text-white">{Math.round(grandTotal.carbs)} g</Text>
+                    <Text className="text-sm text-text-secondary">Kohlenhydrate</Text>
+                    <Text className="text-sm text-white">{Math.round(grandTotal.carbs)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.protein && (
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-slate-600 dark:text-slate-300">Eiweiß</Text>
-                    <Text className="text-sm text-slate-900 dark:text-white">{Math.round(grandTotal.protein)} g</Text>
+                    <Text className="text-sm text-text-secondary">Eiweiß</Text>
+                    <Text className="text-sm text-white">{Math.round(grandTotal.protein)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.fat && (
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-slate-600 dark:text-slate-300">Fett</Text>
-                    <Text className="text-sm text-slate-900 dark:text-white">{Math.round(grandTotal.fat)} g</Text>
+                    <Text className="text-sm text-text-secondary">Fett</Text>
+                    <Text className="text-sm text-white">{Math.round(grandTotal.fat)} g</Text>
                   </View>
                 )}
               </Card>

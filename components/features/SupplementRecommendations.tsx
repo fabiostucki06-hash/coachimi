@@ -26,23 +26,23 @@ export function SupplementRecommendations() {
   return (
     <Card className="gap-4">
       <View className="flex-row items-center gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100/70 dark:bg-white/5">
-          <Pill color="#64748b" size={18} />
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
+          <Pill color="#A1A1AA" size={18} />
         </View>
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Supplement-Empfehlungen</Text>
+        <Text className="text-sm font-semibold text-text-secondary">Supplement-Empfehlungen</Text>
       </View>
 
       {recommendations.map((recommendation) => (
-        <View key={recommendation.id} className="gap-1 rounded-2xl border border-slate-200/60 bg-white/70 p-3 dark:border-slate-800/60 dark:bg-slate-900/60">
+        <View key={recommendation.id} className="gap-1 rounded-2xl border border-surface-border bg-surface p-3  ">
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm font-semibold text-slate-900 dark:text-white">{recommendation.title}</Text>
-            <Text className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{recommendation.dose}</Text>
+            <Text className="text-sm font-semibold text-white">{recommendation.title}</Text>
+            <Text className="text-xs font-medium text-primary">{recommendation.dose}</Text>
           </View>
-          <Text className="text-xs text-slate-500 dark:text-slate-400">{recommendation.reason}</Text>
+          <Text className="text-xs text-text-secondary">{recommendation.reason}</Text>
         </View>
       ))}
 
-      <Text className="text-[11px] text-slate-400">
+      <Text className="text-[11px] text-text-secondary">
         Keine medizinische Beratung - bei Vorerkrankungen oder Medikamenteneinnahme ärztlich abklären.
       </Text>
     </Card>

@@ -12,9 +12,9 @@ const CHECK_DEBOUNCE_MS = 400;
 type Status = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
 
 const STATUS_COLOR: Record<Status, string> = {
-  idle: 'text-slate-400',
-  checking: 'text-slate-400',
-  available: 'text-emerald-500',
+  idle: 'text-text-secondary',
+  checking: 'text-text-secondary',
+  available: 'text-primary',
   taken: 'text-red-500',
   invalid: 'text-red-500',
 };

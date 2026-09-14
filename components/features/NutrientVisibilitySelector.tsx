@@ -30,16 +30,16 @@ export function NutrientVisibilitySelector({ visibleNutrients, onToggle }: Nutri
   return (
     <View className="gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Sichtbare Nährstoffe</Text>
-        <Text className="text-xs text-slate-400">{visibleCount} ausgewählt</Text>
+        <Text className="text-sm font-semibold text-text-secondary">Sichtbare Nährstoffe</Text>
+        <Text className="text-xs text-text-secondary">{visibleCount} ausgewählt</Text>
       </View>
 
-      <View className="flex-row items-center gap-2 rounded-2xl border border-slate-200/60 bg-slate-100/70 px-4 py-2.5 transition-shadow duration-200 ease-in-out dark:border-slate-800/60 dark:bg-white/5">
-        <Search color="#94a3b8" size={16} />
+      <View className="flex-row items-center gap-2 rounded-2xl border border-surface-border bg-white/5 px-4 py-2.5 transition-shadow duration-200 ease-in-out  ">
+        <Search color="#A1A1AA" size={16} />
         <TextInput
-          className="flex-1 text-sm text-slate-900 dark:text-white"
+          className="flex-1 text-sm text-white"
           placeholder="Nährstoff suchen..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor="#A1A1AA"
           value={query}
           onChangeText={setQuery}
           autoCapitalize="none"
@@ -50,19 +50,19 @@ export function NutrientVisibilitySelector({ visibleNutrients, onToggle }: Nutri
             onPress={() => setQuery('')}
             accessibilityRole="button"
             accessibilityLabel="Suche leeren"
-            className="h-5 w-5 items-center justify-center rounded-full bg-slate-200/80 transition-colors duration-150 ease-in-out active:opacity-70 dark:bg-white/10"
+            className="h-5 w-5 items-center justify-center rounded-full bg-white/10 transition-colors duration-150 ease-in-out active:opacity-70"
           >
-            <X color="#64748b" size={11} />
+            <X color="#A1A1AA" size={11} />
           </Pressable>
         )}
       </View>
 
       {groups.length === 0 ? (
-        <Text className="py-4 text-center text-sm text-slate-400">Kein Nährstoff gefunden.</Text>
+        <Text className="py-4 text-center text-sm text-text-secondary">Kein Nährstoff gefunden.</Text>
       ) : (
         groups.map(({ category, keys }) => (
           <View key={category} className="gap-1">
-            <Text className="pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <Text className="pt-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
               {NUTRIENT_CATEGORY_LABELS[category]}
             </Text>
             {keys.map((key, index) => {
@@ -71,17 +71,17 @@ export function NutrientVisibilitySelector({ visibleNutrients, onToggle }: Nutri
                 <View
                   key={key}
                   className={`flex-row items-center justify-between py-3 ${
-                    index > 0 ? 'border-t border-slate-200/50 dark:border-slate-800/60' : ''
+                    index > 0 ? 'border-t border-surface-border ' : ''
                   }`}
                 >
                   <View className="flex-1 flex-row items-center gap-3 pr-3">
                     <Icon color={color} size={18} />
-                    <Text className="flex-1 text-sm text-slate-700 dark:text-slate-200">{label}</Text>
+                    <Text className="flex-1 text-sm text-white">{label}</Text>
                   </View>
                   <Switch
                     value={visibleNutrients[key] ?? false}
                     onValueChange={() => onToggle(key)}
-                    trackColor={{ false: '#cbd5e1', true: '#10b981' }}
+                    trackColor={{ false: '#52525B', true: '#6366F1' }}
                     thumbColor="#ffffff"
                   />
                 </View>

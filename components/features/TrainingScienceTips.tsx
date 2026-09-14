@@ -54,22 +54,22 @@ export function TrainingScienceTips() {
         accessibilityLabel={expanded ? 'Studien-Insights einklappen' : 'Studien-Insights ausklappen'}
       >
         <View className="flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100/70 dark:bg-white/5">
-            <BookOpen color="#64748b" size={18} />
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
+            <BookOpen color="#A1A1AA" size={18} />
           </View>
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Studien-Insights</Text>
+          <Text className="text-sm font-semibold text-text-secondary">Studien-Insights</Text>
         </View>
-        <ChevronDown color="#64748b" size={18} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
+        <ChevronDown color="#A1A1AA" size={18} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
       </Pressable>
 
       {expanded && (
         <View className="gap-3 pt-3">
           {TIPS.map((tip) => (
-            <View key={tip.id} className="flex-row items-start gap-2.5 rounded-xl bg-slate-100/70 p-2.5 dark:bg-white/5">
-              <tip.Icon color="#64748b" size={14} />
+            <View key={tip.id} className="flex-row items-start gap-2.5 rounded-xl bg-white/5 p-2.5 ">
+              <tip.Icon color="#A1A1AA" size={14} />
               <View className="flex-1 gap-0.5">
-                <Text className="text-xs font-semibold text-slate-700 dark:text-slate-200">{tip.title}</Text>
-                <Text className="text-[11px] leading-4 text-slate-500 dark:text-slate-400">{tip.insight}</Text>
+                <Text className="text-xs font-semibold text-white">{tip.title}</Text>
+                <Text className="text-[11px] leading-4 text-text-secondary">{tip.insight}</Text>
               </View>
             </View>
           ))}

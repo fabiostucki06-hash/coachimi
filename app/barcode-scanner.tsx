@@ -82,7 +82,7 @@ export default function BarcodeScannerScreen() {
               accessibilityRole="button"
               accessibilityLabel="Taschenlampe umschalten"
             >
-              {torchOn ? <Zap color="#10b981" size={18} /> : <ZapOff color="#ffffff" size={18} />}
+              {torchOn ? <Zap color="#6366F1" size={18} /> : <ZapOff color="#ffffff" size={18} />}
             </Pressable>
           )}
           <Pressable
@@ -96,7 +96,7 @@ export default function BarcodeScannerScreen() {
 
       <View className="flex-1 items-center justify-center px-6">
         {!permission ? (
-          <ActivityIndicator color="#10b981" />
+          <ActivityIndicator color="#6366F1" />
         ) : !permission.granted ? (
           <View className="items-center gap-4">
             <Text className="text-center text-sm text-white/80">
@@ -118,7 +118,7 @@ export default function BarcodeScannerScreen() {
               {/* Visual scan-region guide - native barcode detection reads the full frame, but framing the
                   code inside this rectangle gives the fastest, most reliable focus/detection in practice. */}
               <View className="flex-1 items-center justify-center">
-                <View className="h-[160px] w-[280px] rounded-2xl border-2 border-emerald-400/90" />
+                <View className="h-[160px] w-[280px] rounded-2xl border-2 border-primary/90" />
               </View>
             </CameraView>
           </View>
@@ -126,7 +126,7 @@ export default function BarcodeScannerScreen() {
 
         {loading && (
           <View className="absolute inset-0 items-center justify-center bg-black/50 backdrop-blur-md">
-            <ActivityIndicator color="#10b981" size="large" />
+            <ActivityIndicator color="#6366F1" size="large" />
           </View>
         )}
       </View>
@@ -141,7 +141,7 @@ export default function BarcodeScannerScreen() {
       {notFound && (
         <>
           <Pressable className="absolute inset-0 bg-black/60" onPress={handleRetry} />
-          <View className="gap-4 rounded-t-[28px] border-t border-white/10 bg-slate-900 px-6 pb-10 pt-6">
+          <View className="gap-4 rounded-t-[28px] border-t border-white/10 bg-surface px-6 pb-10 pt-6">
             <View className="items-center gap-1">
               <Text className="text-base font-semibold text-white">Produkt nicht gefunden</Text>
               <Text className="text-center text-sm text-white/60">

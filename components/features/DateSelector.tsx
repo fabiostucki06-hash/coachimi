@@ -6,7 +6,7 @@ import { todayKey } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
 import { addDays, buildMonthGrid, monthYearOf, WEEKDAY_LABELS } from '@/utils/calendarDates';
 
-const ACCENT = '#10b981';
+const ACCENT = '#6366F1';
 
 function formatDayLabel(dateKey: string): string {
   const today = todayKey();
@@ -65,14 +65,14 @@ export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
   });
 
   return (
-    <View className="gap-3 rounded-[28px] border border-white/40 bg-white/60 p-4 shadow-md shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60">
+    <View className="gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl">
       <View className="flex-row items-center justify-between">
         <Pressable
           accessibilityLabel="Vorheriger Tag"
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-slate-100/60 dark:active:bg-white/5"
+          className="h-10 w-10 items-center justify-center rounded-full active:bg-white/5"
           onPress={() => setSelectedDate(addDays(selectedDate, -1))}
         >
-          <ChevronLeft color="#64748b" size={20} />
+          <ChevronLeft color="#A1A1AA" size={20} />
         </Pressable>
 
         <Pressable
@@ -83,9 +83,9 @@ export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
           }}
         >
           <Calendar color={ACCENT} size={16} />
-          <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatDayLabel(selectedDate)}</Text>
+          <Text className="text-sm font-semibold text-white">{formatDayLabel(selectedDate)}</Text>
           {!isToday && (
-            <Text className="text-xs text-slate-400">
+            <Text className="text-xs text-text-secondary">
               {new Date(`${selectedDate}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </Text>
           )}
@@ -93,45 +93,45 @@ export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
 
         <Pressable
           accessibilityLabel="Nächster Tag"
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-slate-100/60 dark:active:bg-white/5"
+          className="h-10 w-10 items-center justify-center rounded-full active:bg-white/5"
           onPress={() => setSelectedDate(addDays(selectedDate, 1))}
         >
-          <ChevronRight color="#64748b" size={20} />
+          <ChevronRight color="#A1A1AA" size={20} />
         </Pressable>
       </View>
 
       {!isToday && (
         <Pressable
-          className="self-center rounded-full bg-emerald-500/10 px-4 py-1.5 active:bg-emerald-500/20"
+          className="self-center rounded-full bg-primary/10 px-4 py-1.5 active:bg-primary/20"
           onPress={goToToday}
         >
-          <Text className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Zu Heute springen</Text>
+          <Text className="text-xs font-semibold text-primary">Zu Heute springen</Text>
         </Pressable>
       )}
 
       {expanded && (
-        <View className="gap-3 border-t border-slate-200/50 pt-3 dark:border-slate-800/60">
+        <View className="gap-3 border-t border-surface-border pt-3 ">
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityLabel="Vorheriger Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-slate-100/60 dark:active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
               onPress={() => shiftMonth(-1)}
             >
-              <ChevronLeft color="#64748b" size={16} />
+              <ChevronLeft color="#A1A1AA" size={16} />
             </Pressable>
-            <Text className="text-xs font-semibold capitalize text-slate-600 dark:text-slate-300">{monthLabel}</Text>
+            <Text className="text-xs font-semibold capitalize text-text-secondary">{monthLabel}</Text>
             <Pressable
               accessibilityLabel="Nächster Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-slate-100/60 dark:active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
               onPress={() => shiftMonth(1)}
             >
-              <ChevronRight color="#64748b" size={16} />
+              <ChevronRight color="#A1A1AA" size={16} />
             </Pressable>
           </View>
 
           <View className="flex-row">
             {WEEKDAY_LABELS.map((label) => (
-              <Text key={label} className="flex-1 text-center text-[10px] font-medium text-slate-400">
+              <Text key={label} className="flex-1 text-center text-[10px] font-medium text-text-secondary">
                 {label}
               </Text>
             ))}
@@ -149,7 +149,7 @@ export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
                 >
                   <View
                     className={`h-8 w-8 items-center justify-center rounded-full ${
-                      isSelected ? 'bg-emerald-500' : isCellToday ? 'bg-emerald-500/10' : ''
+                      isSelected ? 'bg-primary' : isCellToday ? 'bg-primary/10' : ''
                     }`}
                   >
                     <Text
@@ -157,10 +157,10 @@ export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
                         isSelected
                           ? 'font-bold text-white'
                           : !cell.inMonth
-                            ? 'text-slate-300 dark:text-slate-700'
+                            ? 'text-white/20'
                             : isCellToday
-                              ? 'font-semibold text-emerald-600 dark:text-emerald-400'
-                              : 'text-slate-600 dark:text-slate-300'
+                              ? 'font-semibold text-primary'
+                              : 'text-text-secondary'
                       }`}
                     >
                       {cell.day}

@@ -13,7 +13,6 @@ import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/f
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useUiStore } from '@/store/uiStore';
@@ -27,7 +26,7 @@ import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 // stale while the screen stays mounted.
 const RELATIVE_TIME_REFRESH_MS = 60_000;
 
-const ACCENT = '#10b981';
+const ACCENT = '#6366F1';
 const RING_SIZE = 176;
 const RING_STROKE = 16;
 const EMPTY_ENTRIES: MealEntry[] = [];
@@ -42,17 +41,17 @@ function MacroBadge({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey; a
   const pct = goal > 0 ? Math.min(Math.round((amount / goal) * 100), 100) : 0;
 
   return (
-    <View className="flex-1 gap-2 rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-800/50">
+    <View className="flex-1 gap-2 rounded-2xl bg-white/5 p-3">
       <View className="flex-row items-center gap-1.5">
         <Icon color={color} size={14} />
-        <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</Text>
+        <Text className="text-xs font-medium text-text-secondary">{label}</Text>
       </View>
-      <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+      <Text className="text-sm font-semibold text-white">
         {Math.round(amount)}
         {unit}
-        <Text className="text-xs font-normal text-slate-400"> /{Math.round(goal)}{unit}</Text>
+        <Text className="text-xs font-normal text-text-secondary"> /{Math.round(goal)}{unit}</Text>
       </Text>
-      <View className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+      <View className="h-1.5 w-full rounded-full bg-white/10">
         <View className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </View>
     </View>
@@ -67,13 +66,13 @@ function NutrientTile({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey;
     <View className="basis-[30%] gap-2">
       <View className="flex-row items-center gap-1.5">
         <Icon color={color} size={14} />
-        <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</Text>
+        <Text className="text-xs font-medium text-text-secondary">{label}</Text>
       </View>
-      <Text className="text-sm font-semibold text-slate-900 dark:text-white">
+      <Text className="text-sm font-semibold text-white">
         {Math.round(amount)}
-        {unit} <Text className="text-xs font-normal text-slate-400">/ {Math.round(goal)}{unit}</Text>
+        {unit} <Text className="text-xs font-normal text-text-secondary">/ {Math.round(goal)}{unit}</Text>
       </Text>
-      <View className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+      <View className="h-1.5 w-full rounded-full bg-white/10">
         <View className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </View>
     </View>
@@ -87,39 +86,39 @@ function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntr
 
   return (
     <Pressable
-      className="flex-row items-center justify-between rounded-[28px] border border-slate-200/60 bg-white/70 p-4 shadow-xl shadow-slate-900/5 backdrop-blur-xl active:opacity-90 dark:border-slate-800/60 dark:bg-slate-900/60 dark:shadow-black/20"
+      className="flex-row items-center justify-between rounded-[28px] border border-surface-border bg-surface p-4 shadow-xl shadow-black/20 backdrop-blur-xl active:opacity-90"
       onPress={() => router.push({ pathname: '/meal-detail', params: { mealType } })}
       accessibilityRole="button"
       accessibilityLabel={`${label} Details öffnen`}
     >
       <View className="flex-1 flex-row items-center gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
           <Icon color={ACCENT} size={18} />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">{label}</Text>
-          <Text className="text-xs text-slate-400" numberOfLines={1}>
+          <Text className="text-sm font-semibold tracking-tight text-white">{label}</Text>
+          <Text className="text-xs text-text-secondary" numberOfLines={1}>
             {entries.length > 0 ? `${Math.round(kcal)} kcal · ${Math.round(protein)}g P` : 'Noch keine Einträge'}
           </Text>
         </View>
       </View>
       <View className="flex-row items-center gap-2">
         <Pressable
-          className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
+          className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 active:opacity-80 active:bg-primary/20"
           onPress={() => router.push({ pathname: '/meal-parser', params: { mealType } })}
           accessibilityLabel="Per KI erfassen"
         >
           <Sparkles color={ACCENT} size={16} />
         </Pressable>
         <Pressable
-          className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80 active:bg-emerald-500/20"
+          className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 active:opacity-80 active:bg-primary/20"
           onPress={() => router.push({ pathname: '/analyze-food', params: { mealType } })}
           accessibilityLabel="Per Foto erfassen"
         >
           <Camera color={ACCENT} size={16} />
         </Pressable>
         <Pressable
-          className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500 shadow-md shadow-emerald-500/30 active:opacity-90 active:bg-emerald-600"
+          className="h-8 w-8 items-center justify-center rounded-full bg-primary shadow-md shadow-primary/30 active:opacity-90 active:bg-[#4F46E5]"
           onPress={() => router.push({ pathname: '/add-food', params: { mealType } })}
           accessibilityLabel={`Zu ${label} hinzufügen`}
         >
@@ -186,13 +185,13 @@ export default function DiaryScreen() {
   }, [entries, user]);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
         <View className="flex-row items-start justify-between">
           <View>
-            <Text className="text-xs font-semibold uppercase tracking-wide text-emerald-500">Coach imi</Text>
-            <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Tagebuch</Text>
-            <Text className="text-sm text-slate-500 dark:text-slate-400">{selectedDateLabel}</Text>
+            <Text className="text-xs font-semibold uppercase tracking-wide text-primary">Coach imi</Text>
+            <Text className="text-3xl font-bold tracking-tight text-white">Tagebuch</Text>
+            <Text className="text-sm text-text-secondary">{selectedDateLabel}</Text>
             {session && (
               <Pressable
                 onPress={() => syncNow()}
@@ -202,17 +201,17 @@ export default function DiaryScreen() {
                 accessibilityLabel="Jetzt synchronisieren"
               >
                 {syncStatus === 'syncing' ? (
-                  <ActivityIndicator size="small" color="#10b981" />
+                  <ActivityIndicator size="small" color="#6366F1" />
                 ) : (
-                  <RefreshCw color="#94a3b8" size={11} />
+                  <RefreshCw color="#A1A1AA" size={11} />
                 )}
-                <Text className="text-xs text-slate-400">
+                <Text className="text-xs text-text-secondary">
                   Zuletzt synchronisiert: {syncedAt ? formatSyncTime(syncedAt) : '–'}
                 </Text>
               </Pressable>
             )}
             {lastUpdatedAt && (
-              <Text className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              <Text className="mt-1 text-xs text-text-secondary">
                 Zuletzt aktualisiert: {formatUpdatedAt(lastUpdatedAt)}
               </Text>
             )}
@@ -220,7 +219,6 @@ export default function DiaryScreen() {
           <View className="flex-row items-center gap-2">
             <GoldBarBadge />
             <HardRefreshButton />
-            <ThemeToggle />
           </View>
         </View>
 
@@ -228,26 +226,26 @@ export default function DiaryScreen() {
 
         <View className="gap-6 lg:flex-row lg:items-start">
           <View className="gap-6 lg:w-[380px] lg:shrink-0">
-            <View className="items-center gap-5 rounded-[28px] border border-slate-200/60 bg-white/70 p-6 shadow-2xl shadow-emerald-500/10 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
+            <View className="items-center gap-5 rounded-[28px] border border-surface-border bg-surface p-6 shadow-2xl shadow-primary/10 backdrop-blur-xl">
               <View className="items-center gap-1">
                 <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={ACCENT}>
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400">Verbleibend</Text>
-                  <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{remainingCalories}</Text>
-                  <Text className="text-xs text-slate-400">von {user.dailyCalorieGoal} kcal</Text>
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Verbleibend</Text>
+                  <Text className="text-3xl font-bold tracking-tight text-white">{remainingCalories}</Text>
+                  <Text className="text-xs text-text-secondary">von {user.dailyCalorieGoal} kcal</Text>
                 </ProgressRing>
-                <Text className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                <Text className="text-base font-semibold text-primary">
                   {Math.round(totalCalories)} kcal gegessen
                 </Text>
               </View>
 
-              <View className="w-full flex-row gap-3 border-t border-slate-200/50 pt-5 dark:border-slate-800/60">
+              <View className="w-full flex-row gap-3 border-t border-surface-border pt-5">
                 {CORE_MACROS.map((key) => (
                   <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                 ))}
               </View>
 
               {secondaryNutrients.length > 0 && (
-                <View className="w-full flex-row flex-wrap gap-x-4 gap-y-4 border-t border-slate-200/50 pt-4 dark:border-slate-800/60">
+                <View className="w-full flex-row flex-wrap gap-x-4 gap-y-4 border-t border-surface-border pt-4">
                   {secondaryNutrients.map((key) => (
                     <NutrientTile key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                   ))}
@@ -256,7 +254,7 @@ export default function DiaryScreen() {
             </View>
 
             <View className="gap-3 rounded-[28px]">
-              <Text className="px-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Für dich</Text>
+              <Text className="px-1 text-sm font-semibold text-text-secondary">Für dich</Text>
               <AiRecommendationCard
                 remainingCalories={remainingCalories}
                 remainingMacros={remainingMacros}
@@ -266,7 +264,7 @@ export default function DiaryScreen() {
           </View>
 
           <View className="flex-1 gap-3">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Mahlzeiten</Text>
+            <Text className="text-sm font-semibold text-text-secondary">Mahlzeiten</Text>
             <View className="gap-4">
               {MEAL_TYPES.map((mealType) => (
                 <MealCard key={mealType} mealType={mealType} entries={entriesByMealType[mealType]} />
@@ -277,7 +275,7 @@ export default function DiaryScreen() {
 
         <DeficitAnalyzerCard />
 
-        <Text className="mb-6 self-start rounded-md bg-slate-50/90 px-1.5 py-0.5 text-[10px] text-slate-400 dark:bg-background-dark/90">
+        <Text className="mb-6 self-start rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] text-text-secondary">
           App-Build: {getLastUpdatedLabel()} Uhr
         </Text>
       </ScrollView>

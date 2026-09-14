@@ -11,17 +11,17 @@ export function TextField({ label, suffix, className = '', onFocus, onBlur, ...i
 
   return (
     <View className="gap-1.5">
-      {label && <Text className="text-xs font-medium tracking-tight text-slate-500 dark:text-slate-400">{label}</Text>}
+      {label && <Text className="text-xs font-medium tracking-tight text-text-secondary">{label}</Text>}
       <View
-        className={`flex-row items-center gap-2 rounded-2xl border bg-[#EDF2F7] px-5 py-3.5 transition-shadow duration-200 ease-in-out dark:bg-white/5 ${
+        className={`flex-row items-center gap-2 rounded-2xl border bg-white/5 px-5 py-3.5 transition-shadow duration-200 ease-in-out ${
           isFocused
-            ? 'border-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] dark:border-emerald-400/70'
-            : 'border-slate-200/70 shadow-none dark:border-slate-800/60'
+            ? 'border-primary shadow-[0_0_0_4px_rgba(99,102,241,0.15)]'
+            : 'border-surface-border shadow-none'
         }`}
       >
         <TextInput
-          className={`flex-1 text-base text-slate-900 dark:text-white ${className}`}
-          placeholderTextColor="#94a3b8"
+          className={`flex-1 text-base text-white ${className}`}
+          placeholderTextColor="#A1A1AA"
           onFocus={(event) => {
             setIsFocused(true);
             onFocus?.(event);
@@ -32,7 +32,7 @@ export function TextField({ label, suffix, className = '', onFocus, onBlur, ...i
           }}
           {...inputProps}
         />
-        {suffix && <Text className="text-sm text-slate-400">{suffix}</Text>}
+        {suffix && <Text className="text-sm text-text-secondary">{suffix}</Text>}
       </View>
     </View>
   );

@@ -26,24 +26,24 @@ export function FriendActivityCard({ profile, activity }: { profile: FriendProfi
 
   return (
     <Card className="flex-row items-center gap-3">
-      <View className="h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10">
-        <Text className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{initialsOf(profile)}</Text>
+      <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+        <Text className="text-sm font-bold text-primary">{initialsOf(profile)}</Text>
       </View>
       <View className="flex-1 gap-1">
-        <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400">{formatFriendLabel(profile)}</Text>
-        <Text className="text-sm text-slate-700 dark:text-slate-200">{sentence}</Text>
+        <Text className="text-xs font-semibold text-text-secondary">{formatFriendLabel(profile)}</Text>
+        <Text className="text-sm text-white">{sentence}</Text>
         {activity && (activity.calorieGoal > 0 || activity.proteinGoalG > 0) ? (
           <View className="flex-row items-center gap-3">
-            <Text className="text-xs text-slate-400">
+            <Text className="text-xs text-text-secondary">
               {activity.calories}/{activity.calorieGoal} kcal
             </Text>
-            <Text className="text-xs text-slate-400">
+            <Text className="text-xs text-text-secondary">
               {activity.proteinG}/{activity.proteinGoalG}g Protein
             </Text>
           </View>
         ) : null}
       </View>
-      {workoutNames.length > 0 ? <Dumbbell color="#10b981" size={18} /> : null}
+      {workoutNames.length > 0 ? <Dumbbell color="#6366F1" size={18} /> : null}
     </Card>
   );
 }

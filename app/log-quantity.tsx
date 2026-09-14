@@ -96,27 +96,27 @@ export default function LogQuantityScreen() {
 
   if (!foodItem) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-50 dark:bg-background-dark">
-        <Text className="text-sm text-slate-400">Kein Lebensmittel ausgewählt.</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+        <Text className="text-sm text-text-secondary">Kein Lebensmittel ausgewählt.</Text>
         <Button label="Schließen" variant="secondary" onPress={handleClose} className="mt-4" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View className="flex-1 pr-3">
-          <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white" numberOfLines={1}>
+          <Text className="text-lg font-bold tracking-tight text-white" numberOfLines={1}>
             {foodItem.name}
           </Text>
-          <Text className="text-xs text-slate-400">{MEAL_LABELS[mealType]}</Text>
+          <Text className="text-xs text-text-secondary">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
-          <X color="#64748b" size={18} />
+          <X color="#A1A1AA" size={18} />
         </Pressable>
       </View>
 
@@ -142,39 +142,39 @@ export default function LogQuantityScreen() {
         )}
 
         <Card className="gap-3">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Nährwerte</Text>
+          <Text className="text-sm font-semibold text-text-secondary">Nährwerte</Text>
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm text-slate-600 dark:text-slate-300">Kalorien</Text>
-            <Text className="text-base font-bold text-slate-900 dark:text-white">
+            <Text className="text-sm text-text-secondary">Kalorien</Text>
+            <Text className="text-base font-bold text-white">
               {(scaled?.calories ?? 0).toFixed(1)} kcal
             </Text>
           </View>
           {visibleNutrients.carbs && (
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-slate-600 dark:text-slate-300">Kohlenhydrate</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{(scaled?.macros.carbs ?? 0).toFixed(1)} g</Text>
+              <Text className="text-sm text-text-secondary">Kohlenhydrate</Text>
+              <Text className="text-sm text-white">{(scaled?.macros.carbs ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleNutrients.protein && (
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-slate-600 dark:text-slate-300">Eiweiß</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{(scaled?.macros.protein ?? 0).toFixed(1)} g</Text>
+              <Text className="text-sm text-text-secondary">Eiweiß</Text>
+              <Text className="text-sm text-white">{(scaled?.macros.protein ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleNutrients.fat && (
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-slate-600 dark:text-slate-300">Fett</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{(scaled?.macros.fat ?? 0).toFixed(1)} g</Text>
+              <Text className="text-sm text-text-secondary">Fett</Text>
+              <Text className="text-sm text-white">{(scaled?.macros.fat ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleMicronutrientKeys.length > 0 && scaled && (
-            <View className="gap-3 border-t border-slate-200/60 pt-3 dark:border-slate-800/60">
+            <View className="gap-3 border-t border-surface-border pt-3 ">
               {visibleMicronutrientKeys.map((key) => {
                 const meta = NUTRIENT_META[key];
                 return (
                   <View key={key} className="flex-row items-center justify-between">
-                    <Text className="text-sm text-slate-600 dark:text-slate-300">{meta.label}</Text>
-                    <Text className="text-sm text-slate-900 dark:text-white">
+                    <Text className="text-sm text-text-secondary">{meta.label}</Text>
+                    <Text className="text-sm text-white">
                       {scaled.micronutrients[key].toFixed(1)} {meta.unit}
                     </Text>
                   </View>

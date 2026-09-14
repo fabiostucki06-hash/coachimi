@@ -22,13 +22,13 @@ export function PortionUnitPicker({ foodName, selectedId, onSelect }: PortionUni
             key={unit.id}
             className={`rounded-full border px-3.5 py-2 active:opacity-70 ${
               active
-                ? 'border-emerald-500 bg-emerald-500'
-                : 'border-slate-200/70 bg-white/70 dark:border-slate-800/60 dark:bg-slate-900/60'
+                ? 'border-primary bg-primary'
+                : 'border-surface-border bg-surface'
             }`}
             onPress={() => onSelect(unit)}
           >
-            <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>
-              {unit.label} <Text className={active ? 'text-emerald-100' : 'text-slate-400'}>~{unit.grams}g</Text>
+            <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-text-secondary'}`}>
+              {unit.label} <Text className={active ? 'text-white/70' : 'text-text-secondary'}>~{unit.grams}g</Text>
             </Text>
           </Pressable>
         );

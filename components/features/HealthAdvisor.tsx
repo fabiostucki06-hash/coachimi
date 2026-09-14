@@ -18,16 +18,16 @@ export function HealthAdvisor() {
   return (
     <Card className="gap-4">
       <View className="flex-row items-center gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100/70 dark:bg-white/5">
-          <HeartPulse color="#64748b" size={18} />
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
+          <HeartPulse color="#A1A1AA" size={18} />
         </View>
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dein KI-Gesundheitscoach</Text>
+        <Text className="text-sm font-semibold text-text-secondary">Dein KI-Gesundheitscoach</Text>
       </View>
 
       <TextInput
-        className="min-h-[70px] rounded-2xl border border-slate-200/70 bg-[#EDF2F7] px-4 py-3 text-sm text-slate-900 dark:border-slate-800/60 dark:bg-white/5 dark:text-white"
+        className="min-h-[70px] rounded-2xl border border-surface-border bg-white/5 px-4 py-3 text-sm text-white"
         placeholder="z. B. 'Wie reduziere ich Muskelkater?' oder 'Tipps für mehr Energie am Morgen'"
-        placeholderTextColor="#94a3b8"
+        placeholderTextColor="#A1A1AA"
         value={text}
         onChangeText={(next) => {
           setText(next);
@@ -40,16 +40,16 @@ export function HealthAdvisor() {
       <Button label="Tipps anfordern" icon={<Sparkles color="#ffffff" size={16} />} onPress={handleAsk} disabled={!text.trim()} />
 
       {tips && (
-        <View className="gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+        <View className="gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-3">
           {tips.map((tip, index) => (
-            <Text key={tip.id} className="text-xs leading-5 text-emerald-700 dark:text-emerald-400">
+            <Text key={tip.id} className="text-xs leading-5 text-primary">
               {index + 1}. {tip.step}
             </Text>
           ))}
         </View>
       )}
 
-      <Text className="text-center text-[10px] text-slate-400 dark:text-slate-500">
+      <Text className="text-center text-[10px] text-text-secondary">
         Hinweis: Ersetzt keine medizinische Beratung.
       </Text>
     </Card>

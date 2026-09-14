@@ -168,34 +168,34 @@ export default function MealParserScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View>
-          <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Essen beschreiben</Text>
-          <Text className="text-xs text-slate-400">{MEAL_LABELS[mealType]}</Text>
+          <Text className="text-lg font-bold tracking-tight text-white">Essen beschreiben</Text>
+          <Text className="text-xs text-text-secondary">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
-          <X color="#64748b" size={18} />
+          <X color="#A1A1AA" size={18} />
         </Pressable>
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 pt-4 pb-12">
-        <View className="gap-3 rounded-[28px] border border-dashed border-slate-300/70 bg-white/40 p-5 dark:border-slate-700/70 dark:bg-white/5">
+        <View className="gap-3 rounded-[28px] border border-dashed border-surface-border bg-white/5 p-5">
           <View className="flex-row items-center gap-2">
-            <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-              <Sparkles color="#10b981" size={16} />
+            <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+              <Sparkles color="#6366F1" size={16} />
             </View>
-            <Text className="flex-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+            <Text className="flex-1 text-sm font-semibold text-text-secondary">
               Beschreibe dein Essen
             </Text>
           </View>
           <TextInput
-            className="min-h-[90px] rounded-2xl border border-slate-200/70 bg-[#EDF2F7] px-4 py-3 text-base text-slate-900 dark:border-slate-800/60 dark:bg-white/5 dark:text-white"
+            className="min-h-[90px] rounded-2xl border border-surface-border bg-white/5 px-4 py-3 text-base text-white"
             placeholder={EXAMPLE_PLACEHOLDER}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#A1A1AA"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -212,7 +212,7 @@ export default function MealParserScreen() {
         </View>
 
         {hasAnalyzed && !analyzing && items.length === 0 && (
-          <Text className="text-center text-sm text-slate-400">Keine Lebensmittel erkannt. Bitte anders formulieren.</Text>
+          <Text className="text-center text-sm text-text-secondary">Keine Lebensmittel erkannt. Bitte anders formulieren.</Text>
         )}
 
         {items.map((item) => {
@@ -224,23 +224,23 @@ export default function MealParserScreen() {
                   <TextField label="Lebensmittel" value={item.name} onChangeText={(text) => updateItem(item.id, { name: text })} placeholder="Name" />
                 </View>
                 <Pressable
-                  className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-slate-100/60 active:opacity-80 dark:bg-white/5"
+                  className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80 "
                   onPress={() => removeItem(item.id)}
                 >
-                  <X color="#64748b" size={14} />
+                  <X color="#A1A1AA" size={14} />
                 </Pressable>
               </View>
 
               {item.resolving && (
                 <View className="flex-row items-center gap-2">
-                  <ActivityIndicator size="small" color="#10b981" />
-                  <Text className="text-xs text-slate-400">Wird bei Open Food Facts gesucht...</Text>
+                  <ActivityIndicator size="small" color="#6366F1" />
+                  <Text className="text-xs text-text-secondary">Wird bei Open Food Facts gesucht...</Text>
                 </View>
               )}
               {!item.resolving && !item.matchedSource && (
                 <View className="flex-row items-center gap-1.5 self-start rounded-full bg-amber-500/10 px-2.5 py-1">
                   <AlertTriangle color="#d97706" size={12} />
-                  <Text className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                  <Text className="text-[11px] font-medium text-amber-400">
                     Kein Treffer gefunden – bitte Nährwerte prüfen
                   </Text>
                 </View>
@@ -248,7 +248,7 @@ export default function MealParserScreen() {
 
               <TextField label="Menge" keyboardType="decimal-pad" value={item.grams} onChangeText={(text) => updateItem(item.id, { grams: text })} suffix="g" />
 
-              <Text className="pt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Nährwerte pro 100g (bearbeitbar)</Text>
+              <Text className="pt-1 text-xs font-medium text-text-secondary">Nährwerte pro 100g (bearbeitbar)</Text>
               <View className="flex-row gap-3">
                 <View className="flex-1">
                   <TextField label="Kcal" keyboardType="decimal-pad" value={item.kcalPer100g} onChangeText={(text) => updateItem(item.id, { kcalPer100g: text })} />
@@ -266,7 +266,7 @@ export default function MealParserScreen() {
                 </View>
               </View>
 
-              <Text className="text-right text-xs text-slate-400">
+              <Text className="text-right text-xs text-text-secondary">
                 {Math.round(totals?.kcal ?? 0)} kcal für {Math.round(totals?.grams ?? 0)}g
               </Text>
             </Card>
@@ -275,8 +275,8 @@ export default function MealParserScreen() {
 
         {items.length > 0 && (
           <Card className="flex-row items-center justify-between">
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Gesamt</Text>
-            <Text className="text-base font-bold text-slate-900 dark:text-white">{Math.round(grandTotalKcal)} kcal</Text>
+            <Text className="text-sm font-semibold text-text-secondary">Gesamt</Text>
+            <Text className="text-base font-bold text-white">{Math.round(grandTotalKcal)} kcal</Text>
           </Card>
         )}
 

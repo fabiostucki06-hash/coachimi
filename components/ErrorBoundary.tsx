@@ -31,14 +31,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     if (!this.state.error) return this.props.children;
 
     return (
-      <View className="flex-1 items-center justify-center gap-4 bg-slate-50 p-6 dark:bg-background-dark">
+      <View className="flex-1 items-center justify-center gap-4 bg-background p-6">
         <View className="h-14 w-14 items-center justify-center rounded-full bg-red-500/10">
           <AlertTriangle color="#ef4444" size={24} />
         </View>
-        <Text className="text-center text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+        <Text className="text-center text-lg font-bold tracking-tight text-white">
           Etwas ist schiefgelaufen
         </Text>
-        <Text className="text-center text-sm text-slate-500 dark:text-slate-400">
+        <Text className="text-center text-sm text-text-secondary">
           Diese Ansicht konnte nicht geladen werden. Du kannst es erneut versuchen.
         </Text>
         <Button label="Erneut versuchen" onPress={this.handleRetry} className="mt-2" />

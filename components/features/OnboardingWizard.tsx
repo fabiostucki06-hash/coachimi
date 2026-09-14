@@ -148,19 +148,19 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerClassName="flex-grow justify-center gap-8 px-6 py-8" keyboardShouldPersistTaps="handled">
           <View className="items-center gap-4">
-            <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-emerald-500 shadow-lg shadow-emerald-500/30">
+            <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-primary shadow-lg shadow-primary/30">
               <Sparkles color="#ffffff" size={32} />
             </View>
-            <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Coach imi</Text>
+            <Text className="text-lg font-bold tracking-tight text-white">Coach imi</Text>
             <View className="flex-row gap-2">
               {STEPS.map((s, index) => (
                 <View
                   key={s}
-                  className={`h-1.5 w-8 rounded-full ${index <= stepIndex ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`}
+                  className={`h-1.5 w-8 rounded-full ${index <= stepIndex ? 'bg-primary' : 'bg-white/10'}`}
                 />
               ))}
             </View>
@@ -168,8 +168,8 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
 
           <Card className="gap-4">
             <View className="items-center gap-1">
-              <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{STEP_TITLES[step].title}</Text>
-              <Text className="text-center text-sm text-slate-500 dark:text-slate-400">{STEP_TITLES[step].subtitle}</Text>
+              <Text className="text-2xl font-bold tracking-tight text-white">{STEP_TITLES[step].title}</Text>
+              <Text className="text-center text-sm text-text-secondary">{STEP_TITLES[step].subtitle}</Text>
             </View>
 
             {step === 'basics' && (
@@ -191,7 +191,7 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
                     <TextField label="Zielgewicht (optional)" keyboardType="decimal-pad" value={goalWeightKg} onChangeText={setGoalWeightKg} suffix="kg" />
                   </View>
                 </View>
-                <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">Geschlecht</Text>
+                <Text className="text-xs font-medium text-text-secondary">Geschlecht</Text>
                 <ChipGroup options={GENDER_OPTIONS} selected={gender} onSelect={setGender} />
               </>
             )}
@@ -220,9 +220,9 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
                   </>
                 )}
                 {preview && (
-                  <View className="gap-1 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3">
-                    <Text className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Dein voraussichtliches Tagesziel</Text>
-                    <Text className="text-sm text-slate-700 dark:text-slate-200">
+                  <View className="gap-1 rounded-2xl border border-primary/30 bg-primary/5 p-3">
+                    <Text className="text-xs font-semibold text-primary">Dein voraussichtliches Tagesziel</Text>
+                    <Text className="text-sm text-white">
                       {preview.calories} kcal · {preview.macros.protein}g Protein · {preview.macros.carbs}g Carbs · {preview.macros.fat}g Fett
                     </Text>
                   </View>
@@ -237,9 +237,9 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
             {stepIndex > 0 && (
               <Pressable
                 onPress={handleBack}
-                className="h-[54px] w-[54px] items-center justify-center rounded-2xl border border-slate-200/60 bg-white/70 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+                className="h-[54px] w-[54px] items-center justify-center rounded-2xl border border-surface-border bg-surface backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
               >
-                <ChevronLeft color="#64748b" size={20} />
+                <ChevronLeft color="#A1A1AA" size={20} />
               </Pressable>
             )}
             <Button

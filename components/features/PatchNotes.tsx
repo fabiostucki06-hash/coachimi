@@ -17,27 +17,27 @@ export function PatchNotes() {
         accessibilityLabel={expanded ? 'Patch Notes einklappen' : 'Patch Notes ausklappen'}
       >
         <View className="flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100/70 dark:bg-white/5">
-            <Sparkles color="#64748b" size={18} />
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5">
+            <Sparkles color="#A1A1AA" size={18} />
           </View>
           <View>
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Patch Notes</Text>
-            <Text className="text-xs text-slate-400">Version {RELEASE_NOTES[0]?.version}</Text>
+            <Text className="text-sm font-semibold text-text-secondary">Patch Notes</Text>
+            <Text className="text-xs text-text-secondary">Version {RELEASE_NOTES[0]?.version}</Text>
           </View>
         </View>
-        <ChevronDown color="#64748b" size={18} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
+        <ChevronDown color="#A1A1AA" size={18} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
       </Pressable>
 
       {expanded && (
         <View className="gap-4 pt-3">
           {RELEASE_NOTES.map((release) => (
-            <View key={release.version} className="gap-1.5 border-t border-slate-200/50 pt-3 dark:border-slate-800/60">
+            <View key={release.version} className="gap-1.5 border-t border-surface-border pt-3">
               <View className="flex-row items-center justify-between">
-                <Text className="text-sm font-semibold text-slate-900 dark:text-white">Version {release.version}</Text>
-                <Text className="text-xs text-slate-400">{release.date}</Text>
+                <Text className="text-sm font-semibold text-white">Version {release.version}</Text>
+                <Text className="text-xs text-text-secondary">{release.date}</Text>
               </View>
               {release.highlights.map((highlight) => (
-                <Text key={highlight} className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+                <Text key={highlight} className="text-xs leading-5 text-text-secondary">
                   • {highlight}
                 </Text>
               ))}

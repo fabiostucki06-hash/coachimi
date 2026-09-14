@@ -11,11 +11,11 @@ interface LineChartProps {
 
 const UNIT_PER_POINT = 50;
 
-export function LineChart({ points, firstLabel, lastLabel, color = '#10b981', height = 120 }: LineChartProps) {
+export function LineChart({ points, firstLabel, lastLabel, color = '#6366F1', height = 120 }: LineChartProps) {
   if (points.length === 0) {
     return (
       <View style={{ height }} className="items-center justify-center">
-        <Text className="text-sm text-slate-400">Noch keine Daten</Text>
+        <Text className="text-sm text-text-secondary">Noch keine Daten</Text>
       </View>
     );
   }
@@ -44,8 +44,8 @@ export function LineChart({ points, firstLabel, lastLabel, color = '#10b981', he
       </Svg>
       {(firstLabel || lastLabel) && (
         <View className="flex-row justify-between">
-          <Text className="text-xs text-slate-400">{firstLabel}</Text>
-          <Text className="text-xs text-slate-400">{lastLabel}</Text>
+          <Text className="text-xs text-text-secondary">{firstLabel}</Text>
+          <Text className="text-xs text-text-secondary">{lastLabel}</Text>
         </View>
       )}
     </View>

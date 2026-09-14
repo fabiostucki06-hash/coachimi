@@ -14,17 +14,16 @@ interface ButtonProps {
 }
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: 'bg-emerald-500 shadow-md shadow-emerald-500/20 active:bg-emerald-600',
-  secondary:
-    'border border-slate-200/60 bg-slate-100/70 backdrop-blur-md active:bg-slate-200/70 dark:border-slate-800/60 dark:bg-white/5 dark:active:bg-white/10',
-  ghost: 'bg-transparent active:bg-slate-100/60 dark:active:bg-white/5',
+  primary: 'bg-primary shadow-md shadow-primary/20 active:bg-[#4F46E5]',
+  secondary: 'border border-surface-border bg-white/5 backdrop-blur-md active:bg-white/10',
+  ghost: 'bg-transparent active:bg-white/5',
   danger: 'bg-red-500 shadow-md shadow-red-500/20 active:bg-red-600',
 };
 
 const VARIANT_TEXT_CLASSES: Record<Variant, string> = {
   primary: 'text-white',
-  secondary: 'text-slate-900 dark:text-white',
-  ghost: 'text-emerald-600 dark:text-emerald-400',
+  secondary: 'text-white',
+  ghost: 'text-primary',
   danger: 'text-white',
 };
 
@@ -46,7 +45,7 @@ export function Button({
       } ${className}`}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#ffffff' : '#10b981'} />
+        <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#ffffff' : '#6366F1'} />
       ) : (
         <>
           {icon}

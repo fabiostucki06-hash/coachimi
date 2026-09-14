@@ -10,7 +10,7 @@ import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibi
 import { PatchNotes } from '@/components/features/PatchNotes';
 import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
 import { UsernameEditor } from '@/components/features/UsernameEditor';
-import { ACTIVITY_OPTIONS, ChipGroup, GENDER_OPTIONS, GOAL_OPTIONS, THEME_OPTIONS } from '@/components/features/ProfileOptions';
+import { ACTIVITY_OPTIONS, ChipGroup, GENDER_OPTIONS, GOAL_OPTIONS } from '@/components/features/ProfileOptions';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
@@ -19,7 +19,6 @@ import { TextField } from '@/components/ui/TextField';
 import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
-import { useThemeStore } from '@/store/themeStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { WeightEntry } from '@/types';
@@ -45,19 +44,19 @@ function GoalInputRow({
 
   return (
     <View
-      className={`flex-row items-center justify-between rounded-2xl border bg-[#EDF2F7] px-5 py-3.5 transition-shadow duration-200 ease-in-out dark:bg-white/5 ${
+      className={`flex-row items-center justify-between rounded-2xl border bg-white/5 px-5 py-3.5 transition-shadow duration-200 ease-in-out ${
         isFocused
-          ? 'border-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] dark:border-emerald-400/70'
-          : 'border-slate-200/70 shadow-none dark:border-slate-800/60'
+          ? 'border-primary shadow-[0_0_0_4px_rgba(99,102,241,0.15)]'
+          : 'border-surface-border shadow-none'
       }`}
     >
       <View className="flex-row items-center gap-3">
         {icon}
-        <Text className="text-sm font-semibold text-slate-600 dark:text-slate-300">{label}</Text>
+        <Text className="text-sm font-semibold text-text-secondary">{label}</Text>
       </View>
       <View className="flex-row items-center gap-1.5">
         <TextInput
-          className="w-16 text-right text-sm font-semibold text-slate-900 dark:text-white"
+          className="w-16 text-right text-sm font-semibold text-white"
           keyboardType="decimal-pad"
           value={value}
           onChangeText={onChangeText}
@@ -100,7 +99,7 @@ function WeightHistoryRow({
 
   if (isEditing) {
     return (
-      <View className="gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3">
+      <View className="gap-3 rounded-2xl border border-primary/40 bg-primary/5 p-3">
         <DateField label="Datum" value={editDate} onChange={setEditDate} />
         <View className="flex-row items-end gap-2">
           <View className="flex-1">
@@ -108,15 +107,15 @@ function WeightHistoryRow({
           </View>
           <Pressable
             onPress={handleSave}
-            className="h-[50px] items-center justify-center rounded-2xl bg-emerald-500 px-4 active:bg-emerald-600"
+            className="h-[50px] items-center justify-center rounded-2xl bg-primary px-4 active:bg-[#4F46E5]"
           >
             <Text className="text-sm font-semibold text-white">Speichern</Text>
           </Pressable>
           <Pressable
             onPress={() => setIsEditing(false)}
-            className="h-[50px] w-[50px] items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/5"
+            className="h-[50px] w-[50px] items-center justify-center rounded-2xl bg-white/5"
           >
-            <X color="#64748b" size={18} />
+            <X color="#A1A1AA" size={18} />
           </Pressable>
         </View>
       </View>
@@ -124,18 +123,18 @@ function WeightHistoryRow({
   }
 
   return (
-    <View className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 dark:border-slate-800/60 dark:bg-slate-900/60">
+    <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3">
       <View>
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{entry.weightKg} kg</Text>
-        <Text className="text-xs text-slate-400">{formatDateShort(entry.date)}</Text>
+        <Text className="text-sm font-semibold text-white">{entry.weightKg} kg</Text>
+        <Text className="text-xs text-text-secondary">{formatDateShort(entry.date)}</Text>
       </View>
       <View className="flex-row items-center gap-2">
         <Pressable
           onPress={startEdit}
-          className="h-8 w-8 items-center justify-center rounded-full bg-slate-100/70 active:opacity-80 dark:bg-white/5"
+          className="h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80"
           accessibilityLabel="Eintrag bearbeiten"
         >
-          <Pencil color="#64748b" size={14} />
+          <Pencil color="#A1A1AA" size={14} />
         </Pressable>
         <Pressable
           onPress={onDelete}
@@ -161,8 +160,6 @@ export default function ProfilScreen() {
   const updateWeightEntry = useUserStore((state) => state.updateWeightEntry);
   const removeWeightEntry = useUserStore((state) => state.removeWeightEntry);
   const toggleNutrientVisibility = useUserStore((state) => state.toggleNutrientVisibility);
-  const themePreference = useThemeStore((state) => state.themePreference);
-  const setThemePreference = useThemeStore((state) => state.setThemePreference);
   const selectedDiaryDate = useUiStore((state) => state.selectedDate);
   const session = useSyncStore((state) => state.session);
   const signOut = useSyncStore((state) => state.signOut);
@@ -286,31 +283,31 @@ export default function ProfilScreen() {
   const sortedHistoryDesc = [...weightHistory].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12"
       >
-        <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Profil</Text>
+        <Text className="text-3xl font-bold tracking-tight text-white">Profil</Text>
 
-        <View className="items-center gap-3 rounded-[28px] border border-slate-200/70 bg-white py-6 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/30">
+        <View className="items-center gap-3 rounded-[28px] border border-surface-border bg-surface py-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
+          <View className="h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30">
             <Text className="text-2xl font-bold text-white">{initial || '?'}</Text>
           </View>
           <View className="items-center gap-1">
-            <Text className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{user.name || 'Ohne Namen'}</Text>
-            {friendProfile?.username && <Text className="text-sm font-medium text-emerald-500">@{friendProfile.username}</Text>}
+            <Text className="text-lg font-semibold tracking-tight text-white">{user.name || 'Ohne Namen'}</Text>
+            {friendProfile?.username && <Text className="text-sm font-medium text-primary">@{friendProfile.username}</Text>}
             {activeRank !== 'neuling' && (
               <View className="rounded-full bg-amber-400/15 px-2.5 py-0.5">
-                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">{activeRankName}</Text>
+                <Text className="text-xs font-bold text-amber-400">{activeRankName}</Text>
               </View>
             )}
-            <Text className="text-sm text-slate-500 dark:text-slate-400">{user.email || 'Keine E-Mail hinterlegt'}</Text>
+            <Text className="text-sm text-text-secondary">{user.email || 'Keine E-Mail hinterlegt'}</Text>
           </View>
         </View>
 
         <Card className="gap-4">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Konto</Text>
+          <Text className="text-sm font-semibold text-text-secondary">Konto</Text>
           <TextField label="Name" value={name} onChangeText={setName} autoCapitalize="words" placeholder="Max Mustermann" />
           <TextField
             label="E-Mail-Adresse"
@@ -328,22 +325,17 @@ export default function ProfilScreen() {
             disabled={!isAccountValid || !isAccountDirty}
           />
           {myId && (
-            <View className="gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
+            <View className="gap-2 border-t border-surface-border pt-3">
               <UsernameEditor myId={myId} email={myEmail} />
             </View>
           )}
         </Card>
 
-        <Card className="gap-3">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Darstellung</Text>
-          <ChipGroup options={THEME_OPTIONS} selected={themePreference} onSelect={setThemePreference} />
-        </Card>
-
         <CloudSyncCard />
 
         <View className="gap-2">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ziele</Text>
-          <GoalInputRow icon={<Target color="#10b981" size={18} />} label="Tagesziel Kalorien" value={calorieGoal} onChangeText={setCalorieGoal} suffix="kcal" accentColor="#10b981" />
+          <Text className="text-sm font-semibold text-text-secondary">Ziele</Text>
+          <GoalInputRow icon={<Target color="#6366F1" size={18} />} label="Tagesziel Kalorien" value={calorieGoal} onChangeText={setCalorieGoal} suffix="kcal" accentColor="#6366F1" />
           <GoalInputRow icon={<Wheat color="#3b82f6" size={18} />} label="Carbs" value={carbsGoal} onChangeText={handleCarbsChange} suffix="g" accentColor="#3b82f6" />
           <GoalInputRow icon={<Egg color="#ef4444" size={18} />} label="Protein" value={proteinGoal} onChangeText={handleProteinChange} suffix="g" accentColor="#ef4444" />
           <GoalInputRow icon={<Droplet color="#f59e0b" size={18} />} label="Fett" value={fatGoal} onChangeText={handleFatChange} suffix="g" accentColor="#f59e0b" />
@@ -351,10 +343,10 @@ export default function ProfilScreen() {
         </View>
 
         <Card className="gap-4">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ziel wählen</Text>
+          <Text className="text-sm font-semibold text-text-secondary">Ziel wählen</Text>
           <ChipGroup options={GOAL_OPTIONS} selected={goal} onSelect={setGoal} />
 
-          <Text className="pt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">Körperdaten</Text>
+          <Text className="pt-2 text-sm font-semibold text-text-secondary">Körperdaten</Text>
           <View className="flex-row gap-3">
             <View className="flex-1">
               <TextField label="Alter" keyboardType="number-pad" value={age} onChangeText={setAge} suffix="Jahre" />
@@ -365,10 +357,10 @@ export default function ProfilScreen() {
           </View>
           <TextField label="Gewicht" keyboardType="decimal-pad" value={weightKg} onChangeText={setWeightKg} suffix="kg" />
 
-          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">Geschlecht</Text>
+          <Text className="text-xs font-medium text-text-secondary">Geschlecht</Text>
           <ChipGroup options={GENDER_OPTIONS} selected={gender} onSelect={setGender} />
 
-          <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">Aktivitätslevel</Text>
+          <Text className="text-xs font-medium text-text-secondary">Aktivitätslevel</Text>
           <ChipGroup options={ACTIVITY_OPTIONS} selected={activityLevel} onSelect={setActivityLevel} />
 
           <Button label="BMR/TDEE berechnen & speichern" onPress={handleSaveProfile} disabled={!isFormValid} className="mt-2" />
@@ -384,13 +376,13 @@ export default function ProfilScreen() {
 
         <Card className="gap-4">
           <View className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-100/70 dark:bg-white/5">
-              <Scale color="#64748b" size={18} />
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5">
+              <Scale color="#A1A1AA" size={18} />
             </View>
-            <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Gewichtsverlauf</Text>
+            <Text className="text-sm font-semibold text-text-secondary">Gewichtsverlauf</Text>
           </View>
 
-          <LineChart points={chartPoints} firstLabel={firstDate} lastLabel={lastDate} color="#10b981" />
+          <LineChart points={chartPoints} firstLabel={firstDate} lastLabel={lastDate} color="#6366F1" />
 
           <View className="flex-row gap-3">
             <View className="flex-1">
@@ -418,13 +410,13 @@ export default function ProfilScreen() {
             <>
               <Pressable
                 onPress={() => setShowWeightHistory((prev) => !prev)}
-                className="flex-row items-center justify-between border-t border-slate-200/50 pt-3 dark:border-slate-800/60"
+                className="flex-row items-center justify-between border-t border-surface-border pt-3"
               >
-                <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                <Text className="text-sm font-semibold text-text-secondary">
                   Verlauf bearbeiten ({weightHistory.length})
                 </Text>
                 <ChevronDown
-                  color="#64748b"
+                  color="#A1A1AA"
                   size={18}
                   style={{ transform: [{ rotate: showWeightHistory ? '180deg' : '0deg' }] }}
                 />

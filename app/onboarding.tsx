@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Logo } from '@/components/ui/Logo';
 import { TextField } from '@/components/ui/TextField';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useSyncStore } from '@/store/syncStore';
 import { useUserStore } from '@/store/userStore';
 import { getLastUpdatedLabel } from '@/utils/lastUpdated';
@@ -67,20 +66,17 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
-      <View className="flex-row justify-end px-6 pt-4">
-        <ThemeToggle />
-      </View>
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerClassName="flex-grow justify-center gap-8 px-6 py-8" keyboardShouldPersistTaps="handled">
           <Logo size="lg" direction="column" />
 
           <Card className="gap-4">
             <View className="items-center gap-1">
-              <Text className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              <Text className="text-2xl font-bold tracking-tight text-white">
                 {mode === 'signUp' ? 'Konto erstellen' : 'Willkommen zurück bei Coach imi'}
               </Text>
-              <Text className="text-center text-sm text-slate-500 dark:text-slate-400">
+              <Text className="text-center text-sm text-text-secondary">
                 {mode === 'signUp'
                   ? 'Erstelle ein Konto, damit dein Fortschritt in der Cloud gespeichert wird.'
                   : 'Melde dich mit deinem bestehenden Konto an.'}
@@ -91,11 +87,11 @@ export default function OnboardingScreen() {
               <Pressable
                 onPress={() => selectMode('signUp')}
                 className={`flex-1 items-center rounded-full border px-4 py-2 transition-colors duration-150 ease-in-out active:opacity-80 ${
-                  mode === 'signUp' ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-slate-200/60 bg-white/70 dark:border-slate-800/60 dark:bg-white/5'
+                  mode === 'signUp' ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
                 }`}
               >
                 <Text
-                  className={`text-sm font-medium ${mode === 'signUp' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}
+                  className={`text-sm font-medium ${mode === 'signUp' ? 'text-primary' : 'text-text-secondary'}`}
                 >
                   Registrieren
                 </Text>
@@ -103,11 +99,11 @@ export default function OnboardingScreen() {
               <Pressable
                 onPress={() => selectMode('login')}
                 className={`flex-1 items-center rounded-full border px-4 py-2 transition-colors duration-150 ease-in-out active:opacity-80 ${
-                  mode === 'login' ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-slate-200/60 bg-white/70 dark:border-slate-800/60 dark:bg-white/5'
+                  mode === 'login' ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
                 }`}
               >
                 <Text
-                  className={`text-sm font-medium ${mode === 'login' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}
+                  className={`text-sm font-medium ${mode === 'login' ? 'text-primary' : 'text-text-secondary'}`}
                 >
                   Anmelden
                 </Text>
@@ -130,7 +126,7 @@ export default function OnboardingScreen() {
 
             {formError && <Text className="text-xs text-red-500">{formError}</Text>}
 
-            <Text className="text-center text-[10px] text-slate-400 dark:text-slate-500">
+            <Text className="text-center text-[10px] text-text-secondary">
               Zuletzt aktualisiert: {getLastUpdatedLabel()} Uhr
             </Text>
           </Card>

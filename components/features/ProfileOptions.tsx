@@ -35,12 +35,6 @@ export const ACTIVITY_OPTIONS: { id: ActivityLevel; label: string }[] = [
   { id: 'active', label: 'Sehr aktiv' },
 ];
 
-export const THEME_OPTIONS: { id: 'light' | 'dark' | 'system'; label: string }[] = [
-  { id: 'light', label: 'Hell' },
-  { id: 'dark', label: 'Dunkel' },
-  { id: 'system', label: 'System' },
-];
-
 export function ChipGroup<T extends string>({
   options,
   selected,
@@ -59,15 +53,11 @@ export function ChipGroup<T extends string>({
             key={option.id}
             onPress={() => onSelect(option.id)}
             className={`rounded-full border px-4 py-2 backdrop-blur-md transition-colors duration-150 ease-in-out active:opacity-80 ${
-              isSelected
-                ? 'border-emerald-500/60 bg-emerald-500/10'
-                : 'border-slate-200/60 bg-white/70 dark:border-slate-800/60 dark:bg-white/5'
+              isSelected ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
             }`}
           >
             <Text
-              className={`text-sm font-medium ${
-                isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'
-              }`}
+              className={`text-sm font-medium ${isSelected ? 'text-primary' : 'text-text-secondary'}`}
             >
               {option.label}
             </Text>

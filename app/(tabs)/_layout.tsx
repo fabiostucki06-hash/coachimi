@@ -4,10 +4,10 @@ import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Logo } from '@/components/ui/Logo';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 
-const ACTIVE_COLOR = '#10b981';
+const ACTIVE_COLOR = '#6366F1';
+const INACTIVE_COLOR = '#A1A1AA';
 
 type TabBarRenderer = NonNullable<ComponentProps<typeof Tabs>['tabBar']>;
 type TabBarProps = Parameters<TabBarRenderer>[0];
@@ -24,7 +24,7 @@ function TabIcon({ focused, children }: { focused: boolean; children: ReactNode 
   return (
     <View
       className={`items-center justify-center rounded-full px-4 py-1.5 transition-colors duration-200 ease-in-out ${
-        focused ? 'bg-emerald-500/10' : 'bg-transparent'
+        focused ? 'bg-primary/10' : 'bg-transparent'
       }`}
     >
       {children}
@@ -42,7 +42,7 @@ function DesktopSidebar() {
   const pathname = usePathname();
 
   return (
-    <View className="w-64 shrink-0 gap-1 border-r border-white/40 bg-white/60 p-4 shadow-xl shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60 dark:shadow-black/40">
+    <View className="w-64 shrink-0 gap-1 border-r border-surface-border bg-surface p-4 shadow-xl shadow-black/40 backdrop-blur-xl">
       <Logo className="mb-4 px-2 pt-1" />
       {SIDEBAR_LINKS.map(({ href, label, Icon }) => {
         const isFocused = pathname === href;
@@ -50,14 +50,12 @@ function DesktopSidebar() {
           <Link key={href} href={href} asChild>
             <Pressable
               className={`flex-row items-center gap-3 rounded-2xl px-4 py-3 transition-colors duration-150 ease-in-out ${
-                isFocused ? 'bg-emerald-500/10' : 'active:bg-slate-100/60 dark:active:bg-white/5'
+                isFocused ? 'bg-primary/10' : 'active:bg-white/5'
               }`}
             >
-              <Icon color={isFocused ? ACTIVE_COLOR : '#94a3b8'} size={20} />
+              <Icon color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR} size={20} />
               <Text
-                className={`text-sm font-semibold ${
-                  isFocused ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'
-                }`}
+                className={`text-sm font-semibold ${isFocused ? 'text-primary' : 'text-text-secondary'}`}
               >
                 {label}
               </Text>
@@ -73,15 +71,11 @@ function DesktopSidebar() {
 // `absolute` positioning is fine here — it's meant to float over scrollable
 // content, and every screen already reserves bottom padding (`pb-32`) for it.
 function MobileTabBar({ state, descriptors, navigation }: TabBarProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const inactiveColor = isDark ? '#64748b' : '#94a3b8';
-
   const items = state.routes.map((route, index) => {
     const { options } = descriptors[route.key];
     const isFocused = state.index === index;
     const label = typeof options.title === 'string' ? options.title : route.name;
-    const color = isFocused ? ACTIVE_COLOR : inactiveColor;
+    const color = isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
     const icon = options.tabBarIcon?.({ color, size: 24, focused: isFocused });
 
     function onPress() {
@@ -95,10 +89,10 @@ function MobileTabBar({ state, descriptors, navigation }: TabBarProps) {
   return (
     <View className="absolute bottom-4 left-4 right-4">
       <View
-        className="h-[68px] flex-row items-center overflow-hidden rounded-[28px] border border-slate-200/60 bg-white/70 px-1 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/70"
+        className="h-[68px] flex-row items-center overflow-hidden rounded-[28px] border border-surface-border bg-surface px-1 backdrop-blur-xl"
         style={{
-          shadowColor: '#0f172a',
-          shadowOpacity: isDark ? 0.4 : 0.08,
+          shadowColor: '#000000',
+          shadowOpacity: 0.4,
           shadowRadius: 24,
           shadowOffset: { width: 0, height: 8 },
         }}
@@ -107,9 +101,7 @@ function MobileTabBar({ state, descriptors, navigation }: TabBarProps) {
           <Pressable key={item.key} onPress={item.onPress} className="flex-1 items-center justify-center gap-0.5">
             <TabIcon focused={item.isFocused}>{item.icon}</TabIcon>
             <Text
-              className={`text-[11px] font-medium ${
-                item.isFocused ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'
-              }`}
+              className={`text-[11px] font-medium ${item.isFocused ? 'text-primary' : 'text-text-secondary'}`}
             >
               {item.label}
             </Text>

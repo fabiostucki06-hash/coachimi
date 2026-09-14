@@ -71,7 +71,7 @@ function TemplateForm({
 
       <View className="gap-3">
         {exercises.map((exercise) => (
-          <View key={exercise.key} className="gap-2 rounded-2xl border border-slate-200/60 p-3 dark:border-slate-800/60">
+          <View key={exercise.key} className="gap-2 rounded-2xl border border-surface-border p-3 ">
             <View className="flex-row items-end gap-2">
               <View className="flex-1">
                 <TextField label="Übung" value={exercise.name} onChangeText={(text) => updateExercise(exercise.key, { name: text })} placeholder="z. B. Bankdrücken" />
@@ -97,11 +97,11 @@ function TemplateForm({
           </View>
         ))}
         <Pressable
-          className="flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300/70 py-2.5 active:opacity-70 dark:border-slate-700/70"
+          className="flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-surface-border py-2.5 active:opacity-70 "
           onPress={() => setExercises((prev) => [...prev, blankExercise()])}
         >
-          <Plus color="#10b981" size={14} />
-          <Text className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Übung hinzufügen</Text>
+          <Plus color="#6366F1" size={14} />
+          <Text className="text-xs font-medium text-primary">Übung hinzufügen</Text>
         </Pressable>
       </View>
 
@@ -115,19 +115,19 @@ function TemplateForm({
 
 function TemplateRow({ template, onEdit, onDelete }: { template: WorkoutTemplate; onEdit: () => void; onDelete: () => void }) {
   return (
-    <View className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 dark:border-slate-800/60 dark:bg-slate-900/60">
+    <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3  ">
       <View className="flex-row items-center gap-3">
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-          <Dumbbell color="#10b981" size={16} />
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+          <Dumbbell color="#6366F1" size={16} />
         </View>
         <View>
-          <Text className="text-sm font-semibold text-slate-900 dark:text-white">{template.name}</Text>
-          <Text className="text-xs text-slate-400">{template.exercises.length} Übungen</Text>
+          <Text className="text-sm font-semibold text-white">{template.name}</Text>
+          <Text className="text-xs text-text-secondary">{template.exercises.length} Übungen</Text>
         </View>
       </View>
       <View className="flex-row items-center gap-2">
-        <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-slate-100/70 active:opacity-80 dark:bg-white/5" onPress={onEdit}>
-          <Pencil color="#64748b" size={14} />
+        <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80 " onPress={onEdit}>
+          <Pencil color="#A1A1AA" size={14} />
         </Pressable>
         <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-red-500/10 active:opacity-80" onPress={onDelete}>
           <Trash2 color="#ef4444" size={14} />
@@ -148,14 +148,14 @@ export default function TrainingTemplatesScreen() {
   const editingTemplate = templates.find((template) => template.id === editingId) ?? null;
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
-        <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Trainingspläne</Text>
+        <Text className="text-lg font-bold tracking-tight text-white">Trainingspläne</Text>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md active:scale-95 active:opacity-80  "
           onPress={() => router.back()}
         >
-          <X color="#64748b" size={18} />
+          <X color="#A1A1AA" size={18} />
         </Pressable>
       </View>
 

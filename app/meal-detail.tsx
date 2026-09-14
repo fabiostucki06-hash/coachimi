@@ -41,13 +41,13 @@ function formatAmount(entry: MealEntry): string {
 function NutrientStat({ nutrientKey, value }: { nutrientKey: NutrientKey; value: number }) {
   const { label, unit, color, Icon } = NUTRIENT_META[nutrientKey];
   return (
-    <View className="basis-[30%] items-center gap-1 rounded-2xl bg-slate-100/70 py-3 dark:bg-white/5">
+    <View className="basis-[30%] items-center gap-1 rounded-2xl bg-white/5 py-3 ">
       <Icon color={color} size={16} />
-      <Text className="text-sm font-bold text-slate-900 dark:text-white">
+      <Text className="text-sm font-bold text-white">
         {Math.round(value)}
         {unit}
       </Text>
-      <Text className="text-[10px] text-slate-400" numberOfLines={1}>
+      <Text className="text-[10px] text-text-secondary" numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -72,11 +72,11 @@ function CopySheet({
   return (
     <Card className="gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+        <Text className="text-sm font-semibold text-text-secondary">
           {targetKind === 'meal' ? 'Ganze Mahlzeit kopieren nach' : 'Eintrag kopieren nach'}
         </Text>
         <Pressable onPress={onClose}>
-          <X color="#64748b" size={16} />
+          <X color="#A1A1AA" size={16} />
         </Pressable>
       </View>
       <DateField value={toDate} onChange={setToDate} />
@@ -119,31 +119,31 @@ export default function MealDetailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View>
-          <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+          <Text className="text-lg font-bold tracking-tight text-white">
             {MEAL_LABELS[mealType]}
           </Text>
-          <Text className="text-xs text-slate-400">
+          <Text className="text-xs text-text-secondary">
             {entries.length > 0 ? `${entries.length} ${entries.length === 1 ? 'Eintrag' : 'Einträge'}` : 'Noch keine Einträge'}
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
           {entries.length > 0 && (
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+              className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
               onPress={() => setCopyTarget({ kind: 'meal' })}
               accessibilityLabel="Ganze Mahlzeit kopieren"
             >
-              <Copy color="#64748b" size={16} />
+              <Copy color="#A1A1AA" size={16} />
             </Pressable>
           )}
           <Pressable
-            className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+            className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
             onPress={() => router.back()}
           >
-            <X color="#64748b" size={18} />
+            <X color="#A1A1AA" size={18} />
           </Pressable>
         </View>
       </View>
@@ -154,10 +154,10 @@ export default function MealDetailScreen() {
         </View>
       )}
 
-      <View className="mx-6 mt-4 gap-3 rounded-[28px] border border-slate-200/60 bg-white/70 p-4 shadow-md shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
+      <View className="mx-6 mt-4 gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl  ">
         <View className="flex-row items-center justify-between">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">{MEAL_LABELS[mealType]} gesamt</Text>
-          <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">{Math.round(totalKcal)} kcal</Text>
+          <Text className="text-sm font-semibold text-text-secondary">{MEAL_LABELS[mealType]} gesamt</Text>
+          <Text className="text-lg font-bold tracking-tight text-white">{Math.round(totalKcal)} kcal</Text>
         </View>
         {visibleNutrientKeys.length > 0 && (
           <View className="flex-row flex-wrap gap-2">
@@ -170,31 +170,31 @@ export default function MealDetailScreen() {
 
       <ScrollView className="flex-1 px-6 pt-4" contentContainerClassName="gap-2 pb-6">
         {entries.length === 0 ? (
-          <Text className="pt-8 text-center text-sm text-slate-400">
+          <Text className="pt-8 text-center text-sm text-text-secondary">
             Für {MEAL_LABELS[mealType]} wurde an diesem Tag noch nichts eingetragen.
           </Text>
         ) : (
           entries.map((entry) => (
             <Pressable
               key={entry.id}
-              className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 shadow-md shadow-slate-900/5 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+              className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3 shadow-md shadow-black/20 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80  "
               onPress={() => router.push({ pathname: '/edit-meal-entry', params: { entryId: entry.id } })}
             >
               <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-slate-900 dark:text-white" numberOfLines={1}>
+                <Text className="text-sm font-semibold text-white" numberOfLines={1}>
                   {entry.foodItem.name}
                 </Text>
-                <Text className="text-xs text-slate-400">
+                <Text className="text-xs text-text-secondary">
                   {formatAmount(entry)} · {Math.round(entry.foodItem.caloriesPerServing * entry.servings)} kcal
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
                 <Pressable
-                  className="h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 active:opacity-80"
+                  className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 active:opacity-80"
                   onPress={() => setCopyTarget({ kind: 'entry', entryId: entry.id })}
                   accessibilityLabel="Eintrag kopieren"
                 >
-                  <Copy color="#10b981" size={14} />
+                  <Copy color="#6366F1" size={14} />
                 </Pressable>
                 <Pressable
                   className="h-8 w-8 items-center justify-center rounded-full bg-red-500/10 active:opacity-80"
@@ -215,10 +215,10 @@ export default function MealDetailScreen() {
       <View className="gap-3 px-6 pb-8 pt-3">
         <View className="flex-row gap-3">
           <Pressable
-            className="h-12 w-12 items-center justify-center rounded-2xl border border-slate-200/60 bg-white/70 shadow-md shadow-slate-900/5 backdrop-blur-xl active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+            className="h-12 w-12 items-center justify-center rounded-2xl border border-surface-border bg-surface shadow-md shadow-black/20 backdrop-blur-xl active:opacity-80  "
             onPress={() => router.push({ pathname: '/analyze-food', params: { mealType } })}
           >
-            <Camera color="#10b981" size={20} />
+            <Camera color="#6366F1" size={20} />
           </Pressable>
           <Button
             label="Lebensmittel hinzufügen"

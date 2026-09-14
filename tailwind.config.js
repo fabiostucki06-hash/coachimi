@@ -9,11 +9,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#10b981',
-        background: {
-          light: '#F4F6F8',
-          dark: '#020617',
-        },
+        primary: '#6366F1',
+        background: '#121212',
+        surface: '#1E1E1E',
+        'surface-border': '#2A2A2A',
+        'text-secondary': '#A1A1AA',
         macro: {
           carbs: '#3b82f6',
           protein: '#ef4444',

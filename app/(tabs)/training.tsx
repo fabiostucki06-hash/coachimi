@@ -33,11 +33,11 @@ function WeightInput({ weightKg, onChange }: { weightKg: number; onChange: (weig
 
   return (
     <TextInput
-      className="flex-1 rounded-xl border border-slate-200/70 bg-[#EDF2F7] px-3 py-2 text-sm text-slate-900 dark:border-slate-800/60 dark:bg-white/5 dark:text-white"
+      className="flex-1 rounded-xl border border-surface-border bg-white/5 px-3 py-2 text-sm text-white"
       keyboardType="decimal-pad"
       value={text}
       placeholder="kg"
-      placeholderTextColor="#94a3b8"
+      placeholderTextColor="#A1A1AA"
       onChangeText={(value) => {
         setText(value);
         onChange(parseNumber(value, 0));
@@ -49,8 +49,8 @@ function WeightInput({ weightKg, onChange }: { weightKg: number; onChange: (weig
 function DeltaBadge({ label, pct }: { label: string; pct: number | null }) {
   if (pct === null) {
     return (
-      <View className="flex-row items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 dark:bg-white/5">
-        <Text className="text-[11px] font-medium text-slate-400">{label}: neu</Text>
+      <View className="flex-row items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
+        <Text className="text-[11px] font-medium text-text-secondary">{label}: neu</Text>
       </View>
     );
   }
@@ -59,8 +59,8 @@ function DeltaBadge({ label, pct }: { label: string; pct: number | null }) {
   const isUp = rounded > 0.05;
   const isDown = rounded < -0.05;
   const Icon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
-  const color = isUp ? '#10b981' : isDown ? '#ef4444' : '#94a3b8';
-  const bg = isUp ? 'bg-emerald-500/10' : isDown ? 'bg-red-500/10' : 'bg-slate-100/80 dark:bg-white/5';
+  const color = isUp ? '#10b981' : isDown ? '#ef4444' : '#A1A1AA';
+  const bg = isUp ? 'bg-emerald-500/10' : isDown ? 'bg-red-500/10' : 'bg-white/5';
 
   return (
     <View className={`flex-row items-center gap-1 rounded-full px-2.5 py-1 ${bg}`}>
@@ -83,16 +83,16 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
   const lastPerformance = getLastPerformance(history[0] ?? null);
 
   return (
-    <View className="gap-3 border-t border-slate-200/50 pt-3 dark:border-slate-800/60">
+    <View className="gap-3 border-t border-surface-border pt-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{exercise.name}</Text>
-        <Text className="text-[11px] text-slate-400">
+        <Text className="text-sm font-semibold text-white">{exercise.name}</Text>
+        <Text className="text-[11px] text-text-secondary">
           Ziel: {exercise.targetRepsMin}-{exercise.targetRepsMax} Wdh.
         </Text>
       </View>
 
       {lastPerformance && (
-        <Text className="text-[11px] text-slate-400">
+        <Text className="text-[11px] text-text-secondary">
           Letztes Mal: {lastPerformance.weightKg} kg × {lastPerformance.reps} Wdh.
         </Text>
       )}
@@ -105,17 +105,17 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
       <View className="gap-2">
         {(exercise.sets ?? []).map((set, index) => (
           <View key={index} className="flex-row items-center gap-2">
-            <Text className="w-5 text-xs text-slate-400">{index + 1}</Text>
+            <Text className="w-5 text-xs text-text-secondary">{index + 1}</Text>
             <WeightInput
               weightKg={set.weightKg}
               onChange={(weightKg) => updateSet(session.date, session.id, exercise.id, index, { weightKg })}
             />
             <TextInput
-              className="flex-1 rounded-xl border border-slate-200/70 bg-[#EDF2F7] px-3 py-2 text-sm text-slate-900 dark:border-slate-800/60 dark:bg-white/5 dark:text-white"
+              className="flex-1 rounded-xl border border-surface-border bg-white/5 px-3 py-2 text-sm text-white"
               keyboardType="number-pad"
               value={set.reps ? String(set.reps) : ''}
               placeholder="Wdh."
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor="#A1A1AA"
               onChangeText={(text) => updateSet(session.date, session.id, exercise.id, index, { reps: Math.round(parseNumber(text, 0)) })}
             />
             <Pressable
@@ -127,17 +127,17 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
           </View>
         ))}
         <Pressable
-          className="flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300/70 py-2 active:opacity-70 dark:border-slate-700/70"
+          className="flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-surface-border py-2 active:opacity-70"
           onPress={() => addSet(session.date, session.id, exercise.id)}
         >
-          <Plus color="#10b981" size={14} />
-          <Text className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Satz hinzufügen</Text>
+          <Plus color="#6366F1" size={14} />
+          <Text className="text-xs font-medium text-primary">Satz hinzufügen</Text>
         </Pressable>
       </View>
 
-      <View className="flex-row items-start gap-2 rounded-xl bg-emerald-500/5 p-2.5">
-        <Sparkles color="#10b981" size={14} />
-        <Text className="flex-1 text-[11px] leading-4 text-emerald-700 dark:text-emerald-400">{tip}</Text>
+      <View className="flex-row items-start gap-2 rounded-xl bg-primary/5 p-2.5">
+        <Sparkles color="#6366F1" size={14} />
+        <Text className="flex-1 text-[11px] leading-4 text-primary">{tip}</Text>
       </View>
     </View>
   );
@@ -150,16 +150,16 @@ function SessionCard({ session }: { session: WorkoutSession }) {
     <Card className="gap-3">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2.5">
-          <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-            <Dumbbell color="#10b981" size={16} />
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+            <Dumbbell color="#6366F1" size={16} />
           </View>
-          <Text className="text-sm font-semibold text-slate-900 dark:text-white">{session.templateName}</Text>
+          <Text className="text-sm font-semibold text-white">{session.templateName}</Text>
         </View>
         <Pressable
-          className="h-8 w-8 items-center justify-center rounded-full bg-slate-100/70 active:opacity-80 dark:bg-white/5"
+          className="h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80"
           onPress={() => removeSession(session.date, session.id)}
         >
-          <Trash2 color="#64748b" size={14} />
+          <Trash2 color="#A1A1AA" size={14} />
         </Pressable>
       </View>
 
@@ -177,28 +177,28 @@ function AttachTemplateSheet({ date, onClose }: { date: string; onClose: () => v
   return (
     <Card className="gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Vorlage anhängen</Text>
+        <Text className="text-sm font-semibold text-text-secondary">Vorlage anhängen</Text>
         <Pressable onPress={onClose}>
-          <X color="#64748b" size={16} />
+          <X color="#A1A1AA" size={16} />
         </Pressable>
       </View>
       {(templates ?? []).length === 0 ? (
-        <Text className="text-sm text-slate-400">Noch keine Trainingspläne erstellt.</Text>
+        <Text className="text-sm text-text-secondary">Noch keine Trainingspläne erstellt.</Text>
       ) : (
         (templates ?? []).map((template) => (
           <Pressable
             key={template.id}
-            className="flex-row items-center justify-between rounded-2xl border border-slate-200/60 bg-white/70 px-4 py-3 active:opacity-80 dark:border-slate-800/60 dark:bg-slate-900/60"
+            className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3 active:opacity-80"
             onPress={() => {
               attachTemplateToDate(date, template.id);
               onClose();
             }}
           >
             <View>
-              <Text className="text-sm font-semibold text-slate-900 dark:text-white">{template.name}</Text>
-              <Text className="text-xs text-slate-400">{template.exercises.length} Übungen</Text>
+              <Text className="text-sm font-semibold text-white">{template.name}</Text>
+              <Text className="text-xs text-text-secondary">{template.exercises.length} Übungen</Text>
             </View>
-            <ChevronRight color="#94a3b8" size={16} />
+            <ChevronRight color="#A1A1AA" size={16} />
           </Pressable>
         ))
       )}
@@ -221,18 +221,18 @@ export default function TrainingScreen() {
 
   const header = (
     <View>
-      <Text className="text-xs font-semibold uppercase tracking-wide text-emerald-500">Coach imi</Text>
-      <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Training</Text>
+      <Text className="text-xs font-semibold uppercase tracking-wide text-primary">Coach imi</Text>
+      <Text className="text-3xl font-bold tracking-tight text-white">Training</Text>
     </View>
   );
 
   if (!date) {
     return (
-      <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+      <SafeAreaView className="flex-1 bg-background">
         <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12">
           {header}
           <Card>
-            <Text className="text-center text-sm text-slate-400">Datum wird geladen…</Text>
+            <Text className="text-center text-sm text-text-secondary">Datum wird geladen…</Text>
           </Card>
         </ScrollView>
       </SafeAreaView>
@@ -240,7 +240,7 @@ export default function TrainingScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12">
         {header}
 
@@ -250,7 +250,7 @@ export default function TrainingScreen() {
 
         {(sessions ?? []).length === 0 && !showAttachSheet ? (
           <Card>
-            <Text className="text-center text-sm text-slate-400">Noch keine Trainingspläne vorhanden</Text>
+            <Text className="text-center text-sm text-text-secondary">Noch keine Trainingspläne vorhanden</Text>
           </Card>
         ) : (
           (sessions ?? []).map((session) => <SessionCard key={session.id} session={session} />)

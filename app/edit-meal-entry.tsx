@@ -83,27 +83,27 @@ export default function EditMealEntryScreen() {
 
   if (!entry) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-50 dark:bg-background-dark">
-        <Text className="text-sm text-slate-400">Eintrag nicht gefunden.</Text>
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+        <Text className="text-sm text-text-secondary">Eintrag nicht gefunden.</Text>
         <Button label="Schließen" variant="secondary" onPress={handleClose} className="mt-4" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-background-dark">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View className="flex-1 pr-3">
-          <Text className="text-lg font-bold tracking-tight text-slate-900 dark:text-white" numberOfLines={1}>
+          <Text className="text-lg font-bold tracking-tight text-white" numberOfLines={1}>
             {entry.foodItem.name}
           </Text>
-          <Text className="text-xs text-slate-400">Eintrag bearbeiten</Text>
+          <Text className="text-xs text-text-secondary">Eintrag bearbeiten</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100/60 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 dark:border-slate-800/60 dark:bg-white/5"
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
-          <X color="#64748b" size={18} />
+          <X color="#A1A1AA" size={18} />
         </Pressable>
       </View>
 
@@ -129,7 +129,7 @@ export default function EditMealEntryScreen() {
         )}
 
         <View className="gap-2">
-          <Text className="text-xs font-medium tracking-tight text-slate-500 dark:text-slate-400">Mahlzeit</Text>
+          <Text className="text-xs font-medium tracking-tight text-text-secondary">Mahlzeit</Text>
           <View className="flex-row flex-wrap gap-2">
             {MEAL_TYPE_ORDER.map((type) => {
               const active = type === mealType;
@@ -139,11 +139,11 @@ export default function EditMealEntryScreen() {
                   onPress={() => setMealType(type)}
                   className={`rounded-full border px-4 py-2 transition-colors duration-150 ease-in-out active:opacity-80 ${
                     active
-                      ? 'border-emerald-500 bg-emerald-500'
-                      : 'border-slate-200/70 bg-white/70 dark:border-slate-800/60 dark:bg-slate-900/60'
+                      ? 'border-primary bg-primary'
+                      : 'border-surface-border bg-surface  '
                   }`}
                 >
-                  <Text className={`text-sm font-medium ${active ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+                  <Text className={`text-sm font-medium ${active ? 'text-white' : 'text-text-secondary'}`}>
                     {MEAL_LABELS[type]}
                   </Text>
                 </Pressable>
@@ -153,27 +153,27 @@ export default function EditMealEntryScreen() {
         </View>
 
         <Card className="gap-3">
-          <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Nährwerte</Text>
+          <Text className="text-sm font-semibold text-text-secondary">Nährwerte</Text>
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm text-slate-600 dark:text-slate-300">Kalorien</Text>
-            <Text className="text-base font-bold text-slate-900 dark:text-white">{Math.round(computed.kcal)} kcal</Text>
+            <Text className="text-sm text-text-secondary">Kalorien</Text>
+            <Text className="text-base font-bold text-white">{Math.round(computed.kcal)} kcal</Text>
           </View>
           {visibleNutrients.carbs && (
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-slate-600 dark:text-slate-300">Kohlenhydrate</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{Math.round(computed.carbs)} g</Text>
+              <Text className="text-sm text-text-secondary">Kohlenhydrate</Text>
+              <Text className="text-sm text-white">{Math.round(computed.carbs)} g</Text>
             </View>
           )}
           {visibleNutrients.protein && (
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-slate-600 dark:text-slate-300">Eiweiß</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{Math.round(computed.protein)} g</Text>
+              <Text className="text-sm text-text-secondary">Eiweiß</Text>
+              <Text className="text-sm text-white">{Math.round(computed.protein)} g</Text>
             </View>
           )}
           {visibleNutrients.fat && (
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-slate-600 dark:text-slate-300">Fett</Text>
-              <Text className="text-sm text-slate-900 dark:text-white">{Math.round(computed.fat)} g</Text>
+              <Text className="text-sm text-text-secondary">Fett</Text>
+              <Text className="text-sm text-white">{Math.round(computed.fat)} g</Text>
             </View>
           )}
         </Card>

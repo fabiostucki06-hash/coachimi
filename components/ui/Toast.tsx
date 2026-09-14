@@ -32,12 +32,12 @@ export function Toast() {
         onPress={dismiss}
         className={`w-full max-w-md flex-row items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-xl backdrop-blur-xl active:opacity-90 ${
           isError
-            ? 'border-red-500/30 bg-red-50/95 shadow-red-900/10 dark:border-red-500/30 dark:bg-red-950/90'
-            : 'border-emerald-500/30 bg-emerald-50/95 shadow-emerald-900/10 dark:border-emerald-500/30 dark:bg-emerald-950/90'
+            ? 'border-red-500/30 bg-red-950/90 shadow-red-900/10'
+            : 'border-emerald-500/30 bg-emerald-950/90 shadow-emerald-900/10'
         }`}
       >
         {isError ? <AlertCircle color="#ef4444" size={18} /> : <Check color="#10b981" size={18} />}
-        <Text className={`flex-1 text-sm font-medium ${isError ? 'text-red-700 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300'}`}>
+        <Text className={`flex-1 text-sm font-medium ${isError ? 'text-red-300' : 'text-emerald-300'}`}>
           {toast.message}
         </Text>
         <X color={isError ? '#f87171' : '#34d399'} size={14} />

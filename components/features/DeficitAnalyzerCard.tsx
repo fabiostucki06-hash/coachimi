@@ -66,12 +66,12 @@ export function DeficitAnalyzerCard() {
   if (deficits.length === 0 && !showNeutralHint) return null;
 
   return (
-    <View className="gap-3 rounded-[28px] border border-slate-200/60 bg-white/70 p-4 shadow-md shadow-slate-900/5 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/60">
+    <View className="gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl  ">
       <View className="flex-row items-center gap-3">
-        <View className={`h-9 w-9 items-center justify-center rounded-full ${deficits.length > 0 ? 'bg-amber-500/10' : 'bg-slate-500/10'}`}>
-          <FlaskConical color={deficits.length > 0 ? '#d97706' : '#64748b'} size={16} />
+        <View className={`h-9 w-9 items-center justify-center rounded-full ${deficits.length > 0 ? 'bg-amber-500/10' : 'bg-white/10'}`}>
+          <FlaskConical color={deficits.length > 0 ? '#d97706' : '#A1A1AA'} size={16} />
         </View>
-        <Text className="flex-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+        <Text className="flex-1 text-sm font-semibold text-text-secondary">
           {deficits.length > 0 ? `Nährstoff-Check (${deficits[0].daysAnalyzed} Tage)` : 'Nährstoff-Check'}
         </Text>
       </View>
@@ -79,14 +79,14 @@ export function DeficitAnalyzerCard() {
       {deficits.length > 0 ? (
         deficits.slice(0, 2).map((deficit) => (
           <View key={deficit.key} className="gap-1">
-            <Text className="text-xs leading-5 text-slate-600 dark:text-slate-300">{deficit.message}</Text>
+            <Text className="text-xs leading-5 text-text-secondary">{deficit.message}</Text>
             {deficit.citation && (
-              <Text className="text-[11px] italic leading-4 text-slate-400 dark:text-slate-500">{deficit.citation}</Text>
+              <Text className="text-[11px] italic leading-4 text-text-secondary">{deficit.citation}</Text>
             )}
           </View>
         ))
       ) : (
-        <Text className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+        <Text className="text-xs leading-5 text-text-secondary">
           Tracke vitaminreiche Lebensmittel für deinen Nährstoff-Check.
         </Text>
       )}

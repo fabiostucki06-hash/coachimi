@@ -37,38 +37,38 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
 
   return (
     <View className="gap-1.5">
-      {label && <Text className="text-xs font-medium tracking-tight text-slate-500 dark:text-slate-400">{label}</Text>}
+      {label && <Text className="text-xs font-medium tracking-tight text-text-secondary">{label}</Text>}
       <Pressable
         onPress={open}
-        className="flex-row items-center gap-2 rounded-2xl border border-slate-200/70 bg-[#EDF2F7] px-5 py-3.5 dark:border-slate-800/60 dark:bg-white/5"
+        className="flex-row items-center gap-2 rounded-2xl border border-surface-border bg-white/5 px-5 py-3.5"
       >
-        <Calendar color="#10b981" size={16} />
-        <Text className="text-base text-slate-900 dark:text-white">{formatDateShort(value)}</Text>
+        <Calendar color="#6366F1" size={16} />
+        <Text className="text-base text-white">{formatDateShort(value)}</Text>
       </Pressable>
 
       {expanded && (
-        <View className="gap-3 rounded-2xl border border-white/40 bg-white/60 p-3 shadow-md shadow-slate-900/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60">
+        <View className="gap-3 rounded-2xl border border-surface-border bg-surface p-3 shadow-md shadow-black/20 backdrop-blur-xl">
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityLabel="Vorheriger Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-slate-100/60 dark:active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
               onPress={() => shiftMonth(-1)}
             >
-              <ChevronLeft color="#64748b" size={16} />
+              <ChevronLeft color="#A1A1AA" size={16} />
             </Pressable>
-            <Text className="text-xs font-semibold capitalize text-slate-600 dark:text-slate-300">{monthLabel}</Text>
+            <Text className="text-xs font-semibold capitalize text-text-secondary">{monthLabel}</Text>
             <Pressable
               accessibilityLabel="Nächster Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-slate-100/60 dark:active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
               onPress={() => shiftMonth(1)}
             >
-              <ChevronRight color="#64748b" size={16} />
+              <ChevronRight color="#A1A1AA" size={16} />
             </Pressable>
           </View>
 
           <View className="flex-row">
             {WEEKDAY_LABELS.map((day) => (
-              <Text key={day} className="flex-1 text-center text-[10px] font-medium text-slate-400">
+              <Text key={day} className="flex-1 text-center text-[10px] font-medium text-text-secondary">
                 {day}
               </Text>
             ))}
@@ -89,7 +89,7 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
                 >
                   <View
                     className={`h-8 w-8 items-center justify-center rounded-full ${
-                      isSelected ? 'bg-emerald-500' : isCellToday ? 'bg-emerald-500/10' : ''
+                      isSelected ? 'bg-primary' : isCellToday ? 'bg-primary/10' : ''
                     }`}
                   >
                     <Text
@@ -97,10 +97,10 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
                         isSelected
                           ? 'font-bold text-white'
                           : !cell.inMonth
-                            ? 'text-slate-300 dark:text-slate-700'
+                            ? 'text-white/20'
                             : isCellToday
-                              ? 'font-semibold text-emerald-600 dark:text-emerald-400'
-                              : 'text-slate-600 dark:text-slate-300'
+                              ? 'font-semibold text-primary'
+                              : 'text-text-secondary'
                       }`}
                     >
                       {cell.day}
