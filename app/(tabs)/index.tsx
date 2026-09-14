@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
-import { Camera, ChevronDown, Coffee, Cookie, GlassWater, Moon, Plus, RefreshCw, Sparkles, UtensilsCrossed } from 'lucide-react-native';
-import type { ComponentType } from 'react';
+import { Camera, ChevronDown, Plus, RefreshCw, Sparkles } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiRecommendationCard } from '@/components/features/AiRecommendationCard';
 import { DateSelector } from '@/components/features/DateSelector';
+import { DayDetailModal } from '@/components/features/DayDetailModal';
 import { DeficitAnalyzerCard } from '@/components/features/DeficitAnalyzerCard';
+import { MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
 import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
@@ -25,21 +26,6 @@ import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 // Re-renders the relative "vor X Min." label periodically so it doesn't go
 // stale while the screen stays mounted.
 const RELATIVE_TIME_REFRESH_MS = 60_000;
-
-interface IconProps {
-  color?: string;
-  size?: number;
-}
-
-const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'drinks'];
-
-const MEAL_TYPE_META: Record<MealType, { label: string; Icon: ComponentType<IconProps> }> = {
-  breakfast: { label: 'Frühstück', Icon: Coffee },
-  lunch: { label: 'Mittagessen', Icon: UtensilsCrossed },
-  dinner: { label: 'Abendessen', Icon: Moon },
-  snack: { label: 'Snacks', Icon: Cookie },
-  drinks: { label: 'Getränke', Icon: GlassWater },
-};
 
 const ACCENT = '#10b981';
 const RING_SIZE = 176;
@@ -188,6 +174,8 @@ export default function DiaryScreen() {
     return () => clearInterval(id);
   }, []);
 
+  const [detailDate, setDetailDate] = useState<string | null>(null);
+
   const selectedDateLabel = new Date(`${date}T00:00:00Z`).toLocaleDateString('de-DE', {
     weekday: 'long',
     day: '2-digit',
@@ -262,7 +250,7 @@ export default function DiaryScreen() {
           </View>
         </View>
 
-        <DateSelector />
+        <DateSelector onDaySelected={setDetailDate} />
 
         <View className="gap-6 lg:flex-row lg:items-start">
           <View className="gap-6 lg:w-[380px] lg:shrink-0">
@@ -319,6 +307,8 @@ export default function DiaryScreen() {
           App-Build: {getLastUpdatedLabel()} Uhr
         </Text>
       </ScrollView>
+
+      <DayDetailModal date={detailDate} onClose={() => setDetailDate(null)} />
     </SafeAreaView>
   );
 }

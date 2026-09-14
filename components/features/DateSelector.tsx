@@ -23,7 +23,12 @@ function formatDayLabel(dateKey: string): string {
   });
 }
 
-export function DateSelector() {
+interface DateSelectorProps {
+  /** Called with the tapped date when a calendar-grid day is picked (not the prev/next arrows) - lets the caller open a detail view for that day. */
+  onDaySelected?: (dateKey: string) => void;
+}
+
+export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
   const selectedDate = useUiStore((state) => state.selectedDate);
   const setSelectedDate = useUiStore((state) => state.setSelectedDate);
   const [expanded, setExpanded] = useState(false);
@@ -38,6 +43,7 @@ export function DateSelector() {
   function selectDate(dateKey: string) {
     setSelectedDate(dateKey);
     setExpanded(false);
+    onDaySelected?.(dateKey);
   }
 
   function goToToday() {
