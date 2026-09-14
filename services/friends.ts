@@ -3,6 +3,13 @@ import type { CloudSnapshot } from '@/services/cloudSync';
 
 export type FriendshipStatus = 'pending' | 'accepted' | 'rejected';
 
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 20;
+// Lower-case alphanumeric + underscore only - enforced again at the DB level
+// (supabase/schema.sql's profiles_username_format check), since Supabase's REST
+// API can be hit directly and client-side validation alone wouldn't stop that.
+export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
+
 export interface FriendProfile {
   id: string;
   email: string;
@@ -61,10 +68,35 @@ function escapeLikePattern(value: string): string {
   return value.replace(/[%_]/g, '\\$&');
 }
 
+/** Strips a leading "@", lower-cases, and drops any character outside [a-z0-9_] - applied live as the user types so the field can never even display an invalid handle, not just reject one on save. */
+export function normalizeUsernameInput(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^@+/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '');
+}
+
+/** Deterministic, always-unique default handle derived from the auth user id (already unique) - assigned at profile-creation time so `username` can be a NOT NULL column with no separate backfill step for brand-new signups. Matches the format the SQL backfill (supabase/schema.sql) uses for profiles that predate this column being required. */
+function defaultUsernameFor(userId: string): string {
+  return `user_${userId.replace(/-/g, '').slice(0, 10)}`;
+}
+
 /** Creates the caller's public.profiles row on first sign-in if it doesn't exist yet - a no-op (ignoreDuplicates) on every later call, so it's safe to call on every session start. */
 export async function ensureProfile(userId: string, email: string): Promise<void> {
-  const { error } = await supabase.from('profiles').upsert({ id: userId, email }, { onConflict: 'id', ignoreDuplicates: true });
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({ id: userId, email, username: defaultUsernameFor(userId) }, { onConflict: 'id', ignoreDuplicates: true });
   if (error) console.error('[friends] ensureProfile', error);
+}
+
+/** Live-typing availability check against the unique `username` column, excluding the caller's own current handle. Returns false (not an error) for a syntactically invalid handle - the caller should already be blocking save on format via USERNAME_PATTERN, this is purely "is it taken". */
+export async function checkUsernameAvailable(rawUsername: string, excludeUserId: string): Promise<boolean> {
+  const username = normalizeUsernameInput(rawUsername);
+  if (!USERNAME_PATTERN.test(username)) return false;
+  const { data, error } = await supabase.from('profiles').select('id').eq('username', username).neq('id', excludeUserId).maybeSingle();
+  if (error) throw error;
+  return !data;
 }
 
 export async function fetchMyProfile(userId: string): Promise<FriendProfile | null> {
@@ -73,13 +105,19 @@ export async function fetchMyProfile(userId: string): Promise<FriendProfile | nu
   return data ? mapProfile(data as ProfileRow) : null;
 }
 
-export async function updateUsername(userId: string, username: string): Promise<void> {
-  const trimmed = username.trim();
-  const { error } = await supabase
-    .from('profiles')
-    .update({ username: trimmed.length > 0 ? trimmed : null })
-    .eq('id', userId);
-  if (error) throw error;
+export async function updateUsername(userId: string, rawUsername: string): Promise<void> {
+  const username = normalizeUsernameInput(rawUsername);
+  if (!USERNAME_PATTERN.test(username)) {
+    throw new Error(`Username muss ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} Zeichen lang sein (a-z, 0-9, _).`);
+  }
+  const { error } = await supabase.from('profiles').update({ username }).eq('id', userId);
+  if (error) {
+    // Postgres unique_violation - the DB is still the source of truth for
+    // uniqueness even though the UI already live-checks via checkUsernameAvailable,
+    // since a second device/tab could grab the same handle in the race between them.
+    if (error.code === '23505') throw new Error(`@${username} ist bereits vergeben.`);
+    throw error;
+  }
 }
 
 export async function setProfilePublic(userId: string, isPublic: boolean): Promise<void> {
@@ -87,25 +125,19 @@ export async function setProfilePublic(userId: string, isPublic: boolean): Promi
   if (error) throw error;
 }
 
-/** Searches public profiles by exact-ish username/email match, excluding the caller. Two separate queries (rather than a single .or() built from user input) so the search term can never be crafted to inject extra PostgREST filter clauses. */
+/** Searches public profiles by @username (the primary identifier for finding people now - see USERNAME_PATTERN). Accepts a leading "@" or raw text; matches partial/substring, not just an exact handle. */
 export async function searchUsers(query: string, myId: string): Promise<FriendProfile[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
-  const pattern = `%${escapeLikePattern(trimmed)}%`;
-  const columns = 'id, email, username, name, is_profile_public';
-
-  const [byUsername, byEmail] = await Promise.all([
-    supabase.from('profiles').select(columns).neq('id', myId).ilike('username', pattern).limit(20),
-    supabase.from('profiles').select(columns).neq('id', myId).ilike('email', pattern).limit(20),
-  ]);
-  if (byUsername.error) throw byUsername.error;
-  if (byEmail.error) throw byEmail.error;
-
-  const byId = new Map<string, FriendProfile>();
-  for (const row of [...(byUsername.data ?? []), ...(byEmail.data ?? [])]) {
-    byId.set(row.id, mapProfile(row as ProfileRow));
-  }
-  return Array.from(byId.values());
+  const normalized = normalizeUsernameInput(query);
+  if (!normalized) return [];
+  const pattern = `%${escapeLikePattern(normalized)}%`;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email, username, name, is_profile_public')
+    .neq('id', myId)
+    .ilike('username', pattern)
+    .limit(20);
+  if (error) throw error;
+  return (data ?? []).map((row) => mapProfile(row as ProfileRow));
 }
 
 export async function sendFriendRequest(myId: string, friendId: string): Promise<void> {

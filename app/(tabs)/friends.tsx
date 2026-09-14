@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FriendActivityCard } from '@/components/features/FriendActivityCard';
+import { UsernameEditor } from '@/components/features/UsernameEditor';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
@@ -17,7 +18,6 @@ import {
   searchUsers,
   sendFriendRequest,
   setProfilePublic,
-  updateUsername,
   type FriendActivitySummary,
   type FriendListItem,
   type FriendProfile,
@@ -27,7 +27,11 @@ import { useToastStore } from '@/store/toastStore';
 import { getLocalDateKey } from '@/utils/calendarDates';
 
 function displayName(profile: FriendProfile): string {
-  return profile.name?.trim() || profile.username?.trim() || profile.email;
+  return profile.name?.trim() || profile.email;
+}
+
+function usernameHandle(profile: FriendProfile): string | null {
+  return profile.username ? `@${profile.username}` : null;
 }
 
 function SignedOutPrompt() {
@@ -45,30 +49,13 @@ function SignedOutPrompt() {
   );
 }
 
-function UsernameCard({ myId, profile, onUpdated }: { myId: string; profile: FriendProfile | null; onUpdated: (profile: FriendProfile) => void }) {
+function ProfileSettingsCard({ myId, profile, onUpdated }: { myId: string; profile: FriendProfile | null; onUpdated: (profile: FriendProfile) => void }) {
   const showToast = useToastStore((state) => state.show);
-  const [username, setUsername] = useState(profile?.username ?? '');
   const [isPublic, setIsPublic] = useState(profile?.isProfilePublic ?? true);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setUsername(profile?.username ?? '');
     setIsPublic(profile?.isProfilePublic ?? true);
-  }, [profile?.username, profile?.isProfilePublic]);
-
-  async function handleSaveUsername() {
-    if (saving) return;
-    setSaving(true);
-    try {
-      await updateUsername(myId, username);
-      if (profile) onUpdated({ ...profile, username: username.trim() || null });
-      showToast('Username gespeichert', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Username konnte nicht gespeichert werden');
-    } finally {
-      setSaving(false);
-    }
-  }
+  }, [profile?.isProfilePublic]);
 
   async function handleTogglePublic() {
     const next = !isPublic;
@@ -85,16 +72,11 @@ function UsernameCard({ myId, profile, onUpdated }: { myId: string; profile: Fri
   return (
     <Card className="gap-3">
       <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Dein Profil</Text>
-      <View className="flex-row items-end gap-2">
-        <View className="flex-1">
-          <TextField label="Username" placeholder="z.B. maxmuster" autoCapitalize="none" value={username} onChangeText={setUsername} />
-        </View>
-        <Button label="Speichern" variant="secondary" loading={saving} onPress={handleSaveUsername} className="mb-0" />
-      </View>
+      <UsernameEditor myId={myId} profile={profile} onUpdated={onUpdated} />
       <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-slate-100/70 px-4 py-3 dark:bg-white/5">
         <View className="flex-1 pr-3">
           <Text className="text-sm font-medium text-slate-700 dark:text-slate-200">Profil öffentlich</Text>
-          <Text className="text-xs text-slate-400">Andere können dich per Username/E-Mail finden und dir eine Anfrage senden.</Text>
+          <Text className="text-xs text-slate-400">Andere können dich per @username finden und dir eine Anfrage senden.</Text>
         </View>
         <View className={`h-7 w-12 justify-center rounded-full px-0.5 ${isPublic ? 'items-end bg-emerald-500' : 'items-start bg-slate-300 dark:bg-slate-700'}`}>
           <View className="h-6 w-6 rounded-full bg-white" />
@@ -121,7 +103,7 @@ function SearchResultRow({ profile, onSend, sent }: { profile: FriendProfile; on
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
         <Text className="text-sm font-semibold text-slate-900 dark:text-white">{displayName(profile)}</Text>
-        <Text className="text-xs text-slate-400">{profile.email}</Text>
+        {usernameHandle(profile) && <Text className="text-xs text-slate-400">{usernameHandle(profile)}</Text>}
       </View>
       <Pressable
         onPress={handlePress}
@@ -137,7 +119,10 @@ function SearchResultRow({ profile, onSend, sent }: { profile: FriendProfile; on
 function IncomingRequestRow({ item, onRespond }: { item: FriendListItem; onRespond: (accept: boolean) => void }) {
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
-      <Text className="flex-1 text-sm font-semibold text-slate-900 dark:text-white">{displayName(item.profile)}</Text>
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-slate-900 dark:text-white">{displayName(item.profile)}</Text>
+        {usernameHandle(item.profile) && <Text className="text-xs text-slate-400">{usernameHandle(item.profile)}</Text>}
+      </View>
       <View className="flex-row gap-2">
         <Pressable onPress={() => onRespond(true)} className="h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
           <Check color="#10b981" size={16} />
@@ -244,14 +229,14 @@ export default function FriendsScreen() {
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
         <Text className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Freunde</Text>
 
-        <UsernameCard myId={myId} profile={myProfile} onUpdated={setMyProfile} />
+        <ProfileSettingsCard myId={myId} profile={myProfile} onUpdated={setMyProfile} />
 
         <Card className="gap-3">
           <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Freunde finden</Text>
           <View className="flex-row items-end gap-2">
             <View className="flex-1">
               <TextField
-                placeholder="Username oder E-Mail"
+                placeholder="@username"
                 autoCapitalize="none"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -288,7 +273,10 @@ export default function FriendsScreen() {
             <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ausstehend</Text>
             {outgoing.map((item) => (
               <View key={item.friendshipId} className="flex-row items-center justify-between py-2">
-                <Text className="text-sm text-slate-600 dark:text-slate-300">{displayName(item.profile)}</Text>
+                <View>
+                  <Text className="text-sm text-slate-600 dark:text-slate-300">{displayName(item.profile)}</Text>
+                  {usernameHandle(item.profile) && <Text className="text-xs text-slate-400">{usernameHandle(item.profile)}</Text>}
+                </View>
                 <Pressable onPress={() => handleRemove(item.friendshipId)}>
                   <Text className="text-xs font-semibold text-red-500">Zurückziehen</Text>
                 </Pressable>

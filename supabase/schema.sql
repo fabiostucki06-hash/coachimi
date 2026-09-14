@@ -83,9 +83,10 @@ create table if not exists public.profiles (
 alter table public.profiles enable row level security;
 
 -- A profile is readable by its own owner, by anyone if it opted into
--- is_profile_public (needed for username/email search), and by an accepted
--- friend even if they later flipped their profile private (so an existing
--- friend's name doesn't disappear from your friends list).
+-- is_profile_public (this is what makes @username publicly searchable - see
+-- services/friends.ts searchUsers), and by an accepted friend even if they
+-- later flipped their profile private (so an existing friend's name doesn't
+-- disappear from your friends list).
 create policy "Profiles are readable per privacy settings"
   on public.profiles for select
   using (
@@ -144,6 +145,22 @@ create policy "Participants can update their friendship status"
 create policy "Participants can delete their friendship"
   on public.friendships for delete
   using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Make @username mandatory and validated. Backfill first (existing rows predate
+-- this being required - services/friends.ts's ensureProfile now always supplies
+-- a default 'user_<id prefix>' handle for brand-new rows, so only pre-existing
+-- profiles ever hit this branch) using the same generation scheme, then lock the
+-- column down. Re-run safe: the update only touches rows still missing a username,
+-- and both alters are idempotent (set not null / replace-if-exists).
+update public.profiles
+set username = 'user_' || substr(replace(id::text, '-', ''), 1, 10)
+where username is null;
+
+alter table public.profiles alter column username set not null;
+
+alter table public.profiles drop constraint if exists profiles_username_format;
+alter table public.profiles add constraint profiles_username_format
+  check (username ~ '^[a-z0-9_]{3,20}$');
 
 -- Extends user_data's existing "owner only" select policy (RLS policies for
 -- the same command are OR'd together) so an accepted friend can also read

@@ -9,12 +9,14 @@ import { HealthAdvisor } from '@/components/features/HealthAdvisor';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
 import { PatchNotes } from '@/components/features/PatchNotes';
 import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
+import { UsernameEditor } from '@/components/features/UsernameEditor';
 import { ACTIVITY_OPTIONS, ChipGroup, GENDER_OPTIONS, GOAL_OPTIONS, THEME_OPTIONS } from '@/components/features/ProfileOptions';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
+import { fetchMyProfile, type FriendProfile } from '@/services/friends';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -166,6 +168,17 @@ export default function ProfilScreen() {
   const signOut = useSyncStore((state) => state.signOut);
   const activeRank = useRewardStore((state) => state.activeRank);
   const activeRankName = RANKS.find((rank) => rank.id === activeRank)?.name ?? RANKS[0].name;
+  const myId = session?.user.id;
+
+  const [friendProfile, setFriendProfile] = useState<FriendProfile | null>(null);
+
+  useEffect(() => {
+    if (!myId) {
+      setFriendProfile(null);
+      return;
+    }
+    fetchMyProfile(myId).then(setFriendProfile).catch(() => setFriendProfile(null));
+  }, [myId]);
 
   async function handleSignOut() {
     await signOut();
@@ -294,6 +307,7 @@ export default function ProfilScreen() {
           </View>
           <View className="items-center gap-1">
             <Text className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{user.name || 'Ohne Namen'}</Text>
+            {friendProfile?.username && <Text className="text-sm font-medium text-emerald-500">@{friendProfile.username}</Text>}
             {activeRank !== 'neuling' && (
               <View className="rounded-full bg-amber-400/15 px-2.5 py-0.5">
                 <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">{activeRankName}</Text>
@@ -321,6 +335,11 @@ export default function ProfilScreen() {
             onPress={handleSaveAccount}
             disabled={!isAccountValid || !isAccountDirty}
           />
+          {myId && (
+            <View className="gap-2 border-t border-slate-100 pt-3 dark:border-white/5">
+              <UsernameEditor myId={myId} profile={friendProfile} onUpdated={setFriendProfile} />
+            </View>
+          )}
         </Card>
 
         <Card className="gap-3">

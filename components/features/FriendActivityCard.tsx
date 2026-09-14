@@ -30,6 +30,7 @@ export function FriendActivityCard({ profile, activity }: { profile: FriendProfi
         <Text className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{initialsOf(profile)}</Text>
       </View>
       <View className="flex-1 gap-1">
+        {profile.username && <Text className="text-xs text-slate-400">@{profile.username}</Text>}
         <Text className="text-sm text-slate-700 dark:text-slate-200">{sentence}</Text>
         {activity && (activity.calorieGoal > 0 || activity.proteinGoalG > 0) ? (
           <View className="flex-row items-center gap-3">
