@@ -9,7 +9,8 @@ import { DateSelector } from '@/components/features/DateSelector';
 import { DayDetailModal } from '@/components/features/DayDetailModal';
 import { DeficitAnalyzerCard } from '@/components/features/DeficitAnalyzerCard';
 import { MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
-import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
+import { MacroBadge, NutrientTile } from '@/components/features/NutrientProgress';
+import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
@@ -34,49 +35,6 @@ const CORE_MACROS: NutrientKey[] = ['protein', 'carbs', 'fat'];
 
 function formatSyncTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-
-function MacroBadge({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey; amount: number; goal: number }) {
-  const { label, unit, color, Icon } = NUTRIENT_META[nutrientKey];
-  const pct = goal > 0 ? Math.min(Math.round((amount / goal) * 100), 100) : 0;
-
-  return (
-    <View className="flex-1 gap-2 rounded-2xl bg-white/5 p-3">
-      <View className="flex-row items-center gap-1.5">
-        <Icon color={color} size={14} />
-        <Text className="text-xs font-medium text-text-secondary">{label}</Text>
-      </View>
-      <Text className="text-sm font-semibold text-white">
-        {Math.round(amount)}
-        {unit}
-        <Text className="text-xs font-normal text-text-secondary"> /{Math.round(goal)}{unit}</Text>
-      </Text>
-      <View className="h-1.5 w-full rounded-full bg-white/10">
-        <View className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-      </View>
-    </View>
-  );
-}
-
-function NutrientTile({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey; amount: number; goal: number }) {
-  const { label, unit, color, Icon } = NUTRIENT_META[nutrientKey];
-  const pct = goal > 0 ? Math.min(Math.round((amount / goal) * 100), 100) : 0;
-
-  return (
-    <View className="basis-[30%] gap-2">
-      <View className="flex-row items-center gap-1.5">
-        <Icon color={color} size={14} />
-        <Text className="text-xs font-medium text-text-secondary">{label}</Text>
-      </View>
-      <Text className="text-sm font-semibold text-white">
-        {Math.round(amount)}
-        {unit} <Text className="text-xs font-normal text-text-secondary">/ {Math.round(goal)}{unit}</Text>
-      </Text>
-      <View className="h-1.5 w-full rounded-full bg-white/10">
-        <View className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-      </View>
-    </View>
-  );
 }
 
 function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntry[] }) {
