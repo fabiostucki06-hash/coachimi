@@ -13,6 +13,7 @@ import {
   subscribeToRemoteChanges,
 } from '@/services/cloudSync';
 import { ensureProfile, fetchMyProfile } from '@/services/friends';
+import { useCoinsStore } from '@/store/coinsStore';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useProfileStore } from '@/store/profileStore';
@@ -136,6 +137,13 @@ function stopAutoSyncWatchers() {
 // the realtime event entirely).
 async function pullAndApply(session: Session): Promise<void> {
   try {
+    // Coins are backend-driven (profiles.coins via store/coinsStore.ts), not
+    // part of the pulled JSONB snapshot below - refetched here too so every
+    // occasion this function runs (initial sign-in, a realtime change from
+    // another device, foreground/reconnect) also gets a fresh balance rather
+    // than showing whatever this device last knew.
+    void useCoinsStore.getState().fetchCoins(session.user.id);
+
     const remote = await pullSnapshot(session.user.id);
     console.log('[Sync] Remote payload fetched:', remote);
     const localChangedAt = await getLocalChangeTimestamp();
@@ -231,6 +239,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         stopAutoSyncWatchers();
         set({ status: 'offline', lastSyncedAt: null, remoteUpdatedAt: null, error: null });
         useProfileStore.getState().setProfile(null);
+        useCoinsStore.getState().reset();
       }
     });
 
@@ -299,6 +308,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     stopAutoSyncWatchers();
     await supabase.auth.signOut();
     set({ status: 'offline', lastSyncedAt: null, remoteUpdatedAt: null, error: null });
+    useCoinsStore.getState().reset();
   },
 
   syncNow: async () => {
@@ -321,6 +331,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     if (!session) return;
     set({ status: 'syncing', error: null });
     try {
+      void useCoinsStore.getState().fetchCoins(session.user.id);
       const remote = await pullSnapshot(session.user.id);
       console.log('[Sync] Remote payload fetched:', remote);
       if (remote) {

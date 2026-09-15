@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { useCoinsStore } from '@/store/coinsStore';
 import type {
   BadgeId,
   BorderId,
@@ -84,7 +85,6 @@ export interface PurchaseCelebration {
 }
 
 interface RewardState {
-  goldBars: number;
   streak: number;
   lastActiveDate: string | null;
   lastDailyClaimDate: string | null;
@@ -106,6 +106,7 @@ interface RewardState {
   unlockedBorders: BorderId[];
   unlockedPerks: PerkId[];
 
+  /** Records the earn locally (celebration pop-up, transaction history) and asks coinsStore to actually credit the backend balance - see store/coinsStore.ts. */
   addGoldBars: (amount: number, reason: string) => void;
   dismissCelebration: () => void;
   dismissPurchaseCelebration: () => void;
@@ -121,21 +122,22 @@ interface RewardState {
     dateKey?: string;
   }) => void;
   checkTrainingSessionCompleted: (sessionId: string, isCompleted: boolean) => void;
-  unlockBadge: (badgeId: BadgeId) => boolean;
+  /** Spend actions now call coinsStore's spend_coins RPC (the backend enforces affordability atomically), so these are async - see store/coinsStore.ts. */
+  unlockBadge: (badgeId: BadgeId) => Promise<boolean>;
   /** 20 Goldbarren für 1 Schutzschild, gedeckelt bei MAX_STREAK_SAVERS. Returns whether the purchase went through. */
-  buyStreakSaver: () => boolean;
+  buyStreakSaver: () => Promise<boolean>;
   /** Schaltet einen Rang frei (falls nötig) und setzt ihn aktiv. Returns whether it succeeded. */
-  buyRank: (rankId: RankId) => boolean;
+  buyRank: (rankId: RankId) => Promise<boolean>;
   /** Verbraucht bei einer verpassten Aktivitätslücke ein Schutzschild statt den Streak zu reißen. Returns whether a shield was consumed. */
   checkAndApplyStreakProtection: (dateKey?: string) => boolean;
   /** Schaltet ein Theme frei (falls nötig) und setzt es aktiv. Returns whether it succeeded. */
-  buyTheme: (themeId: ThemeId) => boolean;
+  buyTheme: (themeId: ThemeId) => Promise<boolean>;
   /** Schaltet ein Mahlzeiten-Icon-Pack frei (falls nötig) und setzt es aktiv. Returns whether it succeeded. */
-  buyIconPack: (packId: IconPackId) => boolean;
+  buyIconPack: (packId: IconPackId) => Promise<boolean>;
   /** Schaltet einen Avatar-Rahmen frei (falls nötig) und setzt ihn aktiv. Returns whether it succeeded. */
-  buyBorder: (borderId: BorderId) => boolean;
+  buyBorder: (borderId: BorderId) => Promise<boolean>;
   /** Einmaliger Kauf eines Perks (nicht ausrüstbar). Returns whether it succeeded. */
-  buyPerk: (perkId: PerkId) => boolean;
+  buyPerk: (perkId: PerkId) => Promise<boolean>;
 }
 
 let nextCelebrationId = 0;
@@ -149,7 +151,6 @@ function pushTransaction(history: RewardTransaction[], amount: number, reason: s
 export const useRewardStore = create<RewardState>()(
   persist(
     (set, get) => ({
-      goldBars: 0,
       streak: 0,
       lastActiveDate: null,
       lastDailyClaimDate: null,
@@ -172,12 +173,12 @@ export const useRewardStore = create<RewardState>()(
       unlockedPerks: [],
 
       addGoldBars: (amount, reason) => {
-        if (amount === 0) return;
+        if (amount <= 0) return;
         set((state) => ({
-          goldBars: Math.max(0, state.goldBars + amount),
           transactionHistory: pushTransaction(state.transactionHistory, amount, reason),
-          celebration: amount > 0 ? { id: ++nextCelebrationId, amount, reason } : state.celebration,
+          celebration: { id: ++nextCelebrationId, amount, reason },
         }));
+        void useCoinsStore.getState().addCoins(amount);
       },
 
       dismissCelebration: () => set({ celebration: null }),
@@ -228,13 +229,13 @@ export const useRewardStore = create<RewardState>()(
         get().addGoldBars(2, 'Trainingseinheit abgeschlossen');
       },
 
-      unlockBadge: (badgeId) => {
+      unlockBadge: async (badgeId) => {
         const item = SHOP_ITEMS.find((shopItem) => shopItem.id === badgeId);
-        const { unlockedBadges, goldBars } = get();
-        if (!item || unlockedBadges.includes(badgeId) || goldBars < item.cost) return false;
+        const { unlockedBadges } = get();
+        if (!item || unlockedBadges.includes(badgeId)) return false;
+        if (!(await useCoinsStore.getState().spendCoins(item.cost))) return false;
 
         set((state) => ({
-          goldBars: state.goldBars - item.cost,
           unlockedBadges: [...state.unlockedBadges, badgeId],
           transactionHistory: pushTransaction(state.transactionHistory, -item.cost, `Freigeschaltet: ${item.name}`),
           purchaseCelebration: { id: ++nextCelebrationId, itemName: item.name },
@@ -242,12 +243,12 @@ export const useRewardStore = create<RewardState>()(
         return true;
       },
 
-      buyStreakSaver: () => {
-        const { goldBars, streakSavers } = get();
-        if (streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST) return false;
+      buyStreakSaver: async () => {
+        const { streakSavers } = get();
+        if (streakSavers >= MAX_STREAK_SAVERS) return false;
+        if (!(await useCoinsStore.getState().spendCoins(STREAK_SAVER_COST))) return false;
 
         set((state) => ({
-          goldBars: state.goldBars - STREAK_SAVER_COST,
           streakSavers: state.streakSavers + 1,
           transactionHistory: pushTransaction(state.transactionHistory, -STREAK_SAVER_COST, 'Streak-Schutzschild gekauft'),
           purchaseCelebration: { id: ++nextCelebrationId, itemName: 'Streak-Schutzschild' },
@@ -255,20 +256,19 @@ export const useRewardStore = create<RewardState>()(
         return true;
       },
 
-      buyRank: (rankId) => {
+      buyRank: async (rankId) => {
         const rank = RANKS.find((candidate) => candidate.id === rankId);
         if (!rank) return false;
 
-        const { unlockedRanks, goldBars } = get();
+        const { unlockedRanks } = get();
         if (unlockedRanks.includes(rankId)) {
           set({ activeRank: rankId });
           return true;
         }
 
-        if (goldBars < rank.cost) return false;
+        if (rank.cost > 0 && !(await useCoinsStore.getState().spendCoins(rank.cost))) return false;
 
         set((state) => ({
-          goldBars: state.goldBars - rank.cost,
           unlockedRanks: [...state.unlockedRanks, rankId],
           activeRank: rankId,
           transactionHistory: rank.cost > 0 ? pushTransaction(state.transactionHistory, -rank.cost, `Rang freigeschaltet: ${rank.name}`) : state.transactionHistory,
@@ -292,20 +292,19 @@ export const useRewardStore = create<RewardState>()(
         return true;
       },
 
-      buyTheme: (themeId) => {
+      buyTheme: async (themeId) => {
         const theme = THEMES.find((candidate) => candidate.id === themeId);
         if (!theme) return false;
 
-        const { unlockedThemes, goldBars } = get();
+        const { unlockedThemes } = get();
         if (unlockedThemes.includes(themeId)) {
           set({ activeTheme: themeId });
           return true;
         }
 
-        if (goldBars < theme.cost) return false;
+        if (theme.cost > 0 && !(await useCoinsStore.getState().spendCoins(theme.cost))) return false;
 
         set((state) => ({
-          goldBars: state.goldBars - theme.cost,
           unlockedThemes: [...state.unlockedThemes, themeId],
           activeTheme: themeId,
           transactionHistory: pushTransaction(state.transactionHistory, -theme.cost, `Theme freigeschaltet: ${theme.name}`),
@@ -314,20 +313,19 @@ export const useRewardStore = create<RewardState>()(
         return true;
       },
 
-      buyIconPack: (packId) => {
+      buyIconPack: async (packId) => {
         const pack = ICON_PACKS.find((candidate) => candidate.id === packId);
         if (!pack) return false;
 
-        const { unlockedIconPacks, goldBars } = get();
+        const { unlockedIconPacks } = get();
         if (unlockedIconPacks.includes(packId)) {
           set({ activeIconPack: packId });
           return true;
         }
 
-        if (goldBars < pack.cost) return false;
+        if (pack.cost > 0 && !(await useCoinsStore.getState().spendCoins(pack.cost))) return false;
 
         set((state) => ({
-          goldBars: state.goldBars - pack.cost,
           unlockedIconPacks: [...state.unlockedIconPacks, packId],
           activeIconPack: packId,
           transactionHistory: pushTransaction(state.transactionHistory, -pack.cost, `Icon-Pack freigeschaltet: ${pack.name}`),
@@ -336,20 +334,19 @@ export const useRewardStore = create<RewardState>()(
         return true;
       },
 
-      buyBorder: (borderId) => {
+      buyBorder: async (borderId) => {
         const border = BORDERS.find((candidate) => candidate.id === borderId);
         if (!border) return false;
 
-        const { unlockedBorders, goldBars } = get();
+        const { unlockedBorders } = get();
         if (unlockedBorders.includes(borderId)) {
           set({ activeBorder: borderId });
           return true;
         }
 
-        if (goldBars < border.cost) return false;
+        if (border.cost > 0 && !(await useCoinsStore.getState().spendCoins(border.cost))) return false;
 
         set((state) => ({
-          goldBars: state.goldBars - border.cost,
           unlockedBorders: [...state.unlockedBorders, borderId],
           activeBorder: borderId,
           transactionHistory: pushTransaction(state.transactionHistory, -border.cost, `Rahmen freigeschaltet: ${border.name}`),
@@ -358,13 +355,13 @@ export const useRewardStore = create<RewardState>()(
         return true;
       },
 
-      buyPerk: (perkId) => {
+      buyPerk: async (perkId) => {
         const perk = PERKS.find((candidate) => candidate.id === perkId);
-        const { unlockedPerks, goldBars } = get();
-        if (!perk || unlockedPerks.includes(perkId) || goldBars < perk.cost) return false;
+        const { unlockedPerks } = get();
+        if (!perk || unlockedPerks.includes(perkId)) return false;
+        if (!(await useCoinsStore.getState().spendCoins(perk.cost))) return false;
 
         set((state) => ({
-          goldBars: state.goldBars - perk.cost,
           unlockedPerks: [...state.unlockedPerks, perkId],
           transactionHistory: pushTransaction(state.transactionHistory, -perk.cost, `Freigeschaltet: ${perk.name}`),
           purchaseCelebration: { id: ++nextCelebrationId, itemName: perk.name },
@@ -375,9 +372,17 @@ export const useRewardStore = create<RewardState>()(
     {
       name: 'coach-imi-reward-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
       // The celebration pop-up is transient UI state - never worth restoring on app relaunch.
       partialize: (state) => ({ ...state, celebration: null, purchaseCelebration: null }),
+      // v1 -> v2: goldBars moved to profiles.coins (store/coinsStore.ts), fetched
+      // fresh from Supabase every session instead of cached locally - strip any
+      // stale value already sitting on disk from before this migration so it can
+      // never again render, even for a split second before the fetch resolves.
+      migrate: (persistedState) => {
+        const { goldBars: _goldBars, ...rest } = (persistedState ?? {}) as Record<string, unknown>;
+        return rest as unknown as RewardState;
+      },
     },
   ),
 );

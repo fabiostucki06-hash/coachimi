@@ -10,6 +10,7 @@ import { type PendingPurchase, PurchaseConfirmModal } from '@/components/feature
 import { AVATAR_FRAME_CLASSES } from '@/components/features/UserAvatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useCoinsStore } from '@/store/coinsStore';
 import { BORDERS, ICON_PACKS, MAX_STREAK_SAVERS, RANKS, SHOP_ITEMS, STREAK_SAVER_COST, useRewardStore } from '@/store/rewardStore';
 import { useToastStore } from '@/store/toastStore';
 import type { RewardTransaction } from '@/types';
@@ -127,7 +128,7 @@ function SectionCard({ title, children }: { title: string; children: ReactNode }
 }
 
 export default function RewardsScreen() {
-  const goldBars = useRewardStore((state) => state.goldBars);
+  const goldBars = useCoinsStore((state) => state.coins) ?? 0;
   const streak = useRewardStore((state) => state.streak);
   const streakSavers = useRewardStore((state) => state.streakSavers);
   const activeRank = useRewardStore((state) => state.activeRank);
@@ -147,15 +148,15 @@ export default function RewardsScreen() {
   const buyBorder = useRewardStore((state) => state.buyBorder);
   const showToast = useToastStore((state) => state.show);
 
-  const [pendingPurchase, setPendingPurchase] = useState<(PendingPurchase & { execute: () => boolean }) | null>(null);
+  const [pendingPurchase, setPendingPurchase] = useState<(PendingPurchase & { execute: () => Promise<boolean> }) | null>(null);
 
-  function requestPurchase(name: string, description: string, cost: number, execute: () => boolean) {
+  function requestPurchase(name: string, description: string, cost: number, execute: () => Promise<boolean>) {
     setPendingPurchase({ name, description, cost, execute });
   }
 
-  function confirmPurchase() {
+  async function confirmPurchase() {
     if (!pendingPurchase) return;
-    const succeeded = pendingPurchase.execute();
+    const succeeded = await pendingPurchase.execute();
     if (!succeeded) showToast('Nicht genug Goldbarren.', 'error');
     setPendingPurchase(null);
   }

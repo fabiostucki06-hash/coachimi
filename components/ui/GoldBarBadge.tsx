@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 
 import { useCoinAnchorStore } from '@/store/coinAnchorStore';
+import { useCoinsStore } from '@/store/coinsStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { BADGE_COUNT_UP_MS, COIN_ARRIVAL_MS } from '@/utils/coinAnimation';
 
@@ -14,7 +15,10 @@ interface GoldBarBadgeProps {
 }
 
 export function GoldBarBadge({ compact = false }: GoldBarBadgeProps = {}) {
-  const goldBars = useRewardStore((state) => state.goldBars);
+  // Backend-driven single source of truth (store/coinsStore.ts) - null while
+  // the initial fetch is in flight, shown as 0 rather than flashing a stale
+  // or placeholder number.
+  const goldBars = useCoinsStore((state) => state.coins) ?? 0;
   const celebration = useRewardStore((state) => state.celebration);
   const setAnchor = useCoinAnchorStore((state) => state.setAnchor);
 

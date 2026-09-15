@@ -5,6 +5,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 let authCallback: ((event: string, session: unknown) => void) | undefined;
 const mockMaybeSingle = jest.fn();
 const mockUpsert = jest.fn().mockResolvedValue({ error: null });
+// Backs store/coinsStore.ts's add_coins/spend_coins RPC calls - the coin
+// balance is backend-driven (supabase/migrations/0004_backend_coins.sql), no
+// longer part of the user_data JSONB snapshot these tests otherwise mock.
+const mockRpc = jest.fn().mockResolvedValue({ data: 0, error: null });
 
 jest.mock('@/lib/supabase', () => ({
   supabase: {
@@ -17,11 +21,20 @@ jest.mock('@/lib/supabase', () => ({
       select: () => ({ eq: () => ({ maybeSingle: mockMaybeSingle }) }),
       upsert: mockUpsert,
     }),
+    // Wrapped (not `rpc: mockRpc` directly): this property sits on the
+    // factory's top-level return value, which babel's hoisted require()
+    // evaluates before `const mockRpc = ...` below has run - assigning the
+    // not-yet-initialized value directly would freeze `rpc` as undefined.
+    // `from`/`upsert` above dodge this because they're read lazily from
+    // inside nested functions, invoked well after mockUpsert/mockMaybeSingle
+    // are assigned.
+    rpc: (...args: unknown[]) => mockRpc(...args),
   },
 }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { useCoinsStore } from '@/store/coinsStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { useTrainingStore } from '@/store/trainingStore';
 import { useUserStore } from '@/store/userStore';
@@ -34,9 +47,11 @@ function flush() {
 beforeEach(async () => {
   await AsyncStorage.clear();
   useUserStore.setState((state) => ({ user: { ...state.user, dailyCalorieGoal: 1800 } }));
-  useRewardStore.setState({ goldBars: 0, streak: 0, streakSavers: 0, activeRank: 'neuling', unlockedRanks: ['neuling'] });
+  useRewardStore.setState({ streak: 0, streakSavers: 0, activeRank: 'neuling', unlockedRanks: ['neuling'] });
   useTrainingStore.setState({ templates: [], sessionsByDate: {} });
+  useCoinsStore.getState().reset();
   mockUpsert.mockClear();
+  mockRpc.mockClear();
 });
 
 function remoteRowAt(dailyCalorieGoal: number, updatedAt: string) {
@@ -96,7 +111,7 @@ it('still applies a genuinely newer remote snapshot (e.g. edited on another devi
   expect(useUserStore.getState().user.dailyCalorieGoal).toBe(3000);
 });
 
-it('pushes reward state (Goldbarren) to Supabase when it changes locally', async () => {
+it('credits coins via the add_coins RPC, not the synced JSONB snapshot', async () => {
   mockMaybeSingle.mockResolvedValue({ data: null, error: null });
   useSyncStore.getState().init();
   authCallback?.('INITIAL_SESSION', { user: { id: 'u3' }, access_token: 'tok-5' });
@@ -104,13 +119,18 @@ it('pushes reward state (Goldbarren) to Supabase when it changes locally', async
   await flush();
 
   useRewardStore.getState().addGoldBars(5, 'Testguthaben');
-  // Auto-sync push is debounced by 200ms - advance past it.
+  expect(mockRpc).toHaveBeenCalledWith('add_coins', { p_amount: 5 });
+
+  // Auto-sync push is debounced by 200ms - advance past it. The reward store
+  // still pushes its own change (transaction history/celebration), but the
+  // coin balance itself must never be part of that payload - see
+  // supabase/migrations/0004_backend_coins.sql.
   await new Promise((resolve) => setTimeout(resolve, 250));
   await flush();
 
   expect(mockUpsert).toHaveBeenCalled();
   const pushedRow = mockUpsert.mock.calls[mockUpsert.mock.calls.length - 1][0];
-  expect(pushedRow.data.rewards.goldBars).toBe(5);
+  expect(pushedRow.data.rewards.goldBars).toBeUndefined();
 });
 
 it('applies a pulled remote reward snapshot to the reward store', async () => {
@@ -126,7 +146,7 @@ it('applies a pulled remote reward snapshot to the reward store', async () => {
         weightHistory,
         entriesByDate: {},
         hasOnboarded: true,
-        rewards: { goldBars: 42, streak: 3, streakSavers: 2, activeRank: 'gold_standard_athlet', unlockedRanks: ['neuling', 'gold_standard_athlet'] },
+        rewards: { streak: 3, streakSavers: 2, activeRank: 'gold_standard_athlet', unlockedRanks: ['neuling', 'gold_standard_athlet'] },
       },
       updated_at: newerTimestamp,
     },
@@ -137,8 +157,17 @@ it('applies a pulled remote reward snapshot to the reward store', async () => {
   await flush();
   await flush();
 
-  expect(useRewardStore.getState().goldBars).toBe(42);
   expect(useRewardStore.getState().activeRank).toBe('gold_standard_athlet');
+});
+
+it('fetches the coin balance from profiles.coins on session load', async () => {
+  mockMaybeSingle.mockResolvedValue({ data: { coins: 17 }, error: null });
+  useSyncStore.getState().init();
+  authCallback?.('INITIAL_SESSION', { user: { id: 'u7' }, access_token: 'tok-9' });
+  await flush();
+  await flush();
+
+  expect(useCoinsStore.getState().coins).toBe(17);
 });
 
 // Regression: a finished workout only lived in trainingStore's local

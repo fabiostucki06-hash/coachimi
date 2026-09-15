@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { notifyDataChanged } from '@/hooks/useServiceWorker';
 import { syncWidgetData } from '@/services/widgetBridge';
+import { useCoinsStore } from '@/store/coinsStore';
 import { todayKey, useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { useUserStore } from '@/store/userStore';
@@ -12,7 +13,8 @@ function pushWidgetSnapshot() {
   const consumedCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
   const consumedProtein = entries.reduce((sum, entry) => sum + entry.foodItem.macrosPerServing.protein * entry.servings, 0);
   const { dailyCalorieGoal, dailyMacroGoal } = useUserStore.getState().user;
-  const { goldBars, streak } = useRewardStore.getState();
+  const { streak } = useRewardStore.getState();
+  const goldBars = useCoinsStore.getState().coins ?? 0;
 
   void syncWidgetData({
     remainingKcal: Math.max(dailyCalorieGoal - consumedCalories, 0),
@@ -43,7 +45,10 @@ export function useWidgetSync() {
       if (state.entriesByDate !== prev.entriesByDate) pushWidgetSnapshot();
     });
     const unsubscribeReward = useRewardStore.subscribe((state, prev) => {
-      if (state.goldBars !== prev.goldBars || state.streak !== prev.streak) pushWidgetSnapshot();
+      if (state.streak !== prev.streak) pushWidgetSnapshot();
+    });
+    const unsubscribeCoins = useCoinsStore.subscribe((state, prev) => {
+      if (state.coins !== prev.coins) pushWidgetSnapshot();
     });
     const unsubscribeUser = useUserStore.subscribe((state, prev) => {
       if (state.user.dailyCalorieGoal !== prev.user.dailyCalorieGoal || state.user.dailyMacroGoal !== prev.user.dailyMacroGoal) {
@@ -54,6 +59,7 @@ export function useWidgetSync() {
     return () => {
       unsubscribeDiary();
       unsubscribeReward();
+      unsubscribeCoins();
       unsubscribeUser();
     };
   }, []);

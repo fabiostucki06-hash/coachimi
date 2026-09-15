@@ -71,11 +71,14 @@ export function shouldApplyRemote(remoteUpdatedAt: string | null | undefined, lo
   return new Date(remoteUpdatedAt).getTime() > new Date(localChangedAt).getTime();
 }
 
-// Reward fields synced across devices - gamification state (Goldbarren, Streaks,
-// Ränge, Schutzschilde). All optional: absent in snapshots pushed before this
+// Reward fields synced across devices - gamification state (Streaks, Ränge,
+// Schutzschilde). All optional: absent in snapshots pushed before this
 // gamification feature existed - callers must fall back to the local default.
+// The Goldbarren/coin balance itself is deliberately NOT here - it lives in
+// profiles.coins and is fetched/mutated directly via store/coinsStore.ts
+// (see supabase/migrations/0004_backend_coins.sql), not synced through this
+// client-computed JSONB blob.
 export interface CloudRewardSnapshot {
-  goldBars: number;
   streak: number;
   lastActiveDate: string | null;
   lastDailyClaimDate: string | null;
@@ -122,7 +125,6 @@ export function buildSnapshot(): CloudSnapshot {
   const { entriesByDate } = useDiaryStore.getState();
   const { customFoods } = useCustomFoodStore.getState();
   const {
-    goldBars,
     streak,
     lastActiveDate,
     lastDailyClaimDate,
@@ -151,7 +153,6 @@ export function buildSnapshot(): CloudSnapshot {
     hasOnboarded,
     customFoods,
     rewards: {
-      goldBars,
       streak,
       lastActiveDate,
       lastDailyClaimDate,
