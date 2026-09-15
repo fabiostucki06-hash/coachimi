@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { getCachedBarcode, setCachedBarcode } from '@/services/barcodeCache';
 import type { FoodItem, Micronutrients } from '@/types';
 import { foldFructoseIntoSugar, withFructoseFoldedIntoSugar } from '@/utils/nutritionCalculator';
 
@@ -245,9 +246,31 @@ async function runSearchTier(url: string, signal?: AbortSignal): Promise<FoodIte
     .map((product, index) => ({ ...normalizeFoodItem(product, `search-${index}`), source: 'off' as const }));
 }
 
-/** Swiss-market tier via Search-a-licious - same field mapping as `normalizeFoodItem`, just adapted for `hits`/array-brands instead of `products`/string-brands. */
-async function runSwissSearchTier(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
-  const url = `${SEARCH_URL_SALICIOUS}?q=${encodeURIComponent(query)}&langs=de&countries_tags=en:switzerland&page_size=${MAX_RESULTS}`;
+// Major Swiss retailer own-brands (Search-a-licious `brands_tags` slugs) - a Migros/
+// Coop/Denner shopper logging own-brand groceries hits these constantly, so a hit
+// on one of them is boosted ahead of the generic country-only tier below.
+const SWISS_RETAILER_BRAND_TAGS = ['migros', 'coop', 'm-budget', 'prix-garantie', 'alnatura'];
+
+/**
+ * Builds the Search-a-licious `q` param restricting to Swiss-market products, and -
+ * when `retailerOnly` is set - further restricted to the major Swiss retailer
+ * own-brands above. Field-qualified filters (`countries_tags:"en:switzerland"`) must
+ * be embedded in `q` itself: passing `countries_tags` as a *separate* query-string
+ * param (the previous approach here) is silently ignored by the API - verified
+ * against the live endpoint, not just its docs - so it never actually filtered by
+ * country. Quoting the tag value is required too: without quotes, the colon inside
+ * "en:switzerland" breaks the field:value parse and the filter matches nothing.
+ */
+export function buildSwissQuery(term: string, retailerOnly: boolean): string {
+  const base = `${term} AND countries_tags:"en:switzerland"`;
+  if (!retailerOnly) return base;
+  const brandFilter = SWISS_RETAILER_BRAND_TAGS.map((tag) => `brands_tags:${tag}`).join(' OR ');
+  return `${base} AND (${brandFilter})`;
+}
+
+/** Swiss-market tier via Search-a-licious - same field mapping as `normalizeFoodItem`, just adapted for `hits`/array-brands instead of `products`/string-brands. Exported so services/staplePrefetch.ts can reuse it directly rather than duplicating the query/normalization logic. */
+export async function runSwissSearchTier(query: string, signal?: AbortSignal, retailerOnly = false): Promise<FoodItem[]> {
+  const url = `${SEARCH_URL_SALICIOUS}?q=${encodeURIComponent(buildSwissQuery(query, retailerOnly))}&langs=de&page_size=${MAX_RESULTS}`;
   const data = await fetchJson<SalaciousResponse>(url, signal, SEARCH_TIMEOUT_MS);
   const hits = data.hits ?? [];
 
@@ -257,6 +280,13 @@ async function runSwissSearchTier(query: string, signal?: AbortSignal): Promise<
       ...normalizeFoodItem({ code: hit.code, product_name: hit.product_name, product_name_de: hit.product_name_de, brands: hit.brands?.join(', '), nutriments: hit.nutriments }, `ch-${index}`),
       source: 'off' as const,
     }));
+}
+
+/** Fire-and-forget: persists every barcode-identified hit (OFF/community results, whose `id` is the real EAN/UPC) into the offline barcode cache, so scanning that same product later - even with no connectivity - resolves instantly instead of re-hitting this search pipeline. */
+function cacheBarcodedResults(items: FoodItem[]): void {
+  for (const item of items) {
+    if (looksLikeBarcode(item.id)) setCachedBarcode(item.id, item).catch(() => {});
+  }
 }
 
 /** Concatenates result lists, keeping first occurrence by id - later (broader) tiers only fill in gaps the earlier ones missed. */
@@ -311,30 +341,51 @@ export async function searchFood(query: string, signal?: AbortSignal): Promise<F
   // products. Additive and best-effort: a failure here never blocks Tier 2, it just
   // means this run relies on Open Food Facts alone, same as before this tier existed.
   const communityResults = await searchCommunityFoods(cleanQuery, signal).catch(() => [] as FoodItem[]);
-  if (communityResults.length >= MIN_RESULTS_BEFORE_FALLBACK) return communityResults;
+  if (communityResults.length >= MIN_RESULTS_BEFORE_FALLBACK) {
+    cacheBarcodedResults(communityResults);
+    return communityResults;
+  }
 
-  // Tier 2a: Swiss-market search (Search-a-licious, `countries_tags=en:switzerland`) -
-  // tried first since this app's users are primarily in Switzerland, where the
-  // DE-hosted legacy mirror below under-indexes local retailers (Migros, Coop, Denner).
-  const swiss = await runSwissSearchTier(cleanQuery, signal).catch(() => [] as FoodItem[]);
-  let results = mergeUniqueById([communityResults, swiss]);
-  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
+  // Tier 2a: Swiss-market search (Search-a-licious) - tried first since this app's
+  // users are primarily in Switzerland, where the DE-hosted legacy mirror below
+  // under-indexes local retailers. Retailer-boosted sub-tier first (Migros/Coop/
+  // M-Budget/Prix Garantie/Alnatura own-brands, which dominate a Swiss grocery
+  // trip) then the plain country-wide tier to fill in anything else Swiss.
+  const swissRetailer = await runSwissSearchTier(cleanQuery, signal, true).catch(() => [] as FoodItem[]);
+  let results = mergeUniqueById([communityResults, swissRetailer]);
+  if (results.length < MIN_RESULTS_BEFORE_FALLBACK) {
+    const swiss = await runSwissSearchTier(cleanQuery, signal).catch(() => [] as FoodItem[]);
+    results = mergeUniqueById([results, swiss]);
+  }
+  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) {
+    cacheBarcodedResults(results);
+    return results;
+  }
 
   // Tier 2b: Open Food Facts legacy search (DE-hosted mirror).
   const primaryUrl = `${SEARCH_URL}?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=${MAX_RESULTS}`;
   const primary = await runSearchTier(primaryUrl, signal).catch(() => [] as FoodItem[]);
   results = mergeUniqueById([results, primary]);
-  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
+  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) {
+    cacheBarcodedResults(results);
+    return results;
+  }
 
   const secondaryUrl = `${SEARCH_URL_WORLD}?search_terms=${encoded}&search_simple=1&action=process&json=1&lc=de&cc=de&page_size=${MAX_RESULTS}`;
   const secondary = await runSearchTier(secondaryUrl, signal).catch(() => [] as FoodItem[]);
   results = mergeUniqueById([results, secondary]);
-  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) return results;
+  if (results.length >= MIN_RESULTS_BEFORE_FALLBACK) {
+    cacheBarcodedResults(results);
+    return results;
+  }
 
   const tertiaryUrl = `${SEARCH_URL_WORLD}?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=${MAX_RESULTS}`;
   const tertiary = await runSearchTier(tertiaryUrl, signal).catch(() => [] as FoodItem[]);
   results = mergeUniqueById([results, tertiary]);
-  if (results.length > 0) return results;
+  if (results.length > 0) {
+    cacheBarcodedResults(results);
+    return results;
+  }
 
   // Tier 3: USDA FoodData Central backup - only reached once Supabase and every OFF
   // tier came back completely empty. No AI fallback by design: an AI guess at a
@@ -544,13 +595,16 @@ async function searchUsda(query: string, signal?: AbortSignal): Promise<FoodItem
 // --- Multi-tier hierarchy ---------------------------------------------------------
 
 /**
- * Cascading barcode lookup - Tier 1 Supabase community cache (instant, populated by
- * other users' manual entries), Tier 2 Open Food Facts (the global product DB), Tier
- * 3 USDA FoodData Central (US-focused backup for products OFF hasn't indexed). No AI
- * fallback here by design: an AI guess at a barcode's exact nutrition facts would be
- * worse than admitting the product isn't found. Every tier is best-effort past Tier
- * 1 - a single tier's failure just falls through to the next, so a scan only ever
- * ends in a real product or a clean "not found" (never a raw network error).
+ * Cascading barcode lookup - Tier 0 on-device offline cache (instant, no network at
+ * all - a previously scanned product or a prefetched Swiss staple, see
+ * services/barcodeCache.ts and services/staplePrefetch.ts), Tier 1 Supabase community
+ * cache (instant, populated by other users' manual entries), Tier 2 Open Food Facts
+ * (the global product DB), Tier 3 USDA FoodData Central (US-focused backup for
+ * products OFF hasn't indexed). No AI fallback here by design: an AI guess at a
+ * barcode's exact nutrition facts would be worse than admitting the product isn't
+ * found. Every tier past Tier 0 is best-effort - a single tier's failure just falls
+ * through to the next, so a scan only ever ends in a real product or a clean "not
+ * found" (never a raw network error).
  */
 export async function getFoodByBarcode(barcode: string, signal?: AbortSignal): Promise<FoodItem> {
   const trimmedBarcode = barcode.trim();
@@ -558,14 +612,26 @@ export async function getFoodByBarcode(barcode: string, signal?: AbortSignal): P
     throw new FoodApiError('Barcode darf nicht leer sein.');
   }
 
+  const offlineMatch = await getCachedBarcode(trimmedBarcode).catch(() => null);
+  if (offlineMatch) return offlineMatch;
+
   const communityMatch = await fetchCommunityBarcode(trimmedBarcode).catch(() => null);
-  if (communityMatch) return communityMatch;
+  if (communityMatch) {
+    setCachedBarcode(trimmedBarcode, communityMatch).catch(() => {});
+    return communityMatch;
+  }
 
   const offMatch = await fetchFromOff(trimmedBarcode, signal).catch(() => null);
-  if (offMatch) return offMatch;
+  if (offMatch) {
+    setCachedBarcode(trimmedBarcode, offMatch).catch(() => {});
+    return offMatch;
+  }
 
   const usdaMatch = await fetchFromUsda(trimmedBarcode, signal).catch(() => null);
-  if (usdaMatch) return usdaMatch;
+  if (usdaMatch) {
+    setCachedBarcode(trimmedBarcode, usdaMatch).catch(() => {});
+    return usdaMatch;
+  }
 
   throw new ProductNotFoundError(trimmedBarcode);
 }

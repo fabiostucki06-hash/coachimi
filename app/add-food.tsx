@@ -12,6 +12,7 @@ import { fuzzyFilterFoodItems, normalizeSearchText, searchLocalFoods } from '@/d
 import { FoodApiError, FoodApiUnavailableError, looksLikeBarcode, upsertCommunityBarcode } from '@/services/foodApi';
 import { cacheFoodItem, searchFoodHybrid } from '@/services/foodSearch';
 import { getCachedSearch, setCachedSearch } from '@/services/searchCache';
+import { prefetchSwissStaples } from '@/services/staplePrefetch';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { getRecentFoods } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
@@ -176,6 +177,13 @@ export default function AddFoodScreen() {
   }, [query, customFoods]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Best-effort, at most once a day (see staplePrefetch.ts) - seeds the offline
+  // barcode cache with Swiss retailer staples so scanning one of them later works
+  // even without connectivity. Never awaited: must never delay this screen's mount.
+  useEffect(() => {
+    prefetchSwissStaples().catch(() => {});
+  }, []);
 
   function handleSelect(item: FoodItem) {
     // Auto-caching: a FatSecret/USDA pick lands in the local `foods` table (Tier 1)

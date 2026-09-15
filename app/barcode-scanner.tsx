@@ -71,7 +71,7 @@ export default function BarcodeScannerScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-black">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <Text className="text-lg font-bold tracking-tight text-white">Barcode scannen</Text>
         <View className="flex-row items-center gap-2">
@@ -105,7 +105,7 @@ export default function BarcodeScannerScreen() {
             <Button label="Zugriff erlauben" onPress={requestPermission} />
           </View>
         ) : (
-          <View className="aspect-square w-full overflow-hidden rounded-[28px] border border-white/20">
+          <View className="aspect-square w-full overflow-hidden rounded-[28px] border border-white/10">
             <CameraView
               className="flex-1"
               facing="back"
@@ -116,9 +116,18 @@ export default function BarcodeScannerScreen() {
               onBarcodeScanned={loading || scannedRef.current ? undefined : handleBarcodeScanned}
             >
               {/* Visual scan-region guide - native barcode detection reads the full frame, but framing the
-                  code inside this rectangle gives the fastest, most reliable focus/detection in practice. */}
+                  code inside this target gives the fastest, most reliable focus/detection in practice.
+                  Thin corner brackets + a subtle crosshair rather than a solid box, to stay minimal on
+                  top of the live camera feed. */}
               <View className="flex-1 items-center justify-center">
-                <View className="h-[160px] w-[280px] rounded-2xl border-2 border-primary/90" />
+                <View className="h-[160px] w-[280px]">
+                  <View className="absolute left-0 top-0 h-6 w-6 rounded-tl-lg border-l border-t border-primary/80" />
+                  <View className="absolute right-0 top-0 h-6 w-6 rounded-tr-lg border-r border-t border-primary/80" />
+                  <View className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-lg border-b border-l border-primary/80" />
+                  <View className="absolute bottom-0 right-0 h-6 w-6 rounded-br-lg border-b border-r border-primary/80" />
+                  <View className="absolute left-1/2 top-1/2 h-px w-8 -translate-x-1/2 -translate-y-1/2 bg-primary/50" />
+                  <View className="absolute left-1/2 top-1/2 h-8 w-px -translate-x-1/2 -translate-y-1/2 bg-primary/50" />
+                </View>
               </View>
             </CameraView>
           </View>
