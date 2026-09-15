@@ -1,4 +1,5 @@
 import type { FoodItem } from '@/types';
+import { estimateFructoseFromSugar } from '@/utils/nutritionCalculator';
 
 interface LocalFoodSeed {
   id: string;
@@ -317,6 +318,7 @@ export const LOCAL_FOOD_DATABASE: FoodItem[] = LOCAL_FOOD_SEEDS.map((seed) => ({
   micronutrientsPerServing: {
     fiber: seed.fiberPer100g ?? 0,
     sugar: seed.sugarPer100g ?? 0,
+    fructose: estimateFructoseFromSugar(seed.name, seed.sugarPer100g),
     sodium: seed.sodiumPer100gMg ?? 0,
     vitaminC: seed.vitaminCPer100gMg ?? 0,
   },

@@ -12,6 +12,7 @@ import {
   Fish,
   FlaskConical,
   Gem,
+  Grape,
   Heart,
   Leaf,
   Nut,
@@ -58,6 +59,8 @@ export const NUTRIENT_META: Record<NutrientKey, NutrientMeta> = {
 
   fiber: { label: 'Ballaststoffe', unit: 'g', color: '#84cc16', category: 'other', Icon: Leaf },
   sugar: { label: 'Zucker', unit: 'g', color: '#ec4899', category: 'other', Icon: Candy },
+  /** Component of `sugar`, not additional to it - see types/index.ts's Micronutrients.fructose. */
+  fructose: { label: 'Fruchtzucker', unit: 'g', color: '#db2777', category: 'other', Icon: Grape },
   saturatedFat: { label: 'Gesättigte Fettsäuren', unit: 'g', color: '#d97706', category: 'other', Icon: Droplets },
   unsaturatedFat: { label: 'Ungesättigte Fettsäuren', unit: 'g', color: '#0ea5e9', category: 'other', Icon: Fish },
   cholesterol: { label: 'Cholesterin', unit: 'mg', color: '#e11d48', category: 'other', Icon: Heart },
@@ -94,6 +97,7 @@ export const NUTRIENT_ORDER: NutrientKey[] = [
   'fat',
   'fiber',
   'sugar',
+  'fructose',
   'saturatedFat',
   'unsaturatedFat',
   'cholesterol',

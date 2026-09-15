@@ -59,7 +59,7 @@ interface OffNutriments {
   fat_100g?: number;
   fiber_100g?: number;
   sugars_100g?: number;
-  /** Rarely populated by Open Food Facts, but folded into `sugars_100g` when present - see foldFructoseIntoSugar. */
+  /** Rarely populated by Open Food Facts - folds into `sugars_100g` if that's missing (see foldFructoseIntoSugar), and is kept standalone as `fructose` regardless. */
   fructose_100g?: number;
   'saturated-fat_100g'?: number;
   'monounsaturated-fat_100g'?: number;
@@ -163,6 +163,7 @@ function normalizeFoodItem(product: OffProduct, fallbackId: string): FoodItem {
     micronutrientsPerServing: {
       fiber: nutriments.fiber_100g || 0,
       sugar: foldFructoseIntoSugar(nutriments.sugars_100g, nutriments.fructose_100g) ?? 0,
+      fructose: nutriments.fructose_100g,
       saturatedFat: nutriments['saturated-fat_100g'],
       unsaturatedFat: sumOptional(nutriments['monounsaturated-fat_100g'], nutriments['polyunsaturated-fat_100g']),
       cholesterol: gramsToMg(nutriments.cholesterol_100g),
@@ -554,6 +555,7 @@ function normalizeUsdaFood(food: UsdaFood, fallbackId: string): FoodItem {
     micronutrientsPerServing: {
       fiber: toNonNegative(get(USDA_NUTRIENT_IDS.fiber)),
       sugar: toNonNegative(foldFructoseIntoSugar(get(USDA_NUTRIENT_IDS.sugar), get(USDA_NUTRIENT_IDS.fructose))),
+      fructose: get(USDA_NUTRIENT_IDS.fructose),
       saturatedFat: get(USDA_NUTRIENT_IDS.saturatedFat),
       sodium: get(USDA_NUTRIENT_IDS.sodium),
       potassium: get(USDA_NUTRIENT_IDS.potassium),

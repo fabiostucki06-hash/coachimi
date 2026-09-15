@@ -133,6 +133,7 @@ export function caloriesFromMacros(macros: Macros): number {
 export const MICRONUTRIENT_GOALS: Required<Micronutrients> = {
   fiber: 30,
   sugar: 50,
+  fructose: 25, // cautious daily ceiling (component of `sugar` above, not additional to it) - same "limit, not target" treatment as sugar/sodium
   saturatedFat: 20,
   unsaturatedFat: 44,
   cholesterol: 300,
@@ -176,23 +177,21 @@ export function getBaseMicronutrientGoals(gender: Gender | undefined): Required<
 const MICRONUTRIENT_KEYS = Object.keys(MICRONUTRIENT_GOALS) as (keyof Micronutrients)[];
 
 /**
- * This app has no separate fructose nutrient/UI - every source (USDA, FatSecret, OFF,
- * the local `foods`/`community_barcodes` tables) that can report fructose as its own
- * value gets folded into `sugar` at ingestion, so fructose is always tracked as part
- * of total sugar rather than silently dropped or surfaced as a new nutrient.
- *
- * IMPORTANT: `sugar` (USDA nutrient 2000 "Sugars, total including NLEA", FatSecret's/OFF's
- * `sugar`/`sugars_100g`) is already a TOTAL that fructose is one component of - it is not
- * a disjoint "other sugars" figure. Adding fructose on top of a present total would
- * double-count it (e.g. an apple's ~10g total sugar would balloon to ~16g by re-adding
- * its ~6g fructose). So: prefer the total when the source reports one, and only fall
- * back to the fructose figure alone when the source has no total sugar value at all
- * (better than silently dropping the only sugar figure available). A `sugar` of exactly
- * 0 is treated the same as missing here: sugar is a strict superset of fructose, so a
- * source reporting 0 total sugar alongside a nonzero fructose is an inconsistent/unpopulated
- * field rather than a genuine zero, and the fructose figure is the more trustworthy one.
+ * `sugar` (USDA nutrient 2000 "Sugars, total including NLEA", FatSecret's/OFF's
+ * `sugar`/`sugars_100g`) is already a TOTAL that `fructose` (its own tracked field -
+ * see the Micronutrients interface) is one component of, not a disjoint "other sugars"
+ * figure - so `fructose` is stored ALONGSIDE `sugar`, never added on top of it
+ * (that would double-count it: an apple's ~10g total sugar would wrongly balloon to
+ * ~16g by re-adding its ~6g fructose). This function resolves the TOTAL only: prefer
+ * the source's own total when it reports one, and only fall back to the fructose
+ * figure alone when the source has no total sugar value at all (better than silently
+ * dropping the only sugar figure available). A `sugar` of exactly 0 is treated the
+ * same as missing here: sugar is a strict superset of fructose, so a source reporting
+ * 0 total sugar alongside a nonzero fructose is an inconsistent/unpopulated field
+ * rather than a genuine zero, and the fructose figure is the more trustworthy one.
  * Used where a raw API response has sugar and fructose as two separate numbers,
- * before either is written into a FoodItem's micronutrientsPerServing.
+ * before both are written into a FoodItem's micronutrientsPerServing (sugar via this
+ * function, fructose stored as-is alongside it).
  */
 export function foldFructoseIntoSugar(sugar: number | undefined, fructose: number | undefined): number | undefined {
   if (sugar) return sugar;
@@ -201,15 +200,49 @@ export function foldFructoseIntoSugar(sugar: number | undefined, fructose: numbe
 
 /**
  * Same fold, applied to an already-assembled micronutrients object (e.g. a jsonb
- * blob read back from the local `foods`/`community_barcodes` tables) that may carry
- * an untyped `fructose` key alongside `sugar` - strips it out after merging so it
- * never leaks into the UI as a nutrient of its own. See foldFructoseIntoSugar for why
- * a present nonzero `sugar` total wins outright instead of being added to `fructose`.
+ * blob read back from the local `foods`/`community_barcodes` tables) whose `sugar`
+ * might be missing while `fructose` is present - reconciles `sugar` to the coherent
+ * total (see foldFructoseIntoSugar) while leaving `fructose` itself in the object
+ * untouched, so it stays visible as its own field rather than being dropped.
  */
 export function withFructoseFoldedIntoSugar(micronutrients: Micronutrients | null | undefined): Micronutrients {
-  const { fructose, ...rest } = (micronutrients ?? {}) as Micronutrients & { fructose?: number };
-  if (fructose === undefined) return rest;
-  return { ...rest, sugar: foldFructoseIntoSugar(rest.sugar, fructose) };
+  const source = micronutrients ?? {};
+  if (source.fructose === undefined) return source;
+  return { ...source, sugar: foldFructoseIntoSugar(source.sugar, source.fructose) };
+}
+
+// German+English fruit/berry/honey keywords - not exhaustive, just the common produce a
+// meal photo or manual food entry is likely to involve. Same keyword-matching pattern
+// services/dietEngine.ts's diet-compliance checks already use.
+const FRUIT_LIKE_KEYWORDS = [
+  'apfel', 'banane', 'orange', 'erdbeere', 'blaubeere', 'himbeere', 'traube', 'wassermelone',
+  'melone', 'birne', 'pfirsich', 'kirsche', 'ananas', 'mango', 'kiwi', 'zitrone', 'limette',
+  'beere', 'obst', 'honig', 'dattel', 'feige', 'aprikose', 'pflaume', 'rosine', 'trockenfrucht',
+  'apple', 'banana', 'strawberr', 'blueberr', 'raspberr', 'grape', 'watermelon', 'melon',
+  'pear', 'peach', 'cherr', 'pineapple', 'kiwi', 'lemon', 'lime', 'berry', 'fruit',
+  'honey', 'date', 'fig', 'apricot', 'plum', 'raisin',
+];
+
+/** True if `name` looks like a fruit/berry/honey item - drives the ~50%-of-sugar fructose fallback below. Keyword-based, not authoritative. */
+export function looksLikeFruit(name: string): boolean {
+  const haystack = name.toLowerCase();
+  return FRUIT_LIKE_KEYWORDS.some((keyword) => haystack.includes(keyword));
+}
+
+/**
+ * Fallback for a fruit/berry/honey item whose source has a sugar figure but no
+ * specific fructose breakdown of its own: fructose is conservatively estimated at
+ * ~50% of total sugar rather than left at 0 (fruit sugar is fructose-heavy - roughly
+ * half-and-half with glucose/sucrose for most common fruit, so this is a reasonable
+ * default, not a precise lab value). Returns 0 for anything that doesn't look like
+ * fruit/berry/honey, or when sugar itself is 0/unknown - never guesses a fructose
+ * value for a food with no sugar to begin with. Used by services/visionFoodApi.ts
+ * (AI estimates) and data/foodDatabase.ts (local seed data) wherever a specific
+ * fructose figure isn't available.
+ */
+export function estimateFructoseFromSugar(name: string, sugar: number | undefined): number {
+  if (!sugar || sugar <= 0 || !looksLikeFruit(name)) return 0;
+  return Math.round(sugar * 0.5 * 10) / 10;
 }
 
 /**
@@ -273,6 +306,7 @@ export const DEFAULT_VISIBLE_NUTRIENTS: NutrientVisibility = {
   fat: true,
   fiber: false,
   sugar: false,
+  fructose: false,
   saturatedFat: false,
   unsaturatedFat: false,
   cholesterol: false,

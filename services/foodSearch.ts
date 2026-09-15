@@ -162,7 +162,7 @@ interface FatSecretServing {
   fat?: string;
   fiber?: string;
   sugar?: string;
-  /** Rarely populated by FatSecret, but folded into `sugar` when present - see foldFructoseIntoSugar. */
+  /** Rarely populated by FatSecret - folds into `sugar` if that's missing (see foldFructoseIntoSugar), and is kept standalone as `fructose` regardless. */
   fructose?: string;
   saturated_fat?: string;
   sodium?: string;
@@ -208,6 +208,7 @@ function servingToPer100g(serving: FatSecretServing): { macros: Macros; calories
     micronutrients: {
       fiber: num(serving.fiber),
       sugar: foldFructoseIntoSugar(num(serving.sugar), num(serving.fructose)),
+      fructose: num(serving.fructose),
       saturatedFat: num(serving.saturated_fat),
       sodium: num(serving.sodium),
       potassium: num(serving.potassium),
@@ -326,6 +327,7 @@ async function normalizeUsdaFood(food: UsdaFood): Promise<FoodItem> {
     micronutrientsPerServing: {
       fiber: get(USDA_NUTRIENT_IDS.fiber),
       sugar: foldFructoseIntoSugar(get(USDA_NUTRIENT_IDS.sugar), get(USDA_NUTRIENT_IDS.fructose)),
+      fructose: get(USDA_NUTRIENT_IDS.fructose),
       saturatedFat: get(USDA_NUTRIENT_IDS.saturatedFat),
       sodium: get(USDA_NUTRIENT_IDS.sodium),
       potassium: get(USDA_NUTRIENT_IDS.potassium),

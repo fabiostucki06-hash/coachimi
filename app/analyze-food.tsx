@@ -117,7 +117,7 @@ function makeBlankItem(): EditableItem {
     carbsPer100g: '',
     proteinPer100g: '',
     fatPer100g: '',
-    micronutrientsPer100g: { fiber: 0, sugar: 0, sodium: 0, vitaminC: 0 },
+    micronutrientsPer100g: { fiber: 0, sugar: 0, fructose: 0, sodium: 0, vitaminC: 0 },
     confidence: 1,
     confidenceTier: 'high',
     needsVerification: false,
@@ -484,6 +484,7 @@ export default function AnalyzeFoodScreen() {
           fat: parseNumber(item.fatPer100g, 0) * factor,
           fiber,
           sugar: (item.micronutrientsPer100g.sugar ?? 0) * factor,
+          fructose: (item.micronutrientsPer100g.fructose ?? 0) * factor,
           iron: (item.micronutrientsPer100g.iron ?? 0) * factor,
         };
       }),
@@ -501,9 +502,10 @@ export default function AnalyzeFoodScreen() {
           fat: sum.fat + t.fat,
           fiber: sum.fiber + t.fiber,
           sugar: sum.sugar + t.sugar,
+          fructose: sum.fructose + t.fructose,
           iron: sum.iron + t.iron,
         }),
-        { kcal: 0, carbs: 0, netCarbs: 0, protein: 0, fat: 0, fiber: 0, sugar: 0, iron: 0 },
+        { kcal: 0, carbs: 0, netCarbs: 0, protein: 0, fat: 0, fiber: 0, sugar: 0, fructose: 0, iron: 0 },
       ),
     [itemTotals],
   );
@@ -743,7 +745,10 @@ export default function AnalyzeFoodScreen() {
                       <Text className="text-[11px] font-medium text-text-secondary">Eisen: {totals.iron.toFixed(1)} mg</Text>
                     </View>
                     <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
-                      <Text className="text-[11px] font-medium text-text-secondary">Zucker: {totals.sugar.toFixed(1)} g</Text>
+                      <Text className="text-[11px] font-medium text-text-secondary">
+                        Zucker: {totals.sugar.toFixed(1)}g
+                        {totals.fructose > 0 ? ` (davon Fruchtzucker: ${totals.fructose.toFixed(1)}g)` : ''}
+                      </Text>
                     </View>
                     <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
                       <Text className="text-[11px] font-medium text-text-secondary">Ballaststoffe: {totals.fiber.toFixed(1)} g</Text>
@@ -864,7 +869,9 @@ export default function AnalyzeFoodScreen() {
                 )}
                 {visibleNutrients.sugar && (
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-text-secondary">Zucker</Text>
+                    <Text className="text-sm text-text-secondary">
+                      Zucker{grandTotal.fructose > 0 ? ` (davon Fruchtzucker: ${Math.round(grandTotal.fructose)}g)` : ''}
+                    </Text>
                     <Text className="text-sm text-white">{Math.round(grandTotal.sugar)} g</Text>
                   </View>
                 )}

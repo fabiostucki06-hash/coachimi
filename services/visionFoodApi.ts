@@ -1,5 +1,6 @@
 import { parseJsonLoose } from '@/services/aiJson';
 import type { Macros, Micronutrients } from '@/types';
+import { estimateFructoseFromSugar } from '@/utils/nutritionCalculator';
 
 export type ConfidenceTier = 'high' | 'medium' | 'low';
 
@@ -70,7 +71,11 @@ Analysiere das Foto Stück für Stück, nicht als Ganzes:
    gehe von mindestens 1 Esslöffel (ca. 10-15g) verstecktem Öl/Fett pro Portion aus. Anders als bisher NICHT als eigene
    Komponente auflisten, sondern direkt am betroffenen Item über "hiddenFatGrams" ausweisen (0, wenn kein Hinweis auf
    verstecktes Fett vorliegt) - das Fett fließt trotzdem in die Nährwerte (fatPer100g etc.) dieser Komponente ein.
-5. Schätze für jede Komponente die Nährwerte pro 100g möglichst genau.
+5. Schätze für jede Komponente die Nährwerte pro 100g möglichst genau. Schlüssle "sugarPer100g" (Gesamtzucker) zusätzlich
+   in "fructosePer100g" (Fruchtzucker) auf - der Anteil speziell aus Früchten, Honig oder High-Fructose-Corn-Syrup.
+   fructosePer100g ist ein TEIL von sugarPer100g, niemals zusätzlich dazu zu zählen. Kennst du bei Obst/Beeren keinen
+   genauen Wert, schätze fructosePer100g konservativ als ~50% von sugarPer100g statt 0 anzugeben (0 nur, wenn die
+   Komponente erkennbar KEIN Frucht-/Honig-/Sirup-Zucker enthält, z. B. Fleisch, Gemüse ohne Zuckerzusatz).
 6. Gib für jede Komponente eine confidence zwischen 0 und 1 an, wie sicher du dir bei Erkennung UND Mengenschätzung bist.
    Ist die Kalorien-/Mengenschätzung unsicher, aber die IDENTITÄT der Komponente selbst mehrdeutig (z. B. Rind- vs.
    Schweinefleisch bei einem panierten Schnitzel, Vollmilch- vs. Magerjoghurt), liste die 1-2 wahrscheinlichsten
@@ -105,6 +110,7 @@ Antworte ausschließlich mit kompaktem JSON in genau diesem Schema, ohne weitere
       "fatPer100g": number,
       "fiberPer100g": number,
       "sugarPer100g": number,
+      "fructosePer100g": number,
       "sodiumPer100gMg": number,
       "vitaminCPer100gMg": number,
       "ironPer100gMg": number,
@@ -131,6 +137,7 @@ interface OpenAiVisionItemJson {
   fatPer100g?: number;
   fiberPer100g?: number;
   sugarPer100g?: number;
+  fructosePer100g?: number;
   sodiumPer100gMg?: number;
   vitaminCPer100gMg?: number;
   ironPer100gMg?: number;
@@ -159,10 +166,24 @@ function toConfidence(value: number | undefined): number {
   return Math.min(1, Math.max(0, value as number));
 }
 
+/**
+ * Client-side safety net for the ~50%-of-sugar fructose fallback (see
+ * ANALYSIS_SCHEMA_PROMPT step 5 and utils/nutritionCalculator.ts's
+ * estimateFructoseFromSugar) in case the model reports a sugar value but skips
+ * fructosePer100g entirely rather than following the prompt's own fallback
+ * instruction - not the primary mechanism, just a backstop.
+ */
+function resolveFructose(name: string, sugar: number, rawFructose: number | undefined): number {
+  if (Number.isFinite(rawFructose) && (rawFructose as number) > 0) return rawFructose as number;
+  return estimateFructoseFromSugar(name, sugar);
+}
+
 function normalizeDetectedItem(raw: OpenAiVisionItemJson): DetectedFoodItem {
   const confidence = toConfidence(raw.confidence);
+  const name = raw.name?.trim() || 'Erkanntes Lebensmittel';
+  const sugar = toNonNegative(raw.sugarPer100g, 0);
   return {
-    name: raw.name?.trim() || 'Erkanntes Lebensmittel',
+    name,
     cookingMethod: raw.cookingMethod?.trim() || null,
     estimatedGrams: toNonNegative(raw.estimatedGrams, 150),
     caloriesPer100g: toNonNegative(raw.caloriesPer100g, 0),
@@ -173,7 +194,8 @@ function normalizeDetectedItem(raw: OpenAiVisionItemJson): DetectedFoodItem {
     },
     micronutrientsPer100g: {
       fiber: toNonNegative(raw.fiberPer100g, 0),
-      sugar: toNonNegative(raw.sugarPer100g, 0),
+      sugar,
+      fructose: resolveFructose(name, sugar, raw.fructosePer100g),
       sodium: toNonNegative(raw.sodiumPer100gMg, 0),
       vitaminC: toNonNegative(raw.vitaminCPer100gMg, 0),
       iron: toNonNegative(raw.ironPer100gMg, 0),
@@ -284,7 +306,7 @@ function fallbackEstimate(notice: string): VisionAnalysisResult {
         estimatedGrams: 250,
         caloriesPer100g: 220,
         macrosPer100g: { carbs: 24, protein: 10, fat: 9 },
-        micronutrientsPer100g: { fiber: 3, sugar: 5, sodium: 280, vitaminC: 4, iron: 1 },
+        micronutrientsPer100g: { fiber: 3, sugar: 5, fructose: 2, sodium: 280, vitaminC: 4, iron: 1 },
         confidence: 0.3,
         confidenceTier: toConfidenceTier(0.3),
         needsVerification: true,

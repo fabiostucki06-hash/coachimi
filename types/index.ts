@@ -12,6 +12,8 @@ export interface Macros {
 export interface Micronutrients {
   fiber?: number;
   sugar?: number;
+  /** Component of `sugar` (not additional to it) - how much of the total sugar is specifically fructose, from fruit/HFCS/honey. See utils/nutritionCalculator.ts's foldFructoseIntoSugar for how a raw API's separate sugar+fructose fields resolve into `sugar`; this field is what keeps fructose visible instead of being dropped after that fold. */
+  fructose?: number;
   saturatedFat?: number;
   unsaturatedFat?: number;
   cholesterol?: number;

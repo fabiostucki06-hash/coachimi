@@ -41,7 +41,7 @@ function formatAmount(entry: MealEntry): string {
   return `${count} ${foodItem.servingUnit}`;
 }
 
-function NutrientStat({ nutrientKey, value }: { nutrientKey: NutrientKey; value: number }) {
+function NutrientStat({ nutrientKey, value, subLabel }: { nutrientKey: NutrientKey; value: number; subLabel?: string }) {
   const { label, unit, color, Icon } = NUTRIENT_META[nutrientKey];
   return (
     <View className="basis-[30%] items-center gap-1 rounded-2xl bg-white/5 py-3 ">
@@ -53,6 +53,11 @@ function NutrientStat({ nutrientKey, value }: { nutrientKey: NutrientKey; value:
       <Text className="text-[10px] text-text-secondary" numberOfLines={1}>
         {label}
       </Text>
+      {subLabel && (
+        <Text className="text-[9px] text-text-secondary/70" numberOfLines={1}>
+          {subLabel}
+        </Text>
+      )}
     </View>
   );
 }
@@ -255,7 +260,12 @@ export default function MealDetailScreen() {
         {visibleNutrientKeys.length > 0 && (
           <View className="flex-row flex-wrap gap-2">
             {visibleNutrientKeys.map((key) => (
-              <NutrientStat key={key} nutrientKey={key} value={nutrientAmounts[key]} />
+              <NutrientStat
+                key={key}
+                nutrientKey={key}
+                value={nutrientAmounts[key]}
+                subLabel={key === 'sugar' && nutrientAmounts.fructose > 0 ? `davon Fruchtzucker: ${Math.round(nutrientAmounts.fructose)}g` : undefined}
+              />
             ))}
           </View>
         )}
