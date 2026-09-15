@@ -41,7 +41,7 @@ beforeEach(() => {
 // modal, and only the modal's "Kaufen" button actually deducts coins, unlocks
 // the item, equips it, and fires the unlock celebration.
 it('requires confirmation before a Coin Shop purchase actually spends coins', () => {
-  useRewardStore.setState({ goldBars: 40 });
+  useRewardStore.setState({ goldBars: 30 });
 
   let tree!: ReturnType<typeof create>;
   act(() => {
@@ -51,12 +51,12 @@ it('requires confirmation before a Coin Shop purchase actually spends coins', ()
   const root = tree.root;
 
   act(() => {
-    root.findByProps({ accessibilityLabel: 'Pure Pitch Black kaufen' }).props.onPress();
+    root.findByProps({ accessibilityLabel: 'Indigo Glow kaufen' }).props.onPress();
   });
 
   // Buying hasn't happened yet - only the confirm modal opened.
-  expect(useRewardStore.getState().goldBars).toBe(40);
-  expect(useRewardStore.getState().unlockedThemes).not.toContain('pure_black');
+  expect(useRewardStore.getState().goldBars).toBe(30);
+  expect(useRewardStore.getState().unlockedBorders).not.toContain('indigo_glow');
 
   act(() => {
     root.findByProps({ label: 'Kaufen' }).props.onPress();
@@ -64,13 +64,13 @@ it('requires confirmation before a Coin Shop purchase actually spends coins', ()
 
   const state = useRewardStore.getState();
   expect(state.goldBars).toBe(0);
-  expect(state.unlockedThemes).toContain('pure_black');
-  expect(state.activeTheme).toBe('pure_black');
-  expect(state.purchaseCelebration).toMatchObject({ itemName: 'Pure Pitch Black' });
+  expect(state.unlockedBorders).toContain('indigo_glow');
+  expect(state.activeBorder).toBe('indigo_glow');
+  expect(state.purchaseCelebration).toMatchObject({ itemName: 'Indigo Glow' });
 });
 
 it('re-equips an already-owned item for free without opening the confirm modal', () => {
-  useRewardStore.setState({ goldBars: 0, unlockedThemes: ['classic', 'pure_black'], activeTheme: 'classic' });
+  useRewardStore.setState({ goldBars: 0, unlockedBorders: ['none', 'indigo_glow'], activeBorder: 'none' });
 
   let tree!: ReturnType<typeof create>;
   act(() => {
@@ -79,8 +79,8 @@ it('re-equips an already-owned item for free without opening the confirm modal',
   mountedTree = tree;
 
   act(() => {
-    tree.root.findByProps({ accessibilityLabel: 'Pure Pitch Black ausrüsten' }).props.onPress();
+    tree.root.findByProps({ accessibilityLabel: 'Indigo Glow ausrüsten' }).props.onPress();
   });
 
-  expect(useRewardStore.getState().activeTheme).toBe('pure_black');
+  expect(useRewardStore.getState().activeBorder).toBe('indigo_glow');
 });

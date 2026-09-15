@@ -42,13 +42,14 @@ export const RANKS: Rank[] = [
 export const STREAK_SAVER_COST = 20;
 export const MAX_STREAK_SAVERS = 3;
 
-/** Exclusive OLED app themes - swaps background/surface/primary via CSS vars, see utils/themePalettes.ts. "classic" is the free default everyone starts with. */
-export const THEMES: ThemeItem[] = [
-  { id: 'classic', name: 'Indigo Classic', description: 'Der originale Coach imi Look.', cost: 0 },
-  { id: 'pure_black', name: 'Pure Pitch Black', description: 'Reinstes OLED-Schwarz für maximalen Kontrast.', cost: 40 },
-  { id: 'deep_indigo', name: 'Deep Indigo', description: 'Tiefes Indigo-Schwarz mit satteren Akzenten.', cost: 60 },
-  { id: 'cyberpunk_neon', name: 'Cyberpunk Neon', description: 'Neon-Cyan-Akzente für den Night-Mode-Look.', cost: 80 },
-];
+/**
+ * Exclusive OLED app themes - swaps background/surface/primary via CSS vars, see
+ * utils/themePalettes.ts. "classic" is the free default everyone starts with and the
+ * only one left purchasable - the Coin Shop no longer sells 'pure_black'/'deep_indigo'/
+ * 'cyberpunk_neon', though themePalettes.ts still renders them correctly for anyone
+ * who already unlocked one before this catalog was cut.
+ */
+export const THEMES: ThemeItem[] = [{ id: 'classic', name: 'Indigo Classic', description: 'Der originale Coach imi Look.', cost: 0 }];
 
 /** Alternate icon sets for the meal cards on the dashboard - "default" is the free starting pack. */
 export const ICON_PACKS: IconPackItem[] = [
@@ -68,10 +69,8 @@ export const BORDERS: BorderItem[] = [
   { id: 'swiss_red_accent', name: 'Swiss Red Accent', description: 'Kräftiger Schweizer-Rot-Akzent als Statement-Rahmen.', cost: 100 },
 ];
 
-/** One-time real-world unlocks - placeholder for Swiss/EU macro content, not equippable. */
-export const PERKS: PerkItem[] = [
-  { id: 'macro_recipes_pdf', name: 'Makro-Rezepte PDF', description: 'Exportierbare Rezeptvorlagen mit Makro-Aufschlüsselung.', cost: 35 },
-];
+/** One-time real-world unlocks - placeholder for Swiss/EU macro content, not equippable. Catalog emptied when the Perks section was removed from the Coin Shop; buyPerk/unlockedPerks stay so any already-unlocked perk (from before the cut) still reads back fine. */
+export const PERKS: PerkItem[] = [];
 
 export interface Celebration {
   id: number;

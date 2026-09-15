@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Check, Coins, FileText, Flame, Lock, Shield, ShieldCheck, X } from 'lucide-react-native';
+import { Check, Coins, Flame, Lock, Shield, ShieldCheck, X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -10,19 +10,9 @@ import { type PendingPurchase, PurchaseConfirmModal } from '@/components/feature
 import { AVATAR_FRAME_CLASSES } from '@/components/features/UserAvatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import {
-  BORDERS,
-  ICON_PACKS,
-  MAX_STREAK_SAVERS,
-  PERKS,
-  RANKS,
-  SHOP_ITEMS,
-  STREAK_SAVER_COST,
-  THEMES,
-  useRewardStore,
-} from '@/store/rewardStore';
+import { BORDERS, ICON_PACKS, MAX_STREAK_SAVERS, RANKS, SHOP_ITEMS, STREAK_SAVER_COST, useRewardStore } from '@/store/rewardStore';
 import { useToastStore } from '@/store/toastStore';
-import type { RewardTransaction, ThemeId } from '@/types';
+import type { RewardTransaction } from '@/types';
 
 function formatTransactionDate(dateKey: string): string {
   return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
@@ -45,13 +35,6 @@ function TransactionRow({ transaction }: { transaction: RewardTransaction }) {
     </View>
   );
 }
-
-const THEME_SWATCH_CLASSES: Record<ThemeId, string> = {
-  classic: 'bg-indigo-500',
-  pure_black: 'bg-black border border-neutral-700',
-  deep_indigo: 'bg-indigo-950 border border-indigo-800',
-  cyberpunk_neon: 'bg-cyan-400',
-};
 
 interface CatalogCardProps {
   name: string;
@@ -150,23 +133,18 @@ export default function RewardsScreen() {
   const activeRank = useRewardStore((state) => state.activeRank);
   const unlockedRanks = useRewardStore((state) => state.unlockedRanks);
   const unlockedBadges = useRewardStore((state) => state.unlockedBadges);
-  const activeTheme = useRewardStore((state) => state.activeTheme);
-  const unlockedThemes = useRewardStore((state) => state.unlockedThemes);
   const activeIconPack = useRewardStore((state) => state.activeIconPack);
   const unlockedIconPacks = useRewardStore((state) => state.unlockedIconPacks);
   const activeBorder = useRewardStore((state) => state.activeBorder);
   const unlockedBorders = useRewardStore((state) => state.unlockedBorders);
-  const unlockedPerks = useRewardStore((state) => state.unlockedPerks);
   const transactionHistory = useRewardStore((state) => state.transactionHistory);
 
   const claimDailyReward = useRewardStore((state) => state.claimDailyReward);
   const unlockBadge = useRewardStore((state) => state.unlockBadge);
   const buyStreakSaver = useRewardStore((state) => state.buyStreakSaver);
   const buyRank = useRewardStore((state) => state.buyRank);
-  const buyTheme = useRewardStore((state) => state.buyTheme);
   const buyIconPack = useRewardStore((state) => state.buyIconPack);
   const buyBorder = useRewardStore((state) => state.buyBorder);
-  const buyPerk = useRewardStore((state) => state.buyPerk);
   const showToast = useToastStore((state) => state.show);
 
   const [pendingPurchase, setPendingPurchase] = useState<(PendingPurchase & { execute: () => boolean }) | null>(null);
@@ -304,27 +282,6 @@ export default function RewardsScreen() {
           })}
         </SectionCard>
 
-        <SectionCard title="Visual Customizations · Themes">
-          {THEMES.filter((theme) => theme.cost > 0).map((theme) => {
-            const isOwned = unlockedThemes.includes(theme.id);
-            return (
-              <CatalogCard
-                key={theme.id}
-                name={theme.name}
-                description={theme.description}
-                cost={theme.cost}
-                equippable
-                isOwned={isOwned}
-                isActive={activeTheme === theme.id}
-                affordable={goldBars >= theme.cost}
-                preview={<View className={`h-6 w-6 rounded-full ${THEME_SWATCH_CLASSES[theme.id]}`} />}
-                onBuy={() => requestPurchase(theme.name, theme.description, theme.cost, () => buyTheme(theme.id))}
-                onEquip={() => buyTheme(theme.id)}
-              />
-            );
-          })}
-        </SectionCard>
-
         <SectionCard title="Visual Customizations · Profil-Badges">
           {SHOP_ITEMS.map((item) => {
             const isOwned = unlockedBadges.includes(item.id);
@@ -359,28 +316,6 @@ export default function RewardsScreen() {
                 affordable={goldBars >= rank.cost}
                 onBuy={() => requestPurchase(rank.name, 'Neuer Profil-Rang', rank.cost, () => buyRank(rank.id))}
                 onEquip={() => buyRank(rank.id)}
-              />
-            );
-          })}
-        </SectionCard>
-
-        <SectionCard title="Perks (CH/EU)">
-          {PERKS.map((perk) => {
-            const isOwned = unlockedPerks.includes(perk.id);
-            return (
-              <CatalogCard
-                key={perk.id}
-                name={perk.name}
-                description={perk.description}
-                cost={perk.cost}
-                equippable={false}
-                isOwned={isOwned}
-                isActive={false}
-                affordable={goldBars >= perk.cost}
-                preview={<FileText color={isOwned ? '#A1A1AA' : '#d97706'} size={16} />}
-                onBuy={() => requestPurchase(perk.name, perk.description, perk.cost, () => buyPerk(perk.id))}
-                ownedActionLabel="Exportieren"
-                onOwnedAction={() => showToast('PDF-Export folgt in einem kommenden Update.', 'success')}
               />
             );
           })}

@@ -248,28 +248,16 @@ describe('buyRank', () => {
 });
 
 describe('buyTheme', () => {
-  it('unlocks and equips a theme when affordable, and triggers a purchase celebration', () => {
-    useRewardStore.getState().addGoldBars(40, 'Testguthaben');
-    expect(useRewardStore.getState().buyTheme('pure_black')).toBe(true);
-    expect(useRewardStore.getState().unlockedThemes).toContain('pure_black');
-    expect(useRewardStore.getState().activeTheme).toBe('pure_black');
-    expect(useRewardStore.getState().goldBars).toBe(0);
-    expect(useRewardStore.getState().purchaseCelebration).toMatchObject({ itemName: 'Pure Pitch Black' });
-  });
-
-  it('refuses when the balance is too low', () => {
-    expect(useRewardStore.getState().buyTheme('cyberpunk_neon')).toBe(false);
-    expect(useRewardStore.getState().unlockedThemes).not.toContain('cyberpunk_neon');
-  });
-
-  it('re-equips an already unlocked theme for free', () => {
-    useRewardStore.getState().addGoldBars(40, 'Testguthaben');
+  it('re-equips the free classic theme', () => {
     useRewardStore.getState().buyTheme('pure_black');
-    useRewardStore.getState().buyTheme('classic');
+    expect(useRewardStore.getState().buyTheme('classic')).toBe(true);
     expect(useRewardStore.getState().activeTheme).toBe('classic');
-    expect(useRewardStore.getState().buyTheme('pure_black')).toBe(true);
-    expect(useRewardStore.getState().activeTheme).toBe('pure_black');
-    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+
+  it('refuses a theme no longer in the Coin Shop catalog', () => {
+    useRewardStore.getState().addGoldBars(100, 'Testguthaben');
+    expect(useRewardStore.getState().buyTheme('pure_black')).toBe(false);
+    expect(useRewardStore.getState().unlockedThemes).not.toContain('pure_black');
   });
 });
 
@@ -304,20 +292,8 @@ describe('buyBorder', () => {
 });
 
 describe('buyPerk', () => {
-  it('unlocks a perk and deducts its cost when affordable', () => {
-    useRewardStore.getState().addGoldBars(35, 'Testguthaben');
-    expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(true);
-    expect(useRewardStore.getState().unlockedPerks).toContain('macro_recipes_pdf');
-    expect(useRewardStore.getState().goldBars).toBe(0);
-  });
-
-  it('refuses to unlock the same perk twice', () => {
-    useRewardStore.getState().addGoldBars(70, 'Testguthaben');
-    expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(true);
-    expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(false);
-  });
-
-  it('refuses when the balance is too low', () => {
+  it('refuses any perk now that the Coin Shop perk catalog is empty', () => {
+    useRewardStore.getState().addGoldBars(100, 'Testguthaben');
     expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(false);
     expect(useRewardStore.getState().unlockedPerks).not.toContain('macro_recipes_pdf');
   });
