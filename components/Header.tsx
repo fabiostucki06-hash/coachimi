@@ -46,10 +46,16 @@ export function Header({ onDaySelected }: HeaderProps = {}) {
   });
 
   return (
-    // gap-2.5 (10px) is an unconditional minimum between the brand/date/actions
-    // groups - unlike justify-between's spacing, flexbox `gap` isn't consumed
-    // when a sibling shrinks, so the date pill and coin badge can't ever touch.
-    <View className="flex-row items-center justify-between gap-2.5 overflow-hidden border-b border-surface-border bg-background px-4 py-3 lg:px-10">
+    // z-50 (no overflow-hidden here) lets this row's own stacking context
+    // paint above its sibling <ScrollView> of dashboard cards in
+    // app/(tabs)/index.tsx, and lets the DateSelector's expanded calendar -
+    // an absolutely-positioned descendant that intentionally extends well
+    // below this row's own short height - actually render instead of being
+    // clipped by an ancestor's overflow box. gap-2.5 (10px) is an
+    // unconditional minimum between the brand/date/actions groups - unlike
+    // justify-between's spacing, flexbox `gap` isn't consumed when a sibling
+    // shrinks, so the date pill and coin badge can't ever touch.
+    <View className="relative z-50 flex-row items-center justify-between gap-2.5 border-b border-surface-border bg-background px-4 py-3 lg:px-10">
       <View className="min-w-0 flex-1 gap-0.5">
         <Text className="text-[10px] font-semibold uppercase tracking-wide text-primary" numberOfLines={1}>
           Coach imi
