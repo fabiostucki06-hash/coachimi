@@ -67,12 +67,12 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
   });
 
   return (
-    <View className={compact ? 'relative z-20 gap-1.5' : 'gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl'}>
+    <View className={compact ? 'relative z-20 min-w-0 gap-1.5' : 'gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl'}>
       <View className="flex-row items-center justify-between">
         <Pressable
           accessibilityLabel="Vorheriger Tag"
           hitSlop={8}
-          className={compact ? 'h-8 w-8 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
+          className={compact ? 'h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, -1))}
         >
           <ChevronLeft color="#A1A1AA" size={compact ? 16 : 20} />
@@ -80,16 +80,25 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
 
         <Pressable
           hitSlop={8}
-          className={compact ? 'flex-row items-center justify-center gap-1.5 px-1' : 'flex-1 flex-row items-center justify-center gap-2 px-2'}
+          className={
+            compact
+              ? 'min-h-[44px] min-w-0 shrink flex-row items-center justify-center gap-1.5 px-1'
+              : 'flex-1 flex-row items-center justify-center gap-2 px-2'
+          }
           onPress={() => {
             jumpToMonthOf(selectedDate);
             setExpanded((prev) => !prev);
           }}
         >
           {!compact && <Calendar color={ACCENT} size={16} />}
-          <Text className={compact ? 'text-xs font-semibold text-white' : 'text-sm font-semibold text-white'}>{formatDayLabel(selectedDate)}</Text>
+          <Text
+            className={compact ? 'shrink text-xs font-semibold text-white' : 'text-sm font-semibold text-white'}
+            numberOfLines={1}
+          >
+            {formatDayLabel(selectedDate)}
+          </Text>
           {!isToday && (
-            <Text className="text-xs text-text-secondary">
+            <Text className="shrink text-xs text-text-secondary" numberOfLines={1}>
               {new Date(`${selectedDate}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </Text>
           )}
@@ -98,7 +107,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
         <Pressable
           accessibilityLabel="Nächster Tag"
           hitSlop={8}
-          className={compact ? 'h-8 w-8 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
+          className={compact ? 'h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, 1))}
         >
           <ChevronRight color="#A1A1AA" size={compact ? 16 : 20} />

@@ -7,13 +7,44 @@ import { Platform } from 'react-native';
  * offline, and relays "data changed" pings between open windows (see
  * notifyDataChanged below). No-op on native, where there's no `navigator` or
  * installable shell to register.
+ *
+ * Also proactively calls `registration.update()` on load/focus/visibility -
+ * the same triggers hooks/useAutoUpdate.ts polls build-version.json on - so a
+ * changed sw.js (see its CACHE_NAME comment) is picked up as soon as
+ * possible instead of waiting for the browser's own infrequent background
+ * check. The worker's own `activate` handler deletes any stale cache once
+ * the new version takes over; useAutoUpdate's content-hash check remains the
+ * primary way clients pick up a fresh deploy.
  */
 export function useServiceWorker() {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/sw.js').catch((error) => {
-      console.error('[useServiceWorker] registration failed:', error);
-    });
+
+    let registration: ServiceWorkerRegistration | null = null;
+
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        registration = reg;
+      })
+      .catch((error) => {
+        console.error('[useServiceWorker] registration failed:', error);
+      });
+
+    const checkForNewWorker = () => {
+      registration?.update().catch(() => {});
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') checkForNewWorker();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', checkForNewWorker);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', checkForNewWorker);
+    };
   }, []);
 }
 

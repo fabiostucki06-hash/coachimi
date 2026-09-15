@@ -88,8 +88,8 @@ export default function RootLayout() {
   // above, drop the cap entirely so the sidebar sits flush against the
   // real left edge of the window instead of floating inside a centered box.
   return (
-    <View style={themeVars} className="m-0 flex-1 items-center bg-background p-0 lg:items-stretch">
-      <View className="w-full max-w-[480px] flex-1 lg:max-w-none">{stack}</View>
+    <View style={themeVars} className="m-0 flex-1 items-center overflow-hidden bg-background p-0 lg:items-stretch">
+      <View className="w-full max-w-[480px] flex-1 overflow-hidden lg:max-w-none">{stack}</View>
     </View>
   );
 }

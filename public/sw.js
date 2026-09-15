@@ -8,13 +8,20 @@
 // server to push from - "real time" here means "as fast as postMessage
 // between windows this worker controls".
 //
-// Cache-busting for a *new deploy* is handled by hooks/useAutoUpdate.ts
+// Cache-busting for a *new deploy* is primarily handled by hooks/useAutoUpdate.ts
 // (polls /build-version.json, then calls utils/hardRefresh.ts's
 // clearCachesAndReload, which deletes every Cache Storage entry - including
-// this worker's - via `caches.keys()`). This file only needs to stay
-// internally consistent, not version its own cache name per deploy.
+// this worker's - via `caches.keys()`). As a second line of defense,
+// hooks/useServiceWorker.ts calls `registration.update()` on the same
+// triggers (load/focus/visibility) so the browser re-fetches this file and
+// notices a byte-diff sooner than its own background update check would.
+// That only matters if this file's *contents* actually changed, so bump
+// CACHE_NAME (v1 -> v2 -> ...) whenever a shell/layout fix needs to reach
+// already-installed clients - the version bump is what makes the update
+// detectable. `activate` below then deletes every cache key that isn't the
+// current CACHE_NAME, so the old shell cache never lingers.
 
-const CACHE_NAME = 'coach-imi-shell-v1';
+const CACHE_NAME = 'coach-imi-shell-v2';
 const SHELL_URLS = ['/', '/manifest.json'];
 
 self.addEventListener('install', (event) => {

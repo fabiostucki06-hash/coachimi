@@ -46,7 +46,7 @@ export function Header({ onDaySelected }: HeaderProps = {}) {
   });
 
   return (
-    <View className="flex-row items-center justify-between border-b border-surface-border bg-background px-4 py-3 lg:px-10">
+    <View className="flex-row items-center justify-between overflow-hidden border-b border-surface-border bg-background px-4 py-3 lg:px-10">
       <View className="min-w-0 flex-1 gap-0.5">
         <Text className="text-[10px] font-semibold uppercase tracking-wide text-primary" numberOfLines={1}>
           Coach imi
@@ -75,7 +75,7 @@ export function Header({ onDaySelected }: HeaderProps = {}) {
         )}
       </View>
 
-      <View className="z-20 flex-shrink-0 items-center px-1">
+      <View className="z-20 min-w-0 max-w-[46%] shrink items-center px-1">
         <DateSelector compact onDaySelected={onDaySelected} />
       </View>
 
