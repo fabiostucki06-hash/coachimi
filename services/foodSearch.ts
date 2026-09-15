@@ -1,12 +1,13 @@
 import { supabase } from '@/lib/supabase';
+import { looksLikeBarcode, searchFood as searchOpenFoodFacts } from '@/services/foodApi';
 import { translateDeToEn, translateEnToDe } from '@/services/translate';
 import type { FoodItem, Macros, Micronutrients } from '@/types';
 import { foldFructoseIntoSugar, MICRONUTRIENT_GOALS, percentDvToAmount, withFructoseFoldedIntoSugar } from '@/utils/nutritionCalculator';
 
 const FOODS_TABLE = 'foods';
 const MAX_RESULTS = 20;
-/** Below this many hits, escalate to the next (slower, further-reaching) tier. */
-const MIN_RESULTS_BEFORE_ESCALATE = 3;
+/** Below this many hits, escalate to the next (slower, further-reaching) tier - covers both "too few results" and "the local cache simply doesn't carry this brand yet" (e.g. a distinctive brand like ESN correctly returns 0 local hits and escalates). */
+const MIN_RESULTS_BEFORE_ESCALATE = 5;
 const TIER_TIMEOUT_MS = 6000;
 
 const USDA_API_KEY = process.env.EXPO_PUBLIC_USDA_API_KEY?.trim() || 'DEMO_KEY';
@@ -59,7 +60,7 @@ interface FoodRow {
   protein_per_100g: number;
   fat_per_100g: number;
   micronutrients: Micronutrients | null;
-  source: 'local' | 'fatsecret' | 'usda';
+  source: 'local' | 'fatsecret' | 'usda' | 'off';
   external_id: string | null;
 }
 
@@ -89,7 +90,23 @@ async function searchLocal(query: string, signal?: AbortSignal): Promise<FoodIte
   return (data as FoodRow[]).map(rowToFoodItem);
 }
 
-// --- Tier 2: FatSecret (DACH brand/barcode coverage) ------------------------------
+// --- Tier 2: Open Food Facts (global brand coverage, incl. ESN etc.) --------------
+
+/**
+ * Delegates to services/foodApi.ts's searchFood - already a comprehensive
+ * Open Food Facts cascade (Swiss-market Search-a-licious, DE-hosted legacy
+ * mirror, global product base, its own community-barcode cache and USDA
+ * backup) built for the barcode-scanner/photo-matcher flows. Reused here
+ * wholesale rather than re-implemented, so the text-search box gets the same
+ * international brand coverage (ESN, and anything else OFF indexes) instead
+ * of only the DACH-scoped FatSecret catalog and USDA's US-centric database.
+ * Best-effort: any failure just means this tier contributes nothing.
+ */
+async function searchOff(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
+  return searchOpenFoodFacts(query, signal);
+}
+
+// --- Tier 3: FatSecret (DACH brand/barcode coverage) ------------------------------
 
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
@@ -260,7 +277,7 @@ async function searchFatSecret(query: string, signal?: AbortSignal): Promise<Foo
   return details.filter((item): item is FoodItem => item !== null);
 }
 
-// --- Tier 3: translated USDA FoodData Central -------------------------------------
+// --- Tier 4: translated USDA FoodData Central -------------------------------------
 
 interface UsdaNutrient {
   nutrientId: number;
@@ -348,7 +365,7 @@ async function normalizeUsdaFood(food: UsdaFood): Promise<FoodItem> {
   };
 }
 
-/** Tier 3 - last resort: translate the German query to English, search USDA FoodData Central, translate each hit's name back to German. Only reached once Tier 1 and Tier 2 both came back thin. */
+/** Tier 4 - last resort: translate the German query to English, search USDA FoodData Central, translate each hit's name back to German. Only reached once every earlier tier came back thin. */
 async function searchUsdaTranslated(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
   const englishQuery = await translateDeToEn(query);
   const url = `${USDA_SEARCH_URL}?api_key=${encodeURIComponent(USDA_API_KEY)}&query=${encodeURIComponent(englishQuery)}&pageSize=${MAX_RESULTS}`;
@@ -363,13 +380,22 @@ async function searchUsdaTranslated(query: string, signal?: AbortSignal): Promis
 // --- Auto-caching ------------------------------------------------------------------
 
 /**
- * Persists a Tier 2/Tier 3 pick into the local `foods` table (Tier 1) so the next
- * search for the same item - by any user - resolves instantly instead of hitting
- * FatSecret/USDA again. Fire-and-forget from the caller's perspective: a failure
- * here (offline, RLS not migrated) must never block the user's own food log.
+ * Persists a Tier 2/3/4 pick (Open Food Facts, FatSecret, or USDA) into the
+ * local `foods` table (Tier 1) so the next search for the same item - by any
+ * user - resolves instantly instead of hitting the external API again. Fire-
+ * and-forget from the caller's perspective: a failure here (offline, RLS not
+ * migrated) must never block the user's own food log. Skips 'community' picks
+ * (foodApi.ts's OFF cascade already caches those into `community_barcodes`
+ * itself) and 'local' (already cached by definition).
  */
 export async function cacheFoodItem(item: FoodItem): Promise<void> {
-  if (item.source !== 'fatsecret' && item.source !== 'usda') return;
+  if (item.source !== 'fatsecret' && item.source !== 'usda' && item.source !== 'off') return;
+  // An OFF hit without a real barcode falls back to a synthetic, index-based
+  // id (e.g. "search-3") that isn't stable across different queries - caching
+  // under that key as `external_id` would risk two unrelated products
+  // colliding on the same upsert key. Only cache OFF picks with a genuine
+  // barcode-based id, same guard foodApi.ts's own OFF caching already applies.
+  if (item.source === 'off' && !looksLikeBarcode(item.id)) return;
 
   try {
     const { error } = await supabase.from(FOODS_TABLE).upsert(
@@ -393,13 +419,14 @@ export async function cacheFoodItem(item: FoodItem): Promise<void> {
   }
 }
 
-// --- 3-tier hybrid pipeline ----------------------------------------------------------
+// --- 4-tier hybrid pipeline ----------------------------------------------------------
 
 /**
- * Tier 1 local `foods` table -> Tier 2 FatSecret (DACH brands/barcodes) -> Tier 3
- * translated USDA FoodData Central, each tier only run if the previous one came back
- * under MIN_RESULTS_BEFORE_ESCALATE hits. Every tier is best-effort: a single tier's
- * failure just falls through to the next instead of failing the whole search.
+ * Tier 1 local `foods` table -> Tier 2 Open Food Facts (global brand coverage,
+ * e.g. ESN) -> Tier 3 FatSecret (DACH brands/barcodes) -> Tier 4 translated USDA
+ * FoodData Central, each tier only run if the previous ones came back under
+ * MIN_RESULTS_BEFORE_ESCALATE hits combined. Every tier is best-effort: a single
+ * tier's failure just falls through to the next instead of failing the whole search.
  */
 export async function searchFoodHybrid(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
   const trimmed = query.trim();
@@ -408,8 +435,12 @@ export async function searchFoodHybrid(query: string, signal?: AbortSignal): Pro
   const local = await searchLocal(trimmed, signal).catch(() => [] as FoodItem[]);
   if (local.length >= MIN_RESULTS_BEFORE_ESCALATE) return local;
 
+  const off = await searchOff(trimmed, signal).catch(() => [] as FoodItem[]);
+  let results = mergeUniqueById([local, off]);
+  if (results.length >= MIN_RESULTS_BEFORE_ESCALATE) return results;
+
   const fatSecret = await searchFatSecret(trimmed, signal).catch(() => [] as FoodItem[]);
-  let results = mergeUniqueById([local, fatSecret]);
+  results = mergeUniqueById([results, fatSecret]);
   if (results.length >= MIN_RESULTS_BEFORE_ESCALATE) return results;
 
   const usda = await searchUsdaTranslated(trimmed, signal).catch(() => [] as FoodItem[]);

@@ -193,8 +193,9 @@ export default function AddFoodScreen() {
   }, []);
 
   function handleSelect(item: FoodItem) {
-    // Auto-caching: a FatSecret/USDA pick lands in the local `foods` table (Tier 1)
-    // so the next search for it is instant. No-op for every other source.
+    // Auto-caching: an Open Food Facts/FatSecret/USDA pick lands in the local
+    // `foods` table (Tier 1) so the next search for it is instant. No-op for
+    // every other source.
     cacheFoodItem(item).catch(() => {});
     setPendingSelection(item, mealType);
     router.push('/log-quantity');
