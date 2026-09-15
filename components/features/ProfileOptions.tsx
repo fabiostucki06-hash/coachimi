@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 
-import type { ActivityLevel, Gender, Goal, MacroRatioPreset, MicronutrientFocus } from '@/utils/nutritionCalculator';
+import type { ActivityLevel, DietType, Gender, Goal, MacroRatioPreset, MicronutrientFocus } from '@/utils/nutritionCalculator';
 
 export const GOAL_OPTIONS: { id: Goal; label: string }[] = [
   { id: 'weight_loss', label: 'Abnehmen' },
@@ -14,6 +14,17 @@ export const MACRO_RATIO_OPTIONS: { id: MacroRatioPreset; label: string }[] = [
   { id: 'balanced', label: 'Ausgewogen' },
   { id: 'keto', label: 'Keto' },
   { id: 'custom', label: 'Individuell' },
+];
+
+export const DIET_TYPE_OPTIONS: { id: DietType; label: string }[] = [
+  { id: 'balanced', label: 'Ausgewogen' },
+  { id: 'keto', label: 'Keto' },
+  { id: 'vegan', label: 'Vegan' },
+  { id: 'vegetarian', label: 'Vegetarisch' },
+  { id: 'carnivore', label: 'Carnivore' },
+  { id: 'low_carb', label: 'Low Carb' },
+  { id: 'high_protein', label: 'High Protein' },
+  { id: 'fasting_focused', label: 'Intervallfasten-Fokus' },
 ];
 
 export const MICRONUTRIENT_FOCUS_OPTIONS: { id: MicronutrientFocus; label: string }[] = [

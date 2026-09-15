@@ -1,4 +1,4 @@
-import type { ActivityLevel, Gender, Goal, MacroRatioPreset, MicronutrientFocus } from '@/utils/nutritionCalculator';
+import type { ActivityLevel, DietType, Gender, Goal, MacroRatioPreset, MicronutrientFocus } from '@/utils/nutritionCalculator';
 
 export interface Macros {
   carbs: number;
@@ -61,6 +61,7 @@ export interface User {
   goal?: Goal;
   macroRatioPreset?: MacroRatioPreset;
   micronutrientFocus?: MicronutrientFocus;
+  dietType?: DietType;
   visibleNutrients: NutrientVisibility;
 }
 

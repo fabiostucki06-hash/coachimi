@@ -25,6 +25,7 @@ export default function SetupScreen() {
       goalWeightKg: input.goalWeightKg,
       activityLevel: input.activityLevel,
       goal: input.goal,
+      dietType: input.dietType,
       macroRatioPreset: input.macroRatioPreset,
       customMacroRatio: input.customMacroRatio,
     });

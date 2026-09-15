@@ -10,7 +10,7 @@ import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibi
 import { PatchNotes } from '@/components/features/PatchNotes';
 import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
 import { UsernameEditor } from '@/components/features/UsernameEditor';
-import { ACTIVITY_OPTIONS, ChipGroup, GENDER_OPTIONS, GOAL_OPTIONS } from '@/components/features/ProfileOptions';
+import { ACTIVITY_OPTIONS, ChipGroup, DIET_TYPE_OPTIONS, GENDER_OPTIONS, GOAL_OPTIONS } from '@/components/features/ProfileOptions';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
@@ -156,6 +156,7 @@ export default function ProfilScreen() {
   const updateAccount = useUserStore((state) => state.updateAccount);
   const updateProfile = useUserStore((state) => state.updateProfile);
   const updateGoals = useUserStore((state) => state.updateGoals);
+  const setDietType = useUserStore((state) => state.setDietType);
   const addWeightEntry = useUserStore((state) => state.addWeightEntry);
   const updateWeightEntry = useUserStore((state) => state.updateWeightEntry);
   const removeWeightEntry = useUserStore((state) => state.removeWeightEntry);
@@ -341,6 +342,14 @@ export default function ProfilScreen() {
           <GoalInputRow icon={<Droplet color="#f59e0b" size={18} />} label="Fett" value={fatGoal} onChangeText={handleFatChange} suffix="g" accentColor="#f59e0b" />
           <Button label="Ziele speichern" onPress={handleSaveGoals} disabled={!isGoalsFormValid} className="mt-1" />
         </View>
+
+        <Card className="gap-2">
+          <Text className="text-sm font-semibold text-text-secondary">Ernährungsstil</Text>
+          <Text className="text-xs text-text-secondary">
+            Passt Makroziele, MND-Bewertung und Essensvorschläge sofort an - keine weitere Bestätigung nötig.
+          </Text>
+          <ChipGroup options={DIET_TYPE_OPTIONS} selected={user.dietType ?? 'balanced'} onSelect={setDietType} />
+        </Card>
 
         <Card className="gap-4">
           <Text className="text-sm font-semibold text-text-secondary">Ziel wählen</Text>

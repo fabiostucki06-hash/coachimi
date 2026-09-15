@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ACTIVITY_OPTIONS,
   ChipGroup,
+  DIET_TYPE_OPTIONS,
   GENDER_OPTIONS,
   GOAL_OPTIONS,
   MACRO_RATIO_OPTIONS,
@@ -14,27 +15,29 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
+import { getMacroRatioForDiet } from '@/services/dietEngine';
 import {
   calculateBMR,
   calculateDailyTargets,
   calculateMacros,
   calculateTDEE,
   caloriesFromMacros,
-  MACRO_RATIO_PRESET_VALUES,
   type ActivityLevel,
+  type DietType,
   type Gender,
   type Goal,
   type MacroRatioPreset,
   type MicronutrientFocus,
 } from '@/utils/nutritionCalculator';
 
-const STEPS = ['basics', 'activity', 'goal', 'macros', 'focus'] as const;
+const STEPS = ['basics', 'activity', 'goal', 'diet', 'macros', 'focus'] as const;
 type Step = (typeof STEPS)[number];
 
 const STEP_TITLES: Record<Step, { title: string; subtitle: string }> = {
   basics: { title: 'Deine Basisdaten', subtitle: 'Für die Berechnung deines Tagesbedarfs (Mifflin-St-Jeor).' },
   activity: { title: 'Aktivitätslevel', subtitle: 'Wie bewegst du dich normalerweise im Alltag?' },
   goal: { title: 'Dein Hauptziel', subtitle: 'Damit passen wir dein Kalorienziel an.' },
+  diet: { title: 'Dein Ernährungsstil', subtitle: 'Bestimmt deine Makroziele, MND-Bewertung und Essensvorschläge im ganzen App.' },
   macros: { title: 'Makro-Verteilung', subtitle: 'Wie sollen sich deine Kalorien auf Protein, Carbs und Fett verteilen?' },
   focus: { title: 'Mikronährstoff-Fokus', subtitle: 'Möchtest du bestimmte Nährstoffe besonders im Blick behalten?' },
 };
@@ -48,6 +51,7 @@ export interface OnboardingWizardResult {
   goalWeightKg?: number;
   activityLevel: ActivityLevel;
   goal: Goal;
+  dietType: DietType;
   macroRatioPreset: MacroRatioPreset;
   customMacroRatio?: { protein: number; carbs: number; fat: number };
   micronutrientFocus: MicronutrientFocus;
@@ -70,6 +74,7 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
   const [goalWeightKg, setGoalWeightKg] = useState('');
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>('moderate');
   const [goal, setGoal] = useState<Goal>('maintain');
+  const [dietType, setDietType] = useState<DietType>('balanced');
   const [macroPreset, setMacroPreset] = useState<MacroRatioPreset>('balanced');
   const [customProtein, setCustomProtein] = useState('30');
   const [customCarbs, setCustomCarbs] = useState('40');
@@ -105,13 +110,13 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
     const ratio =
       macroPreset === 'custom'
         ? { protein: (parsedCustomProtein || 0) / 100, carbs: (parsedCustomCarbs || 0) / 100, fat: (parsedCustomFat || 0) / 100 }
-        : MACRO_RATIO_PRESET_VALUES[macroPreset];
+        : getMacroRatioForDiet(dietType);
     const macros = calculateMacros(calories, ratio);
     // Shown together in the preview below - reconciled so it always matches
     // macros.carbs*4 + macros.protein*4 + macros.fat*9 exactly (see caloriesFromMacros),
     // rather than the pre-rounding TDEE target the two would otherwise silently disagree with.
     return { calories: caloriesFromMacros(macros), macros };
-  }, [isBasicsValid, parsedAge, gender, parsedWeight, parsedHeight, activityLevel, goal, macroPreset, parsedCustomProtein, parsedCustomCarbs, parsedCustomFat]);
+  }, [isBasicsValid, parsedAge, gender, parsedWeight, parsedHeight, activityLevel, goal, dietType, macroPreset, parsedCustomProtein, parsedCustomCarbs, parsedCustomFat]);
 
   function handleBack() {
     if (stepIndex === 0) return;
@@ -129,6 +134,7 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
       goalWeightKg: Number.isFinite(parsedGoalWeight) && parsedGoalWeight > 0 ? parsedGoalWeight : undefined,
       activityLevel,
       goal,
+      dietType,
       macroRatioPreset: macroPreset,
       customMacroRatio:
         macroPreset === 'custom'
@@ -199,6 +205,8 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
             {step === 'activity' && <ChipGroup options={ACTIVITY_OPTIONS} selected={activityLevel} onSelect={setActivityLevel} />}
 
             {step === 'goal' && <ChipGroup options={GOAL_OPTIONS} selected={goal} onSelect={setGoal} />}
+
+            {step === 'diet' && <ChipGroup options={DIET_TYPE_OPTIONS} selected={dietType} onSelect={setDietType} />}
 
             {step === 'macros' && (
               <>

@@ -5,6 +5,7 @@ export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active';
 export type Goal = 'weight_loss' | 'maintain' | 'muscle_gain' | 'endurance';
 export type MacroRatioPreset = 'high_protein_low_carb' | 'balanced' | 'keto' | 'custom';
 export type MicronutrientFocus = 'none' | 'iron' | 'fiber' | 'vitamins';
+export type DietType = 'balanced' | 'keto' | 'vegan' | 'vegetarian' | 'carnivore' | 'low_carb' | 'high_protein' | 'fasting_focused';
 
 export interface MacroRatio {
   protein: number;

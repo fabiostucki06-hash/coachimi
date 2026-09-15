@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { getMacroRatioForDiet } from '@/services/dietEngine';
 import type { Macros, NutrientKey, User, WeightEntry } from '@/types';
 import {
   calculateBMR,
@@ -13,6 +14,7 @@ import {
   MACRO_RATIO_PRESET_VALUES,
   MICRONUTRIENT_FOCUS_KEYS,
   type ActivityLevel,
+  type DietType,
   type Gender,
   type Goal,
   type MacroRatio,
@@ -39,6 +41,7 @@ const defaultUser: User = {
   goal: 'maintain',
   macroRatioPreset: 'balanced',
   micronutrientFocus: 'none',
+  dietType: 'balanced',
   visibleNutrients: DEFAULT_VISIBLE_NUTRIENTS,
 };
 
@@ -52,6 +55,7 @@ export interface ProfileInput {
   goal: Goal;
   macroRatioPreset?: MacroRatioPreset;
   customMacroRatio?: MacroRatio;
+  dietType?: DietType;
 }
 
 export interface GoalsInput {
@@ -71,6 +75,7 @@ interface UserState {
   removeWeightEntry: (id: string) => void;
   toggleNutrientVisibility: (key: NutrientKey) => void;
   setMicronutrientFocus: (focus: MicronutrientFocus) => void;
+  setDietType: (dietType: DietType) => void;
   finishOnboarding: () => void;
 }
 
@@ -97,7 +102,10 @@ export const useUserStore = create<UserState>()(
         const tdee = calculateTDEE(bmr, input.activityLevel);
         const targetCalories = calculateDailyTargets(tdee, input.goal);
         const macroRatioPreset = input.macroRatioPreset ?? get().user.macroRatioPreset ?? 'balanced';
-        const ratio = macroRatioPreset === 'custom' ? input.customMacroRatio ?? MACRO_RATIO_PRESET_VALUES.balanced : MACRO_RATIO_PRESET_VALUES[macroRatioPreset];
+        const dietType = input.dietType ?? get().user.dietType ?? 'balanced';
+        // The diet type is the primary driver of macro targets - a preset of 'custom' is
+        // the one explicit escape hatch a user has to override it with their own split.
+        const ratio = macroRatioPreset === 'custom' ? input.customMacroRatio ?? MACRO_RATIO_PRESET_VALUES.balanced : getMacroRatioForDiet(dietType);
         const dailyMacroGoal = calculateMacros(targetCalories, ratio);
         // Re-derived from the rounded macro grams (not `targetCalories` directly) so the
         // displayed calorie goal always exactly matches carbs*4 + protein*4 + fat*9 - see
@@ -115,6 +123,7 @@ export const useUserStore = create<UserState>()(
             activityLevel: input.activityLevel,
             goal: input.goal,
             macroRatioPreset,
+            dietType,
             dailyCalorieGoal,
             dailyMacroGoal,
           },
@@ -161,6 +170,36 @@ export const useUserStore = create<UserState>()(
               visibleNutrients: { ...state.user.visibleNutrients, ...revealedVisibility },
             },
           };
+        });
+      },
+
+      // Changing diet type post-onboarding recalibrates macro targets immediately (no
+      // "save" step needed) - unless the user is on a 'custom' macro split, which is an
+      // explicit manual override this must not silently clobber.
+      setDietType: (dietType) => {
+        set((state) => {
+          const { user } = state;
+          if (user.macroRatioPreset === 'custom') {
+            return { user: { ...user, dietType } };
+          }
+          if (
+            user.age === undefined ||
+            user.gender === undefined ||
+            user.heightCm === undefined ||
+            user.weightKg === undefined ||
+            user.activityLevel === undefined ||
+            user.goal === undefined
+          ) {
+            return { user: { ...user, dietType } };
+          }
+
+          const bmr = calculateBMR({ age: user.age, gender: user.gender, weightKg: user.weightKg, heightCm: user.heightCm });
+          const tdee = calculateTDEE(bmr, user.activityLevel);
+          const targetCalories = calculateDailyTargets(tdee, user.goal);
+          const dailyMacroGoal = calculateMacros(targetCalories, getMacroRatioForDiet(dietType));
+          const dailyCalorieGoal = caloriesFromMacros(dailyMacroGoal);
+
+          return { user: { ...user, dietType, dailyMacroGoal, dailyCalorieGoal } };
         });
       },
 
@@ -220,7 +259,7 @@ export const useUserStore = create<UserState>()(
     {
       name: 'coach-imi-user-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 5,
+      version: 6,
       migrate: (persistedState, version) => {
         const state = persistedState as UserState;
         return {
@@ -235,6 +274,8 @@ export const useUserStore = create<UserState>()(
             // Pre-v5 users have neither field persisted — same "balanced"/"none" defaults as new signups.
             macroRatioPreset: state?.user?.macroRatioPreset ?? 'balanced',
             micronutrientFocus: state?.user?.micronutrientFocus ?? 'none',
+            // Pre-v6 users have no diet type persisted - same "balanced" default as new signups.
+            dietType: state?.user?.dietType ?? 'balanced',
           },
           // Users persisted before onboarding existed already have a profile, so don't force them through it.
           hasOnboarded: version >= 3 ? (state?.hasOnboarded ?? false) : true,

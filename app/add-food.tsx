@@ -10,12 +10,14 @@ import { SkeletonListRow } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
 import { fuzzyFilterFoodItems, normalizeSearchText, searchLocalFoods } from '@/data/foodDatabase';
 import { FoodApiError, FoodApiUnavailableError, looksLikeBarcode, upsertCommunityBarcode } from '@/services/foodApi';
+import { getDietCompliance, rankFoodsForDiet } from '@/services/dietEngine';
 import { cacheFoodItem, searchFoodHybrid } from '@/services/foodSearch';
 import { getCachedSearch, setCachedSearch } from '@/services/searchCache';
 import { prefetchSwissStaples } from '@/services/staplePrefetch';
 import { useCustomFoodStore } from '@/store/customFoodStore';
 import { getRecentFoods } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
+import { useUserStore } from '@/store/userStore';
 import type { FoodItem, MealType } from '@/types';
 
 const SOURCE_BADGES: Partial<Record<NonNullable<FoodItem['source']>, string>> = {
@@ -27,6 +29,9 @@ const SOURCE_BADGES: Partial<Record<NonNullable<FoodItem['source']>, string>> = 
   usda: 'USDA Verifiziert',
   fatsecret: 'FatSecret',
 };
+
+/** Only 'priority' gets a badge - 'neutral' stays unlabeled and 'avoid' is de-prioritized by sort order alone (see rankFoodsForDiet), not called out negatively in the UI. */
+const DIET_PRIORITY_BADGE = 'Passt zu deiner Diät';
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: 'Frühstück',
@@ -70,6 +75,7 @@ export default function AddFoodScreen() {
   const setPendingSelection = useUiStore((state) => state.setPendingSelection);
   const customFoods = useCustomFoodStore((state) => state.customFoods);
   const addCustomFood = useCustomFoodStore((state) => state.addCustomFood);
+  const dietType = useUserStore((state) => state.user.dietType) ?? 'balanced';
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
@@ -120,7 +126,7 @@ export default function AddFoodScreen() {
     const commonMatches = searchLocalFoods(trimmed);
     const localMatches = mergeUnique([recentMatches, customMatches, commonMatches]);
     startTransition(() => {
-      setResults(localMatches);
+      setResults(rankFoodsForDiet(localMatches, dietType));
       setNotice(null);
     });
 
@@ -136,7 +142,7 @@ export default function AddFoodScreen() {
     const cached = getCachedSearch(normalizedQuery);
     if (cached) {
       requestIdRef.current += 1;
-      startTransition(() => setResults(mergeUnique([localMatches, cached])));
+      startTransition(() => setResults(rankFoodsForDiet(mergeUnique([localMatches, cached]), dietType)));
       setLoading(false);
       return;
     }
@@ -153,7 +159,7 @@ export default function AddFoodScreen() {
         if (requestIdRef.current !== requestId) return;
         setCachedSearch(normalizedQuery, remoteItems);
         startTransition(() => {
-          setResults(mergeUnique([localMatches, remoteItems]));
+          setResults(rankFoodsForDiet(mergeUnique([localMatches, remoteItems]), dietType));
           setNotice(null);
         });
       } catch (err) {
@@ -174,7 +180,7 @@ export default function AddFoodScreen() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, customFoods]);
+  }, [query, customFoods, dietType]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -410,6 +416,11 @@ export default function AddFoodScreen() {
                     <Text className="text-[10px] font-medium text-primary">
                       {SOURCE_BADGES[item.source]}
                     </Text>
+                  </View>
+                )}
+                {getDietCompliance(item, dietType) === 'priority' && (
+                  <View className="rounded-full bg-emerald-500/10 px-2 py-0.5">
+                    <Text className="text-[10px] font-medium text-emerald-400">{DIET_PRIORITY_BADGE}</Text>
                   </View>
                 )}
               </View>
