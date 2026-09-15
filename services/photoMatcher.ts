@@ -1,11 +1,17 @@
 import { searchFoodHybrid } from '@/services/foodSearch';
 import type { DetectedFoodItem } from '@/services/visionFoodApi';
-import type { FoodItem } from '@/types';
+import type { FoodItem, Macros, Micronutrients } from '@/types';
+import { calculateScaledNutrients } from '@/utils/nutritionCalculator';
 
 // Below this, a search hit is treated as "probably not the same food" and the
 // photo flow falls back to the Vision model's own estimate rather than risk
 // silently swapping in a wrong product's numbers.
 const MATCH_SCORE_THRESHOLD = 0.55;
+
+// Above this (stricter than MATCH_SCORE_THRESHOLD), a match is trusted enough to
+// SILENTLY overwrite the Vision model's full macro/micro estimate rather than just
+// being offered as a one-tap "Übernehmen" suggestion - see correctedValuesFromMatch.
+export const AUTO_APPLY_MATCH_THRESHOLD = 0.8;
 
 function normalize(text: string): string {
   return text
@@ -89,4 +95,27 @@ export async function matchDetectedFood(detected: DetectedFoodItem, signal?: Abo
 /** Runs matchDetectedFood for every detected item in parallel - one Promise.all, not one search tier cascade after another. */
 export function matchDetectedFoods(items: DetectedFoodItem[], signal?: AbortSignal): Promise<PhotoMatch[]> {
   return Promise.all(items.map((item) => matchDetectedFood(item, signal)));
+}
+
+export interface CorrectedFoodValues {
+  caloriesPer100g: number;
+  macrosPer100g: Macros;
+  micronutrientsPer100g: Required<Micronutrients>;
+}
+
+/**
+ * Full DB correction (calories + every macro/micro, not just a couple of fields) for
+ * one Vision-detected item - but only once the match is confident enough to trust
+ * blindly (score >= AUTO_APPLY_MATCH_THRESHOLD, a stricter bar than the one that gets
+ * a candidate shown/offered at all). Returns null below that bar, or with no
+ * candidate, so the caller's own "keep the Vision estimate" fallback stays the only
+ * path there - same never-silently-wrong guarantee as matchDetectedFood itself.
+ * Always normalizes the DB candidate to per-100g first (calculateScaledNutrients) so
+ * it multiplies cleanly against `estimatedGrams / 100` regardless of the candidate's
+ * own servingSize.
+ */
+export function correctedValuesFromMatch(match: PhotoMatch): CorrectedFoodValues | null {
+  if (match.status !== 'db_verified' || !match.candidate || match.score < AUTO_APPLY_MATCH_THRESHOLD) return null;
+  const per100 = calculateScaledNutrients(match.candidate, 100);
+  return { caloriesPer100g: per100.calories, macrosPer100g: per100.macros, micronutrientsPer100g: per100.micronutrients };
 }

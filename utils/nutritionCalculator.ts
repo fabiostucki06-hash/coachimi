@@ -97,6 +97,17 @@ export function calculateMacros(calories: number, ratio: MacroRatio = MACRO_RATI
   };
 }
 
+/** Diets managed against NET carbs (total carbs minus fiber) rather than total carbs - the metric that actually governs ketosis/net-carb budgets. */
+const NET_CARB_DIET_TYPES: ReadonlySet<DietType> = new Set(['keto', 'low_carb', 'carnivore']);
+
+export function usesNetCarbs(dietType: DietType): boolean {
+  return NET_CARB_DIET_TYPES.has(dietType);
+}
+
+export function getNetCarbs(carbsG: number, fiberG: number): number {
+  return Math.max(carbsG - fiberG, 0);
+}
+
 /**
  * Re-derives a calorie total from already-rounded macro grams. `calculateMacros` rounds
  * each macro independently, so e.g. a 2200 kcal target can produce grams that sum back

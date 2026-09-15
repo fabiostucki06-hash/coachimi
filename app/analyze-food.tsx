@@ -1,20 +1,22 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AlertTriangle, Camera, Check, ImagePlus, Minus, Plus, RotateCcw, Sparkles, X } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { AlertTriangle, Camera, Check, ImagePlus, Minus, Plus, RotateCcw, Search, Sparkles, X } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
 import { addMealsAndSync } from '@/services/diaryActions';
-import { matchDetectedFoods } from '@/services/photoMatcher';
+import { searchFoodHybrid } from '@/services/foodSearch';
+import { correctedValuesFromMatch, matchDetectedFoods } from '@/services/photoMatcher';
 import { analyzeFoodPhoto, type DetectedFoodItem, type VisionAnalysisResult } from '@/services/visionFoodApi';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { FoodItem, MealType, Micronutrients } from '@/types';
+import { getNetCarbs, usesNetCarbs } from '@/utils/nutritionCalculator';
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: 'Frühstück',
@@ -105,6 +107,87 @@ function makeBlankItem(): EditableItem {
   };
 }
 
+const PRECISION_SEARCH_DEBOUNCE_MS = 300;
+const PRECISION_SEARCH_RESULT_LIMIT = 5;
+
+/**
+ * "Precision Edit" - lets the user override an AI-detected/auto-matched item with an
+ * EXACT DB entry of their own choosing, rather than trusting the Vision model's guess
+ * or the best-effort auto-match (services/photoMatcher.ts). Self-contained (own
+ * debounce, own AbortController) so each item card can open one independently.
+ */
+function PrecisionSearchPanel({ onSelect, onClose }: { onSelect: (food: FoodItem) => void; onClose: () => void }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<FoodItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      try {
+        const found = await searchFoodHybrid(trimmed, controller.signal);
+        setResults(found.slice(0, PRECISION_SEARCH_RESULT_LIMIT));
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, PRECISION_SEARCH_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [query]);
+
+  return (
+    <View className="gap-2 rounded-2xl border border-surface-border bg-white/5 p-3">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-xs font-semibold text-text-secondary">Genauen DB-Eintrag suchen</Text>
+        <Pressable onPress={onClose} accessibilityLabel="Suche schließen" className="h-6 w-6 items-center justify-center rounded-full bg-white/10 active:opacity-70">
+          <X color="#A1A1AA" size={12} />
+        </Pressable>
+      </View>
+      <View className="flex-row items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-2">
+        <Search color="#A1A1AA" size={14} />
+        <TextInput
+          className="flex-1 text-sm text-white"
+          placeholder="z. B. Basmati Reis gekocht"
+          placeholderTextColor="#A1A1AA"
+          value={query}
+          onChangeText={setQuery}
+          autoFocus
+        />
+        {loading && <ActivityIndicator size="small" color="#6366F1" />}
+      </View>
+      {results.map((result) => (
+        <Pressable
+          key={result.id}
+          className="flex-row items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2 active:opacity-80"
+          onPress={() => onSelect(result)}
+        >
+          <Text className="flex-1 text-xs font-medium text-white" numberOfLines={1}>
+            {result.name}
+          </Text>
+          <Text className="text-[11px] text-text-secondary">
+            {Math.round(result.caloriesPerServing)} kcal/{result.servingSize}
+            {result.servingUnit}
+          </Text>
+        </Pressable>
+      ))}
+      {!loading && query.trim().length > 0 && results.length === 0 && (
+        <Text className="px-1 text-xs text-text-secondary">Keine Treffer.</Text>
+      )}
+    </View>
+  );
+}
+
 /** Resizes/recompresses the picked photo before it's sent to the Vision API. Falls back to the picker's own base64 if manipulation fails for any reason. */
 async function prepareImageForAnalysis(picked: ImagePicker.ImagePickerAsset): Promise<string | null> {
   try {
@@ -125,6 +208,8 @@ export default function AnalyzeFoodScreen() {
   const mealType = params.mealType ?? 'breakfast';
   const selectedDate = useUiStore((state) => state.selectedDate);
   const visibleNutrients = useUserStore((state) => state.user.visibleNutrients);
+  const dietType = useUserStore((state) => state.user.dietType) ?? 'balanced';
+  const showNetCarbs = usesNetCarbs(dietType);
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -135,6 +220,7 @@ export default function AnalyzeFoodScreen() {
   const [reasoning, setReasoning] = useState<string | null>(null);
   const [items, setItems] = useState<EditableItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [precisionEditItemId, setPrecisionEditItemId] = useState<string | null>(null);
 
   async function runAnalysis(picked: ImagePicker.ImagePickerAsset) {
     setImageUri(picked.uri);
@@ -175,13 +261,16 @@ export default function AnalyzeFoodScreen() {
 
   /**
    * Cross-checks each detected item against the local DB/USDA pipeline
-   * (services/photoMatcher.ts) in the background - the analysis screen
-   * already rendered the AI's own estimate, this only upgrades it once
-   * matches come back. A close-enough match (score >= threshold, see
-   * photoMatcher.ts) auto-corrects just Eisen/Zucker, the values the Vision
-   * model tends to guess worst on, while leaving grams/other macros as the
-   * user's current edit; a low/no match leaves the AI estimate untouched -
-   * the fallback path services/photoMatcher.ts itself guarantees.
+   * (services/photoMatcher.ts) in the background - the analysis screen already
+   * rendered the AI's own estimate, this only upgrades it once matches come back.
+   * A HIGH-confidence match (score >= AUTO_APPLY_MATCH_THRESHOLD, see
+   * correctedValuesFromMatch) silently recalculates the full macro/micro profile -
+   * calories, protein, carbs, fat AND every micronutrient - from the DB candidate's
+   * accurate per-100g values, not just a couple of fields; a merely close-enough
+   * match (below that bar but still db_verified) only auto-corrects Eisen/Zucker,
+   * the values the Vision model tends to guess worst on, and leaves the rest for a
+   * manual "Übernehmen"/Precision Edit; a low/no match leaves the AI estimate
+   * untouched entirely - the fallback path photoMatcher.ts itself guarantees.
    */
   async function runMatching(detectedItems: DetectedFoodItem[], editableIds: string[]) {
     const matches = await matchDetectedFoods(detectedItems);
@@ -190,42 +279,63 @@ export default function AnalyzeFoodScreen() {
         const index = editableIds.indexOf(item.id);
         if (index === -1) return item;
         const match = matches[index];
-        if (match.status === 'db_verified' && match.candidate) {
+        if (match.status !== 'db_verified' || !match.candidate) {
+          return { ...item, matchStatus: 'ai_estimate', matchScore: match.score, dbCandidate: null };
+        }
+
+        const corrected = correctedValuesFromMatch(match);
+        if (corrected) {
           return {
             ...item,
             matchStatus: 'db_verified',
             matchScore: match.score,
             dbCandidate: match.candidate,
-            micronutrientsPer100g: {
-              ...item.micronutrientsPer100g,
-              iron: match.candidate.micronutrientsPerServing.iron ?? item.micronutrientsPer100g.iron,
-              sugar: match.candidate.micronutrientsPerServing.sugar ?? item.micronutrientsPer100g.sugar,
-            },
+            kcalPer100g: String(Math.round(corrected.caloriesPer100g)),
+            carbsPer100g: String(Math.round(corrected.macrosPer100g.carbs)),
+            proteinPer100g: String(Math.round(corrected.macrosPer100g.protein)),
+            fatPer100g: String(Math.round(corrected.macrosPer100g.fat)),
+            micronutrientsPer100g: corrected.micronutrientsPer100g,
+            needsVerification: false,
           };
         }
-        return { ...item, matchStatus: 'ai_estimate', matchScore: match.score, dbCandidate: null };
+
+        return {
+          ...item,
+          matchStatus: 'db_verified',
+          matchScore: match.score,
+          dbCandidate: match.candidate,
+          micronutrientsPer100g: {
+            ...item.micronutrientsPer100g,
+            iron: match.candidate.micronutrientsPerServing.iron ?? item.micronutrientsPer100g.iron,
+            sugar: match.candidate.micronutrientsPerServing.sugar ?? item.micronutrientsPer100g.sugar,
+          },
+        };
       }),
     );
   }
 
-  /** 1-tap full swap onto the matched DB item's exact values (name + all macros/micros), keeping the user's currently edited gram amount. */
-  function applyDbCandidate(itemId: string) {
+  /** Full swap onto an exact DB item's values (name + all macros/micros), keeping the user's currently edited gram amount. Used both by the auto-matched "Übernehmen" pill and by Precision Edit's manual search. */
+  function applyFoodItem(itemId: string, food: FoodItem) {
     setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId || !item.dbCandidate) return item;
-        const candidate = item.dbCandidate;
-        return {
-          ...item,
-          name: candidate.name,
-          kcalPer100g: String(Math.round(candidate.caloriesPerServing)),
-          carbsPer100g: String(Math.round(candidate.macrosPerServing.carbs)),
-          proteinPer100g: String(Math.round(candidate.macrosPerServing.protein)),
-          fatPer100g: String(Math.round(candidate.macrosPerServing.fat)),
-          micronutrientsPer100g: candidate.micronutrientsPerServing,
-          needsVerification: false,
-        };
-      }),
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              name: food.name,
+              kcalPer100g: String(Math.round(food.caloriesPerServing)),
+              carbsPer100g: String(Math.round(food.macrosPerServing.carbs)),
+              proteinPer100g: String(Math.round(food.macrosPerServing.protein)),
+              fatPer100g: String(Math.round(food.macrosPerServing.fat)),
+              micronutrientsPer100g: food.micronutrientsPerServing,
+              matchStatus: 'db_verified',
+              matchScore: 1,
+              dbCandidate: food,
+              needsVerification: false,
+            }
+          : item,
+      ),
     );
+    setPrecisionEditItemId(null);
   }
 
   async function handleTakePhoto() {
@@ -288,17 +398,26 @@ export default function AnalyzeFoodScreen() {
     setItems((prev) => [...prev, makeBlankItem()]);
   }
 
+  // Recomputes from each item's current grams input on every keystroke - the "instant
+  // real-time update" for editable weight the Precision Edit / weight-entry UI relies on.
   const itemTotals = useMemo(
     () =>
       items.map((item) => {
         const grams = parseNumber(item.grams, 0);
+        const factor = grams / 100;
+        const carbs = parseNumber(item.carbsPer100g, 0) * factor;
+        const fiber = (item.micronutrientsPer100g.fiber ?? 0) * factor;
         return {
           id: item.id,
           grams,
-          kcal: (parseNumber(item.kcalPer100g, 0) * grams) / 100,
-          carbs: (parseNumber(item.carbsPer100g, 0) * grams) / 100,
-          protein: (parseNumber(item.proteinPer100g, 0) * grams) / 100,
-          fat: (parseNumber(item.fatPer100g, 0) * grams) / 100,
+          kcal: parseNumber(item.kcalPer100g, 0) * factor,
+          carbs,
+          netCarbs: getNetCarbs(carbs, fiber),
+          protein: parseNumber(item.proteinPer100g, 0) * factor,
+          fat: parseNumber(item.fatPer100g, 0) * factor,
+          fiber,
+          sugar: (item.micronutrientsPer100g.sugar ?? 0) * factor,
+          iron: (item.micronutrientsPer100g.iron ?? 0) * factor,
         };
       }),
     [items],
@@ -310,10 +429,14 @@ export default function AnalyzeFoodScreen() {
         (sum, t) => ({
           kcal: sum.kcal + t.kcal,
           carbs: sum.carbs + t.carbs,
+          netCarbs: sum.netCarbs + t.netCarbs,
           protein: sum.protein + t.protein,
           fat: sum.fat + t.fat,
+          fiber: sum.fiber + t.fiber,
+          sugar: sum.sugar + t.sugar,
+          iron: sum.iron + t.iron,
         }),
-        { kcal: 0, carbs: 0, protein: 0, fat: 0 },
+        { kcal: 0, carbs: 0, netCarbs: 0, protein: 0, fat: 0, fiber: 0, sugar: 0, iron: 0 },
       ),
     [itemTotals],
   );
@@ -509,7 +632,7 @@ export default function AnalyzeFoodScreen() {
                       {item.dbCandidate && (
                         <Pressable
                           className="rounded-full bg-emerald-500/15 px-2 py-1 active:opacity-70"
-                          onPress={() => applyDbCandidate(item.id)}
+                          onPress={() => item.dbCandidate && applyFoodItem(item.id, item.dbCandidate)}
                         >
                           <Text className="text-[11px] font-semibold text-emerald-400">Übernehmen</Text>
                         </Pressable>
@@ -521,6 +644,32 @@ export default function AnalyzeFoodScreen() {
                       <Sparkles color="#A1A1AA" size={12} />
                       <Text className="text-[11px] font-medium text-text-secondary">AI-Schätzung</Text>
                     </View>
+                  )}
+
+                  <View className="flex-row flex-wrap gap-1.5">
+                    <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
+                      <Text className="text-[11px] font-medium text-text-secondary">Eisen: {totals.iron.toFixed(1)} mg</Text>
+                    </View>
+                    <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
+                      <Text className="text-[11px] font-medium text-text-secondary">Zucker: {totals.sugar.toFixed(1)} g</Text>
+                    </View>
+                    <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
+                      <Text className="text-[11px] font-medium text-text-secondary">Ballaststoffe: {totals.fiber.toFixed(1)} g</Text>
+                    </View>
+                  </View>
+
+                  <Pressable
+                    className="flex-row items-center gap-1.5 self-start rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 active:opacity-70"
+                    onPress={() => setPrecisionEditItemId((prev) => (prev === item.id ? null : item.id))}
+                  >
+                    <Search color="#818CF8" size={12} />
+                    <Text className="text-[11px] font-semibold text-primary">Precision Edit</Text>
+                  </Pressable>
+                  {precisionEditItemId === item.id && (
+                    <PrecisionSearchPanel
+                      onSelect={(food) => applyFoodItem(item.id, food)}
+                      onClose={() => setPrecisionEditItemId(null)}
+                    />
                   )}
 
                   <View className="flex-row items-start gap-2">
@@ -565,6 +714,7 @@ export default function AnalyzeFoodScreen() {
 
                   <Text className="text-right text-xs text-text-secondary">
                     {Math.round(totals.kcal)} kcal für {Math.round(totals.grams)}g
+                    {showNetCarbs ? ` · Netto-Carbs: ${Math.round(totals.netCarbs)}g` : ''}
                   </Text>
                 </Card>
               );
@@ -593,8 +743,8 @@ export default function AnalyzeFoodScreen() {
                 </View>
                 {visibleNutrients.carbs && (
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-text-secondary">Kohlenhydrate</Text>
-                    <Text className="text-sm text-white">{Math.round(grandTotal.carbs)} g</Text>
+                    <Text className="text-sm text-text-secondary">{showNetCarbs ? 'Kohlenhydrate (netto)' : 'Kohlenhydrate'}</Text>
+                    <Text className="text-sm text-white">{Math.round(showNetCarbs ? grandTotal.netCarbs : grandTotal.carbs)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.protein && (
@@ -607,6 +757,24 @@ export default function AnalyzeFoodScreen() {
                   <View className="flex-row items-center justify-between">
                     <Text className="text-sm text-text-secondary">Fett</Text>
                     <Text className="text-sm text-white">{Math.round(grandTotal.fat)} g</Text>
+                  </View>
+                )}
+                {visibleNutrients.fiber && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-sm text-text-secondary">Ballaststoffe</Text>
+                    <Text className="text-sm text-white">{Math.round(grandTotal.fiber)} g</Text>
+                  </View>
+                )}
+                {visibleNutrients.sugar && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-sm text-text-secondary">Zucker</Text>
+                    <Text className="text-sm text-white">{Math.round(grandTotal.sugar)} g</Text>
+                  </View>
+                )}
+                {visibleNutrients.iron && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-sm text-text-secondary">Eisen</Text>
+                    <Text className="text-sm text-white">{grandTotal.iron.toFixed(1)} mg</Text>
                   </View>
                 )}
               </Card>

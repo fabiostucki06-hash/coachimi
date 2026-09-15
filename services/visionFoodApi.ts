@@ -237,7 +237,7 @@ function fallbackEstimate(notice: string): VisionAnalysisResult {
         estimatedGrams: 250,
         caloriesPer100g: 220,
         macrosPer100g: { carbs: 24, protein: 10, fat: 9 },
-        micronutrientsPer100g: { fiber: 3, sugar: 5, sodium: 280, vitaminC: 4 },
+        micronutrientsPer100g: { fiber: 3, sugar: 5, sodium: 280, vitaminC: 4, iron: 1 },
         confidence: 0.3,
         needsVerification: true,
       },
