@@ -1,12 +1,23 @@
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 
 import { todayKey } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
 import { addDays, buildMonthGrid, monthYearOf, WEEKDAY_LABELS } from '@/utils/calendarDates';
 
 const ACCENT = '#6366F1';
+
+// The compact (header) calendar popover is `position: absolute`, so React
+// Native positions it relative to its own wrapper View, not the screen -
+// there's no CSS `calc(100vw - ...)` or viewport units here. Its natural
+// width (below) anchored to the wrapper's right edge used to run the popover
+// straight off the left edge of the screen on narrow phones, since that
+// wrapper sits shrink-wrapped near the header's horizontal center. Clamping
+// requires knowing the wrapper's actual on-screen position - see
+// measurePopoverPosition.
+const POPOVER_WIDTH = 288; // w-72
+const VIEWPORT_MARGIN = 16;
 
 // Compact (header pill) drops the weekday and abbreviates the month - e.g.
 // "15. Sept." instead of "Di, 15. September" - so a non-today date never
@@ -41,6 +52,32 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
 
   const isToday = selectedDate === todayKey();
 
+  const { width: windowWidth } = useWindowDimensions();
+  const anchorRef = useRef<View>(null);
+  const popoverWidth = Math.min(POPOVER_WIDTH, windowWidth - VIEWPORT_MARGIN * 2);
+  const [popoverLeft, setPopoverLeft] = useState(0);
+
+  function measurePopoverPosition() {
+    anchorRef.current?.measureInWindow((anchorX, _y, anchorWidth) => {
+      // Anchors the popover's right edge to the trigger's right edge by
+      // default (matching the original right-0 behavior), then clamps it so
+      // it never crosses within VIEWPORT_MARGIN of either screen edge.
+      const desiredScreenLeft = anchorX + anchorWidth - popoverWidth;
+      const clampedScreenLeft = Math.min(
+        Math.max(desiredScreenLeft, VIEWPORT_MARGIN),
+        windowWidth - VIEWPORT_MARGIN - popoverWidth,
+      );
+      setPopoverLeft(clampedScreenLeft - anchorX);
+    });
+  }
+
+  // Re-clamp on rotation/resize (window width change) while the popover is
+  // already open, not just at the moment it's opened.
+  useEffect(() => {
+    if (compact && expanded) measurePopoverPosition();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compact, expanded, windowWidth, popoverWidth]);
+
   function jumpToMonthOf(dateKey: string) {
     setViewedMonth(monthYearOf(dateKey));
   }
@@ -70,7 +107,10 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
   });
 
   return (
-    <View className={compact ? 'relative z-20 min-w-0 gap-1.5' : 'gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl'}>
+    <View
+      ref={anchorRef}
+      className={compact ? 'relative z-20 min-w-0 gap-1.5' : 'gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl'}
+    >
       <View className="flex-row items-center justify-between">
         <Pressable
           accessibilityLabel="Vorheriger Tag"
@@ -132,7 +172,10 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
       )}
 
       {expanded && (
-        <View className={compact ? 'absolute right-0 top-full z-20 mt-2 w-72 gap-3 rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl shadow-black/40' : 'gap-3 border-t border-surface-border pt-3 '}>
+        <View
+          className={compact ? 'absolute top-full z-20 mt-2 gap-3 rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl shadow-black/40' : 'gap-3 border-t border-surface-border pt-3 '}
+          style={compact ? { left: popoverLeft, width: popoverWidth } : undefined}
+        >
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityLabel="Vorheriger Monat"
