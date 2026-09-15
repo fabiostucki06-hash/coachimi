@@ -15,7 +15,7 @@ import { UserAvatar } from '@/components/features/UserAvatar';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
-import { getDietTargetSummary, getIronGoalForDiet } from '@/services/dietEngine';
+import { getDietTargetSummary, getMicronutrientGoalsForDiet } from '@/services/dietEngine';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
@@ -23,7 +23,6 @@ import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { Macros, MealEntry, MealType, NutrientKey } from '@/types';
 import { getLastUpdatedLabel } from '@/utils/lastUpdated';
-import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 
 // Re-renders the relative "vor X Min." label periodically so it doesn't go
 // stale while the screen stays mounted.
@@ -134,8 +133,7 @@ export default function DiaryScreen() {
     const totalMacros: Macros = { carbs: nutrientAmounts.carbs, protein: nutrientAmounts.protein, fat: nutrientAmounts.fat };
     const nutrientGoals: Record<NutrientKey, number> = {
       ...user.dailyMacroGoal,
-      ...MICRONUTRIENT_GOALS,
-      iron: getIronGoalForDiet(user.dietType ?? 'balanced'),
+      ...getMicronutrientGoalsForDiet(user.dietType ?? 'balanced', user.gender),
     };
     const secondaryNutrients = NUTRIENT_ORDER.filter(
       (key) => user.visibleNutrients[key] && !CORE_MACROS.includes(key),

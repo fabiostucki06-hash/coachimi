@@ -119,19 +119,29 @@ export function caloriesFromMacros(macros: Macros): number {
   return Math.round(macros.carbs * 4 + macros.protein * 4 + macros.fat * 9);
 }
 
-/** Reference daily intake (standard adult %DV) used as the progress-bar goal for each micronutrient. */
+/**
+ * Reference daily intake (D-A-CH / IOM adult baseline) used as the progress-bar goal
+ * for each micronutrient. Sodium/potassium are directional (sodium a ceiling, potassium
+ * a floor) rather than a "fill the bar" target, but share the same progress-bar UI as
+ * every other nutrient here - see components/features/NutrientProgress.tsx.
+ *
+ * iron/zinc/magnesium differ by sex under D-A-CH - this unisex fallback always takes
+ * the HIGHER of the two sex-specific values (see GENDER_MICRONUTRIENT_GOALS) so a
+ * user of unknown gender is never understated. Use getBaseMicronutrientGoals(gender)
+ * wherever the user's actual gender is known instead of reading this directly.
+ */
 export const MICRONUTRIENT_GOALS: Required<Micronutrients> = {
   fiber: 30,
   sugar: 50,
   saturatedFat: 20,
   unsaturatedFat: 44,
   cholesterol: 300,
-  sodium: 2300,
-  potassium: 3500,
-  calcium: 1300,
-  iron: 18,
-  magnesium: 420,
-  zinc: 11,
+  sodium: 2000, // D-A-CH ceiling, not a target to reach
+  potassium: 4000, // D-A-CH minimum
+  calcium: 1000,
+  iron: 15, // unisex fallback = female D-A-CH value (higher of the two)
+  magnesium: 350, // unisex fallback = male D-A-CH value (higher of the two)
+  zinc: 11, // unisex fallback = male D-A-CH value (higher of the two)
   copper: 0.9,
   manganese: 2.3,
   selenium: 55,
@@ -144,12 +154,24 @@ export const MICRONUTRIENT_GOALS: Required<Micronutrients> = {
   vitaminB6: 1.7,
   vitaminB7: 30,
   vitaminB9: 400,
-  vitaminB12: 2.4,
+  vitaminB12: 4.0,
   vitaminC: 90,
-  vitaminD: 20,
+  vitaminD: 20, // 800 IU
   vitaminE: 15,
   vitaminK: 120,
 };
+
+/** D-A-CH values for the three micronutrients with a sex-specific reference intake - overlaid onto MICRONUTRIENT_GOALS by getBaseMicronutrientGoals once the user's gender is known. */
+const GENDER_MICRONUTRIENT_GOALS: Record<Gender, Pick<Micronutrients, 'iron' | 'zinc' | 'magnesium'>> = {
+  male: { iron: 10, zinc: 11, magnesium: 350 },
+  female: { iron: 15, zinc: 8, magnesium: 300 },
+};
+
+/** MICRONUTRIENT_GOALS with iron/zinc/magnesium swapped to the D-A-CH value for `gender` - the unisex fallback (higher-of-both) stays in place when gender is unknown. Diet-specific bioavailability multipliers (vegan/vegetarian iron+zinc, keto/low_carb/carnivore/high_protein electrolytes, carnivore/keto fiber) layer on top via services/dietEngine.ts's getMicronutrientGoalsForDiet. */
+export function getBaseMicronutrientGoals(gender: Gender | undefined): Required<Micronutrients> {
+  if (!gender) return MICRONUTRIENT_GOALS;
+  return { ...MICRONUTRIENT_GOALS, ...GENDER_MICRONUTRIENT_GOALS[gender] };
+}
 
 const MICRONUTRIENT_KEYS = Object.keys(MICRONUTRIENT_GOALS) as (keyof Micronutrients)[];
 

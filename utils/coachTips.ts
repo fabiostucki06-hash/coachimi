@@ -1,6 +1,7 @@
+import type { DietType } from '@/utils/nutritionCalculator';
 import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 
-export type DeficitNutrientKey = 'iron' | 'protein' | 'fiber' | 'magnesium';
+export type DeficitNutrientKey = 'iron' | 'protein' | 'fiber' | 'magnesium' | 'vitaminB12';
 
 export interface DailyNutrientSnapshot {
   date: string;
@@ -8,6 +9,8 @@ export interface DailyNutrientSnapshot {
   protein: number;
   fiber: number;
   magnesium: number;
+  /** Only tracked/flagged for vegan users - see analyzeNutrientDeficits' hard-alert handling below. Omit (or 0 with vitaminB12 excluded from trackedKeys) for non-vegan snapshots. */
+  vitaminB12?: number;
   /**
    * Which of the four values above were actually reported by at least one food logged
    * that day, as opposed to silently defaulting to 0 because no source (Open Food
@@ -39,6 +42,7 @@ const LABELS: Record<DeficitNutrientKey, string> = {
   protein: 'Protein',
   fiber: 'Ballaststoffe',
   magnesium: 'Magnesium',
+  vitaminB12: 'Vitamin B12',
 };
 
 const UNITS: Record<DeficitNutrientKey, string> = {
@@ -46,6 +50,7 @@ const UNITS: Record<DeficitNutrientKey, string> = {
   protein: 'g',
   fiber: 'g',
   magnesium: 'mg',
+  vitaminB12: 'µg',
 };
 
 /** Concrete, evidence-based food sources per nutrient - referenced against EFSA/D-A-CH daily reference intakes, same standard `MICRONUTRIENT_GOALS` already uses for progress bars. */
@@ -54,6 +59,7 @@ const FOOD_SUGGESTIONS: Record<DeficitNutrientKey, string> = {
   protein: 'Ein zusätzlicher Proteinshake oder 150g Hähnchenbrust schließen die Lücke effektiv.',
   fiber: 'Eine Portion Haferflocken oder ein Vollkornbrot erhöhen deine Ballaststoffzufuhr spürbar.',
   magnesium: 'Eine Handvoll Kürbiskerne oder Mandeln liefert einen Großteil deines Tagesbedarfs an Magnesium.',
+  vitaminB12: 'Pflanzliche Ernährung liefert kein B12 von Natur aus - ein B12-Supplement (z. B. 25-100µg/Tag oder 1000-2000µg wöchentlich) wird für vegane Ernährung ausdrücklich empfohlen.',
 };
 
 /**
@@ -66,10 +72,20 @@ const CITATIONS: Partial<Record<DeficitNutrientKey, string>> = {
   iron: 'Studieneinblick: EFSA/D-A-CH setzen die Referenzmenge auf 10-15mg Eisen/Tag - Vitamin C erhöht die Aufnahme von pflanzlichem (non-häm) Eisen deutlich (Hallberg et al.).',
   magnesium: 'Studieneinblick: EFSA empfiehlt 300-350mg Magnesium/Tag für Muskelregeneration und ATP-Synthese.',
   protein: 'Studieneinblick: Für Muskelaufbau optimiert laut Morton et al. (2018) eine Zufuhr von 1.6-2.2g Protein/kg Körpergewicht das Ergebnis.',
+  vitaminB12: 'Studieneinblick: B12 kommt praktisch nur in tierischen Produkten vor - die DGE/VEBU-Konsenspapiere empfehlen veganen Essern ausnahmslos eine Supplementierung.',
 };
 
 /** Only flag a nutrient once the multi-day average sits meaningfully below the RDA - avoids noisy tips from single-day rounding. */
 const DEFICIT_THRESHOLD_RATIO = 0.85;
+
+/**
+ * Vitamin B12 on a vegan diet is a hard alert, not a soft "trending low" nudge like
+ * the other three nutrients - there is no dietary B12 source on a fully plant-based
+ * diet, so ANY average below the 4.0µg/day target (not just a >15% shortfall) should
+ * flag the supplementation requirement. See analyzeNutrientDeficits' `dietType`
+ * handling below - this only applies when key is 'vitaminB12' and dietType is 'vegan'.
+ */
+const VEGAN_B12_THRESHOLD_RATIO = 1;
 
 /** Need at least this many logged days in the window before an average is trustworthy enough to show. */
 export const MIN_DAYS_FOR_ANALYSIS = 3;
@@ -83,10 +99,15 @@ function round1(value: number): number {
  * intakes (D-A-CH/EFSA), returning the worst deficits first. `snapshots` should already be
  * filtered to only the days the user actually logged something - averaging over unlogged
  * (all-zero) days would understate intake rather than reflect an actual deficit.
+ *
+ * `dietType` gates the Vitamin B12 hard alert (see VEGAN_B12_THRESHOLD_RATIO): only
+ * checked at all when 'vegan', and flagged at ANY shortfall rather than the normal
+ * 15%-below-RDA bar every other nutrient here uses.
  */
 export function analyzeNutrientDeficits(
   snapshots: DailyNutrientSnapshot[],
   proteinRdaOverride?: number,
+  dietType?: DietType,
 ): NutrientDeficit[] {
   if (snapshots.length < MIN_DAYS_FOR_ANALYSIS) return [];
 
@@ -95,9 +116,11 @@ export function analyzeNutrientDeficits(
     protein: proteinRdaOverride && proteinRdaOverride > 0 ? proteinRdaOverride : 0.8 * 70, // D-A-CH baseline 0.8g/kg for a 70kg reference adult when no personal goal is known
     fiber: MICRONUTRIENT_GOALS.fiber,
     magnesium: MICRONUTRIENT_GOALS.magnesium,
+    vitaminB12: MICRONUTRIENT_GOALS.vitaminB12,
   };
 
   const keys: DeficitNutrientKey[] = ['iron', 'protein', 'fiber', 'magnesium'];
+  if (dietType === 'vegan') keys.push('vitaminB12');
   const deficits: NutrientDeficit[] = [];
 
   for (const key of keys) {
@@ -111,11 +134,13 @@ export function analyzeNutrientDeficits(
     const trackedDays = snapshots.filter((day) => !day.trackedKeys || day.trackedKeys.includes(key));
     if (trackedDays.length < MIN_DAYS_FOR_ANALYSIS) continue;
 
-    const average = trackedDays.reduce((sum, day) => sum + day[key], 0) / trackedDays.length;
+    const average = trackedDays.reduce((sum, day) => sum + (day[key] ?? 0), 0) / trackedDays.length;
     const deficitRatio = Math.max(0, 1 - average / rda);
-    if (average / rda >= DEFICIT_THRESHOLD_RATIO) continue;
+    const thresholdRatio = key === 'vitaminB12' ? VEGAN_B12_THRESHOLD_RATIO : DEFICIT_THRESHOLD_RATIO;
+    if (average / rda >= thresholdRatio) continue;
 
     const averagePerDay = round1(average);
+    const isHardAlert = key === 'vitaminB12';
     deficits.push({
       key,
       label: LABELS[key],
@@ -124,7 +149,9 @@ export function analyzeNutrientDeficits(
       averagePerDay,
       rda,
       deficitRatio,
-      message: `Du hattest in den letzten ${trackedDays.length} Tagen im Schnitt nur ${averagePerDay}${UNITS[key]} ${LABELS[key]}/Tag. ${FOOD_SUGGESTIONS[key]}`,
+      message: isHardAlert
+        ? `Achtung: Dein B12-Schnitt liegt bei ${averagePerDay}${UNITS[key]}/Tag, unter dem veganen Zielwert von ${rda}${UNITS[key]}. ${FOOD_SUGGESTIONS[key]}`
+        : `Du hattest in den letzten ${trackedDays.length} Tagen im Schnitt nur ${averagePerDay}${UNITS[key]} ${LABELS[key]}/Tag. ${FOOD_SUGGESTIONS[key]}`,
       citation: CITATIONS[key],
     });
   }

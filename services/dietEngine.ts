@@ -1,10 +1,12 @@
-import type { FoodItem, Macros } from '@/types';
+import type { FoodItem, Macros, Micronutrients } from '@/types';
 import {
   calculateMacros,
   calculateScaledNutrients,
+  getBaseMicronutrientGoals,
   MICRONUTRIENT_GOALS,
   type ActivityLevel,
   type DietType,
+  type Gender,
   type MacroRatio,
 } from '@/utils/nutritionCalculator';
 
@@ -148,22 +150,89 @@ export function calculateDietMacros(dietType: DietType, targetCalories: number, 
   }
 }
 
-// --- Iron target scaling (non-heme absorption) ---------------------------------------
+// --- Iron/zinc target scaling (non-heme absorption, phytate binding) -----------------
 //
 // Plant-forward diets draw most or all of their iron from non-heme sources, which the
 // body absorbs far less efficiently than the heme iron in meat/fish - IOM guidance
 // scales the reference intake up to compensate. Vegan excludes ALL animal iron
 // (heme + non-heme) so gets the larger bump; vegetarian still has dairy/egg non-heme
-// iron, hence the smaller one.
+// iron, hence the smaller one. Zinc gets the same treatment on vegan: phytates in
+// grains/legumes bind zinc and cut its bioavailability, with no dairy/egg buffer the
+// way vegetarian has - so only vegan (not vegetarian) is scaled.
 export const IRON_GOAL_MULTIPLIER: Partial<Record<DietType, number>> = {
   vegan: 1.8,
   vegetarian: 1.5,
 };
 
-/** Daily iron target (mg) for a diet - MICRONUTRIENT_GOALS.iron scaled by IRON_GOAL_MULTIPLIER where one applies. Use this (not MICRONUTRIENT_GOALS.iron directly) anywhere a user's iron goal is displayed. */
-export function getIronGoalForDiet(dietType: DietType): number {
+export const ZINC_GOAL_MULTIPLIER: Partial<Record<DietType, number>> = {
+  vegan: 1.5,
+};
+
+/** Daily iron target (mg) for a diet + gender - the D-A-CH base (see getBaseMicronutrientGoals) scaled by IRON_GOAL_MULTIPLIER where one applies. Use this (not MICRONUTRIENT_GOALS.iron directly) anywhere a user's iron goal is displayed. */
+export function getIronGoalForDiet(dietType: DietType, gender?: Gender): number {
   const multiplier = IRON_GOAL_MULTIPLIER[dietType] ?? 1;
-  return Math.round(MICRONUTRIENT_GOALS.iron * multiplier * 10) / 10;
+  return Math.round(getBaseMicronutrientGoals(gender).iron * multiplier * 10) / 10;
+}
+
+/** Daily zinc target (mg) for a diet + gender - same pattern as getIronGoalForDiet. */
+export function getZincGoalForDiet(dietType: DietType, gender?: Gender): number {
+  const multiplier = ZINC_GOAL_MULTIPLIER[dietType] ?? 1;
+  return Math.round(getBaseMicronutrientGoals(gender).zinc * multiplier * 10) / 10;
+}
+
+// --- Electrolyte target scaling (natriuresis of fasting/low-carb states) -------------
+//
+// Lower insulin on a high-protein/very-low-carb/carnivore diet makes the kidneys
+// excrete more sodium (and, with it, more potassium/magnesium) than on a
+// carb-replete diet - the classic "keto flu" electrolyte drop. These diets need
+// MORE of each, not less, to stay in balance.
+export const ELECTROLYTE_GOAL_MULTIPLIER: Partial<Record<DietType, number>> = {
+  high_protein: 1.2,
+  carnivore: 1.2,
+  low_carb: 1.2,
+};
+
+const ELECTROLYTE_KEYS: (keyof Micronutrients)[] = ['sodium', 'potassium', 'magnesium'];
+
+// --- Fiber target scaling --------------------------------------------------------------
+//
+// Carnivore excludes plant foods entirely - the standard 30g/day fiber target is
+// structurally unreachable and would otherwise permanently tank MND scores for every
+// food on that diet. Keto's very low carb allowance leaves little room for
+// fiber-dense plant foods either, so its target is relaxed (not eliminated).
+export const FIBER_GOAL_OVERRIDE: Partial<Record<DietType, number>> = {
+  carnivore: 0,
+  keto: 15,
+};
+
+/**
+ * Full per-diet, per-gender micronutrient goal set - the single source of truth for
+ * both calculateMndScore (below) and every progress-bar UI (Dashboard, friend diary,
+ * OLED widget, coach tips): MICRONUTRIENT_GOALS (or its gender-specific variant) with
+ * iron/zinc bioavailability multipliers, electrolyte natriuresis multipliers, and the
+ * fiber override layered on top.
+ */
+export function getMicronutrientGoalsForDiet(dietType: DietType, gender?: Gender): Required<Micronutrients> {
+  const base = getBaseMicronutrientGoals(gender);
+  const goals: Required<Micronutrients> = {
+    ...base,
+    iron: getIronGoalForDiet(dietType, gender),
+    zinc: getZincGoalForDiet(dietType, gender),
+  };
+
+  const electrolyteMultiplier = ELECTROLYTE_GOAL_MULTIPLIER[dietType];
+  if (electrolyteMultiplier) {
+    for (const key of ELECTROLYTE_KEYS) {
+      goals[key] = Math.round(base[key] * electrolyteMultiplier);
+    }
+  }
+
+  const fiberOverride = FIBER_GOAL_OVERRIDE[dietType];
+  if (fiberOverride !== undefined) {
+    goals.fiber = fiberOverride;
+  }
+
+  return goals;
 }
 
 /** Short, user-facing summary of a diet's headline target(s) - for the "what does this diet actually do" hint next to the diet picker. */
@@ -172,17 +241,17 @@ export function getDietTargetSummary(dietType: DietType): string {
     case 'balanced':
       return 'Ausgewogen: 50% Carbs • 1.2g/kg Protein • 30% Fett';
     case 'keto':
-      return `Keto: Max ${KETO_DAILY_CARB_CAP_G}g Carbs • High Fat`;
+      return `Keto: Max ${KETO_DAILY_CARB_CAP_G}g Carbs • High Fat • Ballaststoff-Ziel auf ${FIBER_GOAL_OVERRIDE.keto}g reduziert`;
     case 'vegan':
-      return `Vegan: +${Math.round((IRON_GOAL_MULTIPLIER.vegan! - 1) * 100)}% Eisen-Ziel angepasst`;
+      return `Vegan: +${Math.round((IRON_GOAL_MULTIPLIER.vegan! - 1) * 100)}% Eisen • +${Math.round((ZINC_GOAL_MULTIPLIER.vegan! - 1) * 100)}% Zink • B12-Supplement empfohlen`;
     case 'vegetarian':
       return `Vegetarisch: +${Math.round((IRON_GOAL_MULTIPLIER.vegetarian! - 1) * 100)}% Eisen-Ziel angepasst`;
     case 'carnivore':
-      return `Carnivore: 0-${CARNIVORE_DAILY_CARB_CAP_G}g Carbs • 2.0-2.5g/kg Protein`;
+      return `Carnivore: 0-${CARNIVORE_DAILY_CARB_CAP_G}g Carbs • 2.0-2.5g/kg Protein • kein Ballaststoff-Ziel • +${Math.round((ELECTROLYTE_GOAL_MULTIPLIER.carnivore! - 1) * 100)}% Elektrolyt-Ziel`;
     case 'low_carb':
-      return `Low Carb: Max ${LOW_CARB_DAILY_CARB_CAP_G}g Carbs`;
+      return `Low Carb: Max ${LOW_CARB_DAILY_CARB_CAP_G}g Carbs • +${Math.round((ELECTROLYTE_GOAL_MULTIPLIER.low_carb! - 1) * 100)}% Elektrolyt-Ziel`;
     case 'high_protein':
-      return 'High Protein: ~2.2g/kg Protein (2.0-2.5g/kg)';
+      return `High Protein: ~2.2g/kg Protein (2.0-2.5g/kg) • +${Math.round((ELECTROLYTE_GOAL_MULTIPLIER.high_protein! - 1) * 100)}% Elektrolyt-Ziel`;
     case 'fasting_focused':
       return 'Intervallfasten-Fokus: 45% Carbs • 25% Protein • 30% Fett (16:8/18:6-Fenster)';
     default:
@@ -265,17 +334,31 @@ const MND_MICRONUTRIENT_KEYS = Object.keys(MICRONUTRIENT_GOALS) as (keyof typeof
 /** Below this per-100g calorie density, `calorieEfficiencyWeight` gives its full bonus; scales down linearly to 0 at/above it. */
 const CALORIE_EFFICIENCY_CEILING_KCAL = 200;
 
-/** MND score for one food under a given diet, 0 (poor fit) - 100 (excellent fit). Always normalizes to per-100g first so foods with different serving sizes compare fairly. */
-export function calculateMndScore(food: FoodItem, dietType: DietType): number {
+/**
+ * MND score for one food under a given diet (+ optional gender, for the iron/zinc
+ * D-A-CH split), 0 (poor fit) - 100 (excellent fit). Always normalizes to per-100g
+ * first so foods with different serving sizes compare fairly. Micronutrient goals
+ * come from getMicronutrientGoalsForDiet, so a diet's bioavailability multipliers and
+ * fiber override apply here too - a goal of exactly 0 (carnivore's fiber) is skipped
+ * entirely rather than scored, per DIET_MND_PROFILES's "auto-exclude" intent, since
+ * dividing by a 0 goal is undefined rather than "fully covered".
+ */
+export function calculateMndScore(food: FoodItem, dietType: DietType, gender?: Gender): number {
   const profile = DIET_MND_PROFILES[dietType] ?? DIET_MND_PROFILES.balanced;
+  const goals = getMicronutrientGoalsForDiet(dietType, gender);
   const per100 = calculateScaledNutrients(food, 100);
   const calories = Math.max(per100.calories, 1);
 
   let microCoverageSum = 0;
   let microWeightSum = 0;
   for (const key of MND_MICRONUTRIENT_KEYS) {
-    const goal = MICRONUTRIENT_GOALS[key];
+    const goal = goals[key];
     if (!goal) continue;
+    // Vegan's iron is already the diet's most heavily-weighted critical micro (x3) and
+    // its goal above is already scaled 1.8x for non-heme absorption - between the two,
+    // a plant-based iron source (lentils, pumpkin seeds, tofu, ...) is rewarded here
+    // without needing separate ingredient-level "is this plant-based" tagging the app
+    // doesn't have.
     const weight = profile.criticalMicros.includes(key) ? 3 : profile.priorityMicros.includes(key) ? 2 : 1;
     const coverage = Math.min(per100.micronutrients[key] / goal, 1);
     microCoverageSum += coverage * weight;
@@ -283,9 +366,9 @@ export function calculateMndScore(food: FoodItem, dietType: DietType): number {
   }
   const microScore = microWeightSum > 0 ? (microCoverageSum / microWeightSum) * 100 : 0;
 
-  const sugarPenalty = Math.min(per100.micronutrients.sugar / MICRONUTRIENT_GOALS.sugar, 1) * 20 * profile.penaltyWeight;
-  const satFatPenalty = Math.min(per100.micronutrients.saturatedFat / MICRONUTRIENT_GOALS.saturatedFat, 1) * 10 * profile.fatPenaltyWeight;
-  const sodiumPenalty = Math.min(per100.micronutrients.sodium / MICRONUTRIENT_GOALS.sodium, 1) * 10 * profile.penaltyWeight;
+  const sugarPenalty = Math.min(per100.micronutrients.sugar / goals.sugar, 1) * 20 * profile.penaltyWeight;
+  const satFatPenalty = Math.min(per100.micronutrients.saturatedFat / goals.saturatedFat, 1) * 10 * profile.fatPenaltyWeight;
+  const sodiumPenalty = Math.min(per100.micronutrients.sodium / goals.sodium, 1) * 10 * profile.penaltyWeight;
   const carbOveragePenalty =
     per100.macros.carbs > profile.carbOverageThresholdG
       ? Math.min((per100.macros.carbs - profile.carbOverageThresholdG) / profile.carbOverageThresholdG, 1) * 25 * profile.carbOveragePenaltyWeight
@@ -370,9 +453,9 @@ const COMPLIANCE_ORDER: Record<DietComplianceFlag, number> = { priority: 0, neut
  * every food from `foods` is still present, just re-sorted, so a diet mismatch never
  * makes a food impossible to find, only less prominent.
  */
-export function rankFoodsForDiet(foods: FoodItem[], dietType: DietType): FoodItem[] {
+export function rankFoodsForDiet(foods: FoodItem[], dietType: DietType, gender?: Gender): FoodItem[] {
   return [...foods]
-    .map((food) => ({ food, compliance: getDietCompliance(food, dietType), score: calculateMndScore(food, dietType) }))
+    .map((food) => ({ food, compliance: getDietCompliance(food, dietType), score: calculateMndScore(food, dietType, gender) }))
     .sort((a, b) => COMPLIANCE_ORDER[a.compliance] - COMPLIANCE_ORDER[b.compliance] || b.score - a.score)
     .map((entry) => entry.food);
 }

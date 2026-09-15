@@ -12,9 +12,9 @@ import type { MealEntry } from '@/types';
 /** Trailing window to scan for a multi-day average - matches the 3-7 day range D-A-CH/EFSA references are meant to be judged over, not a single day. */
 const LOOKBACK_DAYS = 7;
 
-const ALL_KEYS: DeficitNutrientKey[] = ['iron', 'protein', 'fiber', 'magnesium'];
-/** Protein is a required macro (always a real number, never missing source data) - only these three are ever silently "untracked" because a food simply didn't report them. */
-const MICRONUTRIENT_KEYS: DeficitNutrientKey[] = ['iron', 'fiber', 'magnesium'];
+const ALL_KEYS: DeficitNutrientKey[] = ['iron', 'protein', 'fiber', 'magnesium', 'vitaminB12'];
+/** Protein is a required macro (always a real number, never missing source data) - only these are ever silently "untracked" because a food simply didn't report them. */
+const MICRONUTRIENT_KEYS: DeficitNutrientKey[] = ['iron', 'fiber', 'magnesium', 'vitaminB12'];
 
 /** Whether any food logged that day actually reported this nutrient, vs it defaulting to 0 purely because no source had the data. */
 function isTrackedForDay(entries: MealEntry[], key: DeficitNutrientKey): boolean {
@@ -35,6 +35,7 @@ function getTrailingDateKeys(days: number): string[] {
 export function DeficitAnalyzerCard() {
   const entriesByDate = useDiaryStore((state) => state.entriesByDate);
   const proteinGoal = useUserStore((state) => state.user.dailyMacroGoal.protein);
+  const dietType = useUserStore((state) => state.user.dietType);
 
   const { deficits, showNeutralHint } = useMemo(() => {
     const loggedDays = getTrailingDateKeys(LOOKBACK_DAYS)
@@ -44,10 +45,18 @@ export function DeficitAnalyzerCard() {
     const snapshots: DailyNutrientSnapshot[] = loggedDays.map(({ date, entries }) => {
       const totals = sumEntryNutrients(entries);
       const trackedKeys = ALL_KEYS.filter((key) => isTrackedForDay(entries, key));
-      return { date, iron: totals.iron, protein: totals.protein, fiber: totals.fiber, magnesium: totals.magnesium, trackedKeys };
+      return {
+        date,
+        iron: totals.iron,
+        protein: totals.protein,
+        fiber: totals.fiber,
+        magnesium: totals.magnesium,
+        vitaminB12: totals.vitaminB12,
+        trackedKeys,
+      };
     });
 
-    const deficits = analyzeNutrientDeficits(snapshots, proteinGoal);
+    const deficits = analyzeNutrientDeficits(snapshots, proteinGoal, dietType);
 
     // True "no data" state: none of the actual micronutrients (protein excluded - it's
     // a required macro, always present) ever had enough real tracked days to even be
@@ -61,7 +70,7 @@ export function DeficitAnalyzerCard() {
       deficits,
       showNeutralHint: snapshots.length >= MIN_DAYS_FOR_ANALYSIS && deficits.length === 0 && !hasEvaluableMicronutrientData,
     };
-  }, [entriesByDate, proteinGoal]);
+  }, [entriesByDate, proteinGoal, dietType]);
 
   if (deficits.length === 0 && !showNeutralHint) return null;
 

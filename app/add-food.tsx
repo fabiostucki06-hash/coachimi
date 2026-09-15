@@ -76,6 +76,7 @@ export default function AddFoodScreen() {
   const customFoods = useCustomFoodStore((state) => state.customFoods);
   const addCustomFood = useCustomFoodStore((state) => state.addCustomFood);
   const dietType = useUserStore((state) => state.user.dietType) ?? 'balanced';
+  const gender = useUserStore((state) => state.user.gender);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
@@ -126,7 +127,7 @@ export default function AddFoodScreen() {
     const commonMatches = searchLocalFoods(trimmed);
     const localMatches = mergeUnique([recentMatches, customMatches, commonMatches]);
     startTransition(() => {
-      setResults(rankFoodsForDiet(localMatches, dietType));
+      setResults(rankFoodsForDiet(localMatches, dietType, gender));
       setNotice(null);
     });
 
@@ -142,7 +143,7 @@ export default function AddFoodScreen() {
     const cached = getCachedSearch(normalizedQuery);
     if (cached) {
       requestIdRef.current += 1;
-      startTransition(() => setResults(rankFoodsForDiet(mergeUnique([localMatches, cached]), dietType)));
+      startTransition(() => setResults(rankFoodsForDiet(mergeUnique([localMatches, cached]), dietType, gender)));
       setLoading(false);
       return;
     }
@@ -159,7 +160,7 @@ export default function AddFoodScreen() {
         if (requestIdRef.current !== requestId) return;
         setCachedSearch(normalizedQuery, remoteItems);
         startTransition(() => {
-          setResults(rankFoodsForDiet(mergeUnique([localMatches, remoteItems]), dietType));
+          setResults(rankFoodsForDiet(mergeUnique([localMatches, remoteItems]), dietType, gender));
           setNotice(null);
         });
       } catch (err) {
@@ -180,7 +181,7 @@ export default function AddFoodScreen() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, customFoods, dietType]);
+  }, [query, customFoods, dietType, gender]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 

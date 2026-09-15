@@ -6,12 +6,12 @@ import { MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
 import { ExtraNutrientsSection, MacroBadge } from '@/components/features/NutrientProgress';
 import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { getMicronutrientGoalsForDiet } from '@/services/dietEngine';
 import { fetchFriendSnapshot, formatFriendLabel, type FriendProfile } from '@/services/friends';
 import { useToastStore } from '@/store/toastStore';
 import type { CloudSnapshot } from '@/services/cloudSync';
 import type { MealEntry, MealType, NutrientKey } from '@/types';
 import { addDays, getLocalDateKey } from '@/utils/calendarDates';
-import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 
 // Same constants the dashboard (app/(tabs)/index.tsx) uses for its hero ring
 // and macro row, kept in lockstep on purpose so a friend's diary renders as
@@ -136,7 +136,10 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
 
     const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
     const nutrientAmounts = sumEntryNutrients(entries);
-    const nutrientGoals: Record<NutrientKey, number> = { ...(friendUser?.dailyMacroGoal ?? { carbs: 0, protein: 0, fat: 0 }), ...MICRONUTRIENT_GOALS };
+    const nutrientGoals: Record<NutrientKey, number> = {
+      ...(friendUser?.dailyMacroGoal ?? { carbs: 0, protein: 0, fat: 0 }),
+      ...getMicronutrientGoalsForDiet(friendUser?.dietType ?? 'balanced', friendUser?.gender),
+    };
     const visibleNutrients = friendUser?.visibleNutrients;
     const secondaryNutrients = visibleNutrients
       ? NUTRIENT_ORDER.filter((key) => visibleNutrients[key] && !CORE_MACROS.includes(key))

@@ -6,10 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NUTRIENT_META, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { notifyDataChanged } from '@/hooks/useServiceWorker';
+import { getMicronutrientGoalsForDiet } from '@/services/dietEngine';
 import { todayKey, useDiaryStore } from '@/store/diaryStore';
 import { useUserStore } from '@/store/userStore';
 import type { MealEntry } from '@/types';
-import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 
 const OVER_LIMIT_ACCENT = '#F59E0B';
 const REMAINING_ACCENT = '#22c55e';
@@ -46,6 +46,8 @@ export function OledWidgetView() {
   const date = todayKey();
   const entries = useDiaryStore((state) => state.entriesByDate[date] ?? EMPTY_ENTRIES);
   const dailyCalorieGoal = useUserStore((state) => state.user.dailyCalorieGoal);
+  const dietType = useUserStore((state) => state.user.dietType) ?? 'balanced';
+  const gender = useUserStore((state) => state.user.gender);
 
   // Cross-tab freshness: when the widget is opened as its own standalone PWA
   // window (the normal way a home-screen shortcut launches), it has no other
@@ -65,17 +67,20 @@ export function OledWidgetView() {
     return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
   }, []);
 
-  const { remainingCalories, isOverLimit, surplusCalories, iron, sugar } = useMemo(() => {
+  const { remainingCalories, isOverLimit, surplusCalories, iron, sugar, ironGoal, sugarGoal } = useMemo(() => {
     const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
     const nutrients = sumEntryNutrients(entries);
+    const goals = getMicronutrientGoalsForDiet(dietType, gender);
     return {
       remainingCalories: Math.round(Math.max(dailyCalorieGoal - totalCalories, 0)),
       isOverLimit: dailyCalorieGoal > 0 && totalCalories > dailyCalorieGoal,
       surplusCalories: Math.round(Math.max(totalCalories - dailyCalorieGoal, 0)),
       iron: nutrients.iron,
       sugar: nutrients.sugar,
+      ironGoal: goals.iron,
+      sugarGoal: goals.sugar,
     };
-  }, [entries, dailyCalorieGoal]);
+  }, [entries, dailyCalorieGoal, dietType, gender]);
 
   return (
     <SafeAreaView className="flex-1 bg-black">
@@ -106,14 +111,14 @@ export function OledWidgetView() {
             label={NUTRIENT_META.iron.label}
             value={iron}
             unit={NUTRIENT_META.iron.unit}
-            pct={(iron / MICRONUTRIENT_GOALS.iron) * 100}
+            pct={(iron / ironGoal) * 100}
             color={NUTRIENT_META.iron.color}
           />
           <MetricBar
             label={NUTRIENT_META.sugar.label}
             value={sugar}
             unit={NUTRIENT_META.sugar.unit}
-            pct={(sugar / MICRONUTRIENT_GOALS.sugar) * 100}
+            pct={(sugar / sugarGoal) * 100}
             color={NUTRIENT_META.sugar.color}
           />
         </View>
