@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
 import { addMealsAndSync } from '@/services/diaryActions';
+import { matchDetectedFoods } from '@/services/photoMatcher';
 import { analyzeFoodPhoto, type DetectedFoodItem, type VisionAnalysisResult } from '@/services/visionFoodApi';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
@@ -37,6 +38,13 @@ const MAX_ANALYSIS_DIMENSION = 1024;
 const ANALYSIS_JPEG_QUALITY = 0.8;
 const GRAM_STEP = 10;
 
+/**
+ * 'matching' while services/photoMatcher.ts's DB/USDA cross-check is still in
+ * flight for this item, 'manual' for a user-added blank item (never matched
+ * at all), 'db_verified'/'ai_estimate' once matching has resolved either way.
+ */
+type MatchStatus = 'manual' | 'matching' | 'db_verified' | 'ai_estimate';
+
 interface EditableItem {
   id: string;
   name: string;
@@ -49,6 +57,9 @@ interface EditableItem {
   micronutrientsPer100g: Micronutrients;
   confidence: number;
   needsVerification: boolean;
+  matchStatus: MatchStatus;
+  matchScore: number;
+  dbCandidate: FoodItem | null;
 }
 
 function parseNumber(value: string, fallback: number): number {
@@ -69,6 +80,9 @@ function toEditableItem(detected: DetectedFoodItem, index: number): EditableItem
     micronutrientsPer100g: detected.micronutrientsPer100g,
     confidence: detected.confidence,
     needsVerification: detected.needsVerification,
+    matchStatus: 'matching',
+    matchScore: 0,
+    dbCandidate: null,
   };
 }
 
@@ -85,6 +99,9 @@ function makeBlankItem(): EditableItem {
     micronutrientsPer100g: { fiber: 0, sugar: 0, sodium: 0, vitaminC: 0 },
     confidence: 1,
     needsVerification: false,
+    matchStatus: 'manual',
+    matchScore: 0,
+    dbCandidate: null,
   };
 }
 
@@ -141,12 +158,74 @@ export default function AnalyzeFoodScreen() {
       setNotice(analysis.notice);
       setConfidenceScore(analysis.confidenceScore);
       setReasoning(analysis.reasoning);
-      setItems(analysis.items.map(toEditableItem));
+      const mapped = analysis.items.map(toEditableItem);
+      setItems(mapped);
+      if (mapped.length > 0) {
+        void runMatching(
+          analysis.items,
+          mapped.map((item) => item.id),
+        );
+      }
     } catch {
       setPickerError('Die Bildanalyse ist fehlgeschlagen. Bitte erneut versuchen.');
     } finally {
       setAnalyzing(false);
     }
+  }
+
+  /**
+   * Cross-checks each detected item against the local DB/USDA pipeline
+   * (services/photoMatcher.ts) in the background - the analysis screen
+   * already rendered the AI's own estimate, this only upgrades it once
+   * matches come back. A close-enough match (score >= threshold, see
+   * photoMatcher.ts) auto-corrects just Eisen/Zucker, the values the Vision
+   * model tends to guess worst on, while leaving grams/other macros as the
+   * user's current edit; a low/no match leaves the AI estimate untouched -
+   * the fallback path services/photoMatcher.ts itself guarantees.
+   */
+  async function runMatching(detectedItems: DetectedFoodItem[], editableIds: string[]) {
+    const matches = await matchDetectedFoods(detectedItems);
+    setItems((prev) =>
+      prev.map((item) => {
+        const index = editableIds.indexOf(item.id);
+        if (index === -1) return item;
+        const match = matches[index];
+        if (match.status === 'db_verified' && match.candidate) {
+          return {
+            ...item,
+            matchStatus: 'db_verified',
+            matchScore: match.score,
+            dbCandidate: match.candidate,
+            micronutrientsPer100g: {
+              ...item.micronutrientsPer100g,
+              iron: match.candidate.micronutrientsPerServing.iron ?? item.micronutrientsPer100g.iron,
+              sugar: match.candidate.micronutrientsPerServing.sugar ?? item.micronutrientsPer100g.sugar,
+            },
+          };
+        }
+        return { ...item, matchStatus: 'ai_estimate', matchScore: match.score, dbCandidate: null };
+      }),
+    );
+  }
+
+  /** 1-tap full swap onto the matched DB item's exact values (name + all macros/micros), keeping the user's currently edited gram amount. */
+  function applyDbCandidate(itemId: string) {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId || !item.dbCandidate) return item;
+        const candidate = item.dbCandidate;
+        return {
+          ...item,
+          name: candidate.name,
+          kcalPer100g: String(Math.round(candidate.caloriesPerServing)),
+          carbsPer100g: String(Math.round(candidate.macrosPerServing.carbs)),
+          proteinPer100g: String(Math.round(candidate.macrosPerServing.protein)),
+          fatPer100g: String(Math.round(candidate.macrosPerServing.fat)),
+          micronutrientsPer100g: candidate.micronutrientsPerServing,
+          needsVerification: false,
+        };
+      }),
+    );
   }
 
   async function handleTakePhoto() {
@@ -260,6 +339,7 @@ export default function AnalyzeFoodScreen() {
         micronutrientsPerServing: item.micronutrientsPer100g,
         servingSize: 100,
         servingUnit: 'g',
+        source: item.matchStatus === 'db_verified' && item.dbCandidate ? item.dbCandidate.source : 'ai',
       };
 
       return [{ foodItem, mealType, servings: grams / 100 }];
@@ -409,6 +489,37 @@ export default function AnalyzeFoodScreen() {
                       <Text className="text-[11px] font-medium text-amber-400">
                         Unsicher ({Math.round(item.confidence * 100)}% Konfidenz) – bitte prüfen
                       </Text>
+                    </View>
+                  )}
+
+                  {item.matchStatus === 'matching' && (
+                    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/5 px-2.5 py-1">
+                      <ActivityIndicator size="small" color="#A1A1AA" />
+                      <Text className="text-[11px] font-medium text-text-secondary">DB-Abgleich läuft …</Text>
+                    </View>
+                  )}
+                  {item.matchStatus === 'db_verified' && (
+                    <View className="flex-row items-center justify-between gap-2 rounded-full bg-emerald-500/10 pl-2.5 pr-1.5 py-1">
+                      <View className="flex-shrink flex-row items-center gap-1.5">
+                        <Check color="#10b981" size={12} />
+                        <Text className="text-[11px] font-medium text-emerald-400" numberOfLines={1}>
+                          DB Verified{item.dbCandidate ? ` · ${item.dbCandidate.name}` : ''}
+                        </Text>
+                      </View>
+                      {item.dbCandidate && (
+                        <Pressable
+                          className="rounded-full bg-emerald-500/15 px-2 py-1 active:opacity-70"
+                          onPress={() => applyDbCandidate(item.id)}
+                        >
+                          <Text className="text-[11px] font-semibold text-emerald-400">Übernehmen</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  )}
+                  {item.matchStatus === 'ai_estimate' && (
+                    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/5 px-2.5 py-1">
+                      <Sparkles color="#A1A1AA" size={12} />
+                      <Text className="text-[11px] font-medium text-text-secondary">AI-Schätzung</Text>
                     </View>
                   )}
 
