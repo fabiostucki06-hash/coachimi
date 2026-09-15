@@ -8,7 +8,12 @@ import { useCoinAnchorStore } from '@/store/coinAnchorStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { BADGE_COUNT_UP_MS, COIN_ARRIVAL_MS } from '@/utils/coinAnimation';
 
-export function GoldBarBadge() {
+interface GoldBarBadgeProps {
+  /** Shrinks padding/text/icon for narrow viewports (< 380px) so the header row fits on one line. */
+  compact?: boolean;
+}
+
+export function GoldBarBadge({ compact = false }: GoldBarBadgeProps = {}) {
   const goldBars = useRewardStore((state) => state.goldBars);
   const celebration = useRewardStore((state) => state.celebration);
   const setAnchor = useCoinAnchorStore((state) => state.setAnchor);
@@ -85,12 +90,14 @@ export function GoldBarBadge() {
       <Animated.View pointerEvents="none" className="absolute -inset-2 rounded-full bg-amber-400/30" style={glowStyle} />
       <Animated.View style={badgeStyle}>
         <Pressable
-          className="h-9 flex-row items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/15 px-3 transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80"
+          className={`${compact ? 'h-8 gap-1 px-2' : 'h-9 gap-1.5 px-3'} flex-row items-center rounded-full border border-amber-400/40 bg-amber-400/15 transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80`}
           onPress={() => router.push('/rewards')}
           accessibilityLabel={`${goldBars} Goldbarren – Belohnungen öffnen`}
         >
-          <Coins color="#d97706" size={14} />
-          <Text className="text-sm font-bold tracking-tight text-amber-600 dark:text-amber-400">{displayValue}</Text>
+          <Coins color="#d97706" size={compact ? 12 : 14} />
+          <Text className={`${compact ? 'text-xs' : 'text-sm'} font-bold tracking-tight text-amber-600 dark:text-amber-400`}>
+            {displayValue}
+          </Text>
         </Pressable>
       </Animated.View>
     </View>

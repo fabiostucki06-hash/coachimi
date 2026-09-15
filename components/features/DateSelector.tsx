@@ -67,10 +67,11 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
   });
 
   return (
-    <View className={compact ? 'relative gap-1.5' : 'gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl'}>
+    <View className={compact ? 'relative z-20 gap-1.5' : 'gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl'}>
       <View className="flex-row items-center justify-between">
         <Pressable
           accessibilityLabel="Vorheriger Tag"
+          hitSlop={8}
           className={compact ? 'h-8 w-8 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, -1))}
         >
@@ -78,6 +79,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
         </Pressable>
 
         <Pressable
+          hitSlop={8}
           className={compact ? 'flex-row items-center justify-center gap-1.5 px-1' : 'flex-1 flex-row items-center justify-center gap-2 px-2'}
           onPress={() => {
             jumpToMonthOf(selectedDate);
@@ -95,6 +97,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
 
         <Pressable
           accessibilityLabel="Nächster Tag"
+          hitSlop={8}
           className={compact ? 'h-8 w-8 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, 1))}
         >
@@ -114,7 +117,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
       )}
 
       {expanded && (
-        <View className={compact ? 'absolute right-0 top-full z-10 mt-2 w-72 gap-3 rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl shadow-black/40' : 'gap-3 border-t border-surface-border pt-3 '}>
+        <View className={compact ? 'absolute right-0 top-full z-20 mt-2 w-72 gap-3 rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl shadow-black/40' : 'gap-3 border-t border-surface-border pt-3 '}>
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityLabel="Vorheriger Monat"

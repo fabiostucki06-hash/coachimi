@@ -1,24 +1,20 @@
 import { router } from 'expo-router';
-import { Camera, Plus, RefreshCw, Sparkles } from 'lucide-react-native';
+import { Camera, Plus, Sparkles } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiRecommendationCard } from '@/components/features/AiRecommendationCard';
-import { DateSelector } from '@/components/features/DateSelector';
 import { DayDetailModal } from '@/components/features/DayDetailModal';
 import { DeficitAnalyzerCard } from '@/components/features/DeficitAnalyzerCard';
 import { getMealIcon, MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
 import { ExtraNutrientsSection, MacroBadge } from '@/components/features/NutrientProgress';
 import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
-import { UserAvatar } from '@/components/features/UserAvatar';
-import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
-import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
+import { Header } from '@/components/Header';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { getDietTargetSummary, getMicronutrientGoalsForDiet } from '@/services/dietEngine';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
-import { useSyncStore } from '@/store/syncStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { Macros, MealEntry, MealType, NutrientKey } from '@/types';
@@ -34,10 +30,6 @@ const RING_SIZE = 176;
 const RING_STROKE = 16;
 const EMPTY_ENTRIES: MealEntry[] = [];
 const CORE_MACROS: NutrientKey[] = ['protein', 'carbs', 'fat'];
-
-function formatSyncTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
 
 function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntry[] }) {
   const { label } = MEAL_TYPE_META[mealType];
@@ -95,13 +87,6 @@ export default function DiaryScreen() {
   const date = useUiStore((state) => state.selectedDate);
   const entries = useDiaryStore((state) => state.entriesByDate[date] ?? EMPTY_ENTRIES);
   const user = useUserStore((state) => state.user);
-  const session = useSyncStore((state) => state.session);
-  const syncStatus = useSyncStore((state) => state.status);
-  const remoteUpdatedAt = useSyncStore((state) => state.remoteUpdatedAt);
-  const lastSyncedAt = useSyncStore((state) => state.lastSyncedAt);
-  const syncNow = useSyncStore((state) => state.syncNow);
-  const syncedAt = remoteUpdatedAt ?? lastSyncedAt;
-  const activeBorder = useRewardStore((state) => state.activeBorder);
 
   const [, forceRelativeTimeRefresh] = useState(0);
   useEffect(() => {
@@ -111,12 +96,6 @@ export default function DiaryScreen() {
 
   const [detailDate, setDetailDate] = useState<string | null>(null);
   const dietTargetSummary = getDietTargetSummary(user.dietType ?? 'balanced');
-
-  const selectedDateLabel = new Date(`${date}T00:00:00Z`).toLocaleDateString('de-DE', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-  });
 
   // Sums 30 nutrient fields per entry and regroups by meal type - re-deriving this on
   // every render (e.g. while the sync-status indicator ticks) would repeat that work
@@ -154,45 +133,7 @@ export default function DiaryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-row items-center justify-between border-b border-surface-border bg-background px-6 py-3 lg:px-10">
-        <View className="min-w-0 flex-1 gap-0.5">
-          <Text className="text-[10px] font-semibold uppercase tracking-wide text-primary">Coach imi</Text>
-          {session ? (
-            <Pressable
-              onPress={() => syncNow()}
-              disabled={syncStatus === 'syncing'}
-              className="flex-row items-center gap-1.5 active:opacity-70"
-              accessibilityRole="button"
-              accessibilityLabel="Jetzt synchronisieren"
-            >
-              {syncStatus === 'syncing' ? (
-                <ActivityIndicator size="small" color="#6366F1" />
-              ) : (
-                <RefreshCw color="#A1A1AA" size={10} />
-              )}
-              <Text className="text-[11px] text-text-secondary" numberOfLines={1}>
-                {syncedAt ? formatSyncTime(syncedAt) : '–'}
-              </Text>
-            </Pressable>
-          ) : (
-            <Text className="text-[11px] text-text-secondary" numberOfLines={1}>
-              {selectedDateLabel}
-            </Text>
-          )}
-        </View>
-
-        <View className="items-center px-2">
-          <DateSelector compact onDaySelected={setDetailDate} />
-        </View>
-
-        <View className="flex-1 flex-row items-center justify-end gap-2">
-          <GoldBarBadge />
-          <HardRefreshButton />
-          <Pressable onPress={() => router.push('/(tabs)/profil')} accessibilityLabel="Zum Profil" className="active:opacity-80">
-            <UserAvatar name={user.name} avatarUrl={user.avatarUrl} frameId={activeBorder} size={32} />
-          </Pressable>
-        </View>
-      </View>
+      <Header onDaySelected={setDetailDate} />
 
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
         <View className="gap-6 lg:flex-row lg:items-start">
