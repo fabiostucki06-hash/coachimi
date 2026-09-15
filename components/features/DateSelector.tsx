@@ -26,9 +26,11 @@ function formatDayLabel(dateKey: string): string {
 interface DateSelectorProps {
   /** Called with the tapped date when a calendar-grid day is picked (not the prev/next arrows) - lets the caller open a detail view for that day. */
   onDaySelected?: (dateKey: string) => void;
+  /** Renders as a borderless inline row (no card chrome) for embedding in the header bar; the expandable calendar grid still opens below it. */
+  compact?: boolean;
 }
 
-export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
+export function DateSelector({ onDaySelected, compact = false }: DateSelectorProps = {}) {
   const selectedDate = useUiStore((state) => state.selectedDate);
   const setSelectedDate = useUiStore((state) => state.setSelectedDate);
   const [expanded, setExpanded] = useState(false);
@@ -65,25 +67,25 @@ export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
   });
 
   return (
-    <View className="gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl">
+    <View className={compact ? 'relative gap-1.5' : 'gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl'}>
       <View className="flex-row items-center justify-between">
         <Pressable
           accessibilityLabel="Vorheriger Tag"
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-white/5"
+          className={compact ? 'h-8 w-8 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, -1))}
         >
-          <ChevronLeft color="#A1A1AA" size={20} />
+          <ChevronLeft color="#A1A1AA" size={compact ? 16 : 20} />
         </Pressable>
 
         <Pressable
-          className="flex-1 flex-row items-center justify-center gap-2 px-2"
+          className={compact ? 'flex-row items-center justify-center gap-1.5 px-1' : 'flex-1 flex-row items-center justify-center gap-2 px-2'}
           onPress={() => {
             jumpToMonthOf(selectedDate);
             setExpanded((prev) => !prev);
           }}
         >
-          <Calendar color={ACCENT} size={16} />
-          <Text className="text-sm font-semibold text-white">{formatDayLabel(selectedDate)}</Text>
+          {!compact && <Calendar color={ACCENT} size={16} />}
+          <Text className={compact ? 'text-xs font-semibold text-white' : 'text-sm font-semibold text-white'}>{formatDayLabel(selectedDate)}</Text>
           {!isToday && (
             <Text className="text-xs text-text-secondary">
               {new Date(`${selectedDate}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -93,24 +95,26 @@ export function DateSelector({ onDaySelected }: DateSelectorProps = {}) {
 
         <Pressable
           accessibilityLabel="Nächster Tag"
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-white/5"
+          className={compact ? 'h-8 w-8 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, 1))}
         >
-          <ChevronRight color="#A1A1AA" size={20} />
+          <ChevronRight color="#A1A1AA" size={compact ? 16 : 20} />
         </Pressable>
       </View>
 
       {!isToday && (
         <Pressable
-          className="self-center rounded-full bg-primary/10 px-4 py-1.5 active:bg-primary/20"
+          className={compact ? 'self-center rounded-full bg-primary/10 px-2.5 py-0.5 active:bg-primary/20' : 'self-center rounded-full bg-primary/10 px-4 py-1.5 active:bg-primary/20'}
           onPress={goToToday}
         >
-          <Text className="text-xs font-semibold text-primary">Zu Heute springen</Text>
+          <Text className={compact ? 'text-[10px] font-semibold text-primary' : 'text-xs font-semibold text-primary'}>
+            {compact ? 'Heute' : 'Zu Heute springen'}
+          </Text>
         </Pressable>
       )}
 
       {expanded && (
-        <View className="gap-3 border-t border-surface-border pt-3 ">
+        <View className={compact ? 'absolute right-0 top-full z-10 mt-2 w-72 gap-3 rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl shadow-black/40' : 'gap-3 border-t border-surface-border pt-3 '}>
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityLabel="Vorheriger Monat"

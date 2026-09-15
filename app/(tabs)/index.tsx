@@ -19,7 +19,6 @@ import { useSyncStore } from '@/store/syncStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { Macros, MealEntry, MealType, NutrientKey } from '@/types';
-import { formatUpdatedAt } from '@/utils/formatUpdatedAt';
 import { getLastUpdatedLabel } from '@/utils/lastUpdated';
 import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 
@@ -91,7 +90,6 @@ function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntr
 export default function DiaryScreen() {
   const date = useUiStore((state) => state.selectedDate);
   const entries = useDiaryStore((state) => state.entriesByDate[date] ?? EMPTY_ENTRIES);
-  const lastUpdatedAt = useDiaryStore((state) => state.lastUpdatedAt);
   const user = useUserStore((state) => state.user);
   const session = useSyncStore((state) => state.session);
   const syncStatus = useSyncStore((state) => state.status);
@@ -147,44 +145,44 @@ export default function DiaryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
-        <View className="flex-row items-start justify-between">
-          <View>
-            <Text className="text-xs font-semibold uppercase tracking-wide text-primary">Coach imi</Text>
-            <Text className="text-3xl font-bold tracking-tight text-white">Tagebuch</Text>
-            <Text className="text-sm text-text-secondary">{selectedDateLabel}</Text>
-            {session && (
-              <Pressable
-                onPress={() => syncNow()}
-                disabled={syncStatus === 'syncing'}
-                className="mt-1 flex-row items-center gap-1.5 active:opacity-70"
-                accessibilityRole="button"
-                accessibilityLabel="Jetzt synchronisieren"
-              >
-                {syncStatus === 'syncing' ? (
-                  <ActivityIndicator size="small" color="#6366F1" />
-                ) : (
-                  <RefreshCw color="#A1A1AA" size={11} />
-                )}
-                <Text className="text-xs text-text-secondary">
-                  Zuletzt synchronisiert: {syncedAt ? formatSyncTime(syncedAt) : '–'}
-                </Text>
-              </Pressable>
-            )}
-            {lastUpdatedAt && (
-              <Text className="mt-1 text-xs text-text-secondary">
-                Zuletzt aktualisiert: {formatUpdatedAt(lastUpdatedAt)}
+      <View className="flex-row items-center justify-between border-b border-surface-border bg-background px-6 py-3 lg:px-10">
+        <View className="min-w-0 flex-1 gap-0.5">
+          <Text className="text-[10px] font-semibold uppercase tracking-wide text-primary">Coach imi</Text>
+          {session ? (
+            <Pressable
+              onPress={() => syncNow()}
+              disabled={syncStatus === 'syncing'}
+              className="flex-row items-center gap-1.5 active:opacity-70"
+              accessibilityRole="button"
+              accessibilityLabel="Jetzt synchronisieren"
+            >
+              {syncStatus === 'syncing' ? (
+                <ActivityIndicator size="small" color="#6366F1" />
+              ) : (
+                <RefreshCw color="#A1A1AA" size={10} />
+              )}
+              <Text className="text-[11px] text-text-secondary" numberOfLines={1}>
+                {syncedAt ? formatSyncTime(syncedAt) : '–'}
               </Text>
-            )}
-          </View>
-          <View className="flex-row items-center gap-2">
-            <GoldBarBadge />
-            <HardRefreshButton />
-          </View>
+            </Pressable>
+          ) : (
+            <Text className="text-[11px] text-text-secondary" numberOfLines={1}>
+              {selectedDateLabel}
+            </Text>
+          )}
         </View>
 
-        <DateSelector onDaySelected={setDetailDate} />
+        <View className="items-center px-2">
+          <DateSelector compact onDaySelected={setDetailDate} />
+        </View>
 
+        <View className="flex-1 flex-row items-center justify-end gap-2">
+          <GoldBarBadge />
+          <HardRefreshButton />
+        </View>
+      </View>
+
+      <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
         <View className="gap-6 lg:flex-row lg:items-start">
           <View className="gap-6 lg:w-[380px] lg:shrink-0">
             <View className="items-center gap-5 rounded-[28px] border border-surface-border bg-surface p-6 shadow-2xl shadow-primary/10 backdrop-blur-xl">
