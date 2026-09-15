@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
 import { formatFriendLabel, type FriendActivitySummary, type FriendProfile } from '@/services/friends';
+import type { BorderId } from '@/types';
 
 function shortName(profile: FriendProfile): string {
   return profile.name?.trim() || profile.username?.trim() || profile.email;
@@ -11,6 +12,14 @@ function shortName(profile: FriendProfile): string {
 function initialsOf(profile: FriendProfile): string {
   return shortName(profile).slice(0, 2).toUpperCase();
 }
+
+// Coin Shop "Social Highlight Border" - a purely cosmetic ring shown around a
+// friend's avatar in the activity feed, driven by their own equipped border.
+const AVATAR_BORDER_CLASSES: Record<BorderId, string> = {
+  none: '',
+  indigo_glow: 'border-2 border-primary shadow-md shadow-primary/40',
+  gold_frame: 'border-2 border-amber-500 shadow-md shadow-amber-500/40',
+};
 
 /** One friend's today-summary row for the activity feed - "hat heute Xg Protein erreicht & ein Y-Workout absolviert", derived from their synced snapshot (services/friends.ts fetchFriendActivity). */
 export function FriendActivityCard({ profile, activity }: { profile: FriendProfile; activity: FriendActivitySummary | undefined }) {
@@ -26,7 +35,7 @@ export function FriendActivityCard({ profile, activity }: { profile: FriendProfi
 
   return (
     <Card className="flex-row items-center gap-3">
-      <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+      <View className={`h-11 w-11 items-center justify-center rounded-full bg-primary/10 ${AVATAR_BORDER_CLASSES[activity?.activeBorder ?? 'none']}`}>
         <Text className="text-sm font-bold text-primary">{initialsOf(profile)}</Text>
       </View>
       <View className="flex-1 gap-1">

@@ -7,7 +7,21 @@ import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { useTrainingStore } from '@/store/trainingStore';
 import { useUserStore } from '@/store/userStore';
-import type { BadgeId, FoodItem, MealEntry, RankId, RewardTransaction, User, WeightEntry, WorkoutSession, WorkoutTemplate } from '@/types';
+import type {
+  BadgeId,
+  BorderId,
+  FoodItem,
+  IconPackId,
+  MealEntry,
+  PerkId,
+  RankId,
+  RewardTransaction,
+  ThemeId,
+  User,
+  WeightEntry,
+  WorkoutSession,
+  WorkoutTemplate,
+} from '@/types';
 
 const LOCAL_CHANGE_KEY = 'coach-imi-last-local-change';
 const SYNC_TIMEOUT_MS = 10000;
@@ -73,6 +87,15 @@ export interface CloudRewardSnapshot {
   streakSavers: number;
   activeRank: RankId;
   unlockedRanks: RankId[];
+  // Optional: absent in snapshots pushed before the Coin Shop's cosmetics existed -
+  // callers must fall back to the local default (see rewardStore.ts's initial state).
+  activeTheme?: ThemeId;
+  unlockedThemes?: ThemeId[];
+  activeIconPack?: IconPackId;
+  unlockedIconPacks?: IconPackId[];
+  activeBorder?: BorderId;
+  unlockedBorders?: BorderId[];
+  unlockedPerks?: PerkId[];
 }
 
 // Training data (workout templates + logged sessions) synced across devices.
@@ -111,6 +134,13 @@ export function buildSnapshot(): CloudSnapshot {
     streakSavers,
     activeRank,
     unlockedRanks,
+    activeTheme,
+    unlockedThemes,
+    activeIconPack,
+    unlockedIconPacks,
+    activeBorder,
+    unlockedBorders,
+    unlockedPerks,
   } = useRewardStore.getState();
   const { templates, sessionsByDate: trainingSessionsByDate } = useTrainingStore.getState();
 
@@ -133,6 +163,13 @@ export function buildSnapshot(): CloudSnapshot {
       streakSavers,
       activeRank,
       unlockedRanks,
+      activeTheme,
+      unlockedThemes,
+      activeIconPack,
+      unlockedIconPacks,
+      activeBorder,
+      unlockedBorders,
+      unlockedPerks,
     },
     training: { templates, sessionsByDate: trainingSessionsByDate },
   };

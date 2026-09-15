@@ -1,84 +1,16 @@
 import { Coins } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Dimensions, Text, View } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedProps,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withTiming,
-} from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
+import { ParticleRing } from '@/components/ui/particleBurst';
 import { useCoinAnchorStore } from '@/store/coinAnchorStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { CELEBRATION_VISIBLE_MS, COIN_BURST_MS, COIN_FLIGHT_MS } from '@/utils/coinAnimation';
 import { triggerCoinHaptic } from '@/utils/haptics';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
 const ICON_SIZE = 44;
-const RING_SIZE = 96;
-const PARTICLE_COUNT = 8;
 const FLYING_COIN_COUNT = 3;
-const PARTICLE_COLORS = ['#f59e0b', '#6366F1'];
-
-function RingBurst() {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = withTiming(1, { duration: 620, easing: Easing.out(Easing.cubic) });
-  }, [progress]);
-
-  const outerProps = useAnimatedProps(() => ({
-    r: 14 + progress.value * 32,
-    opacity: (1 - progress.value) * 0.5,
-  }));
-  const innerProps = useAnimatedProps(() => ({
-    r: 10 + progress.value * 20,
-    opacity: (1 - progress.value) * 0.7,
-  }));
-
-  return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: -(RING_SIZE - ICON_SIZE) / 2, left: -(RING_SIZE - ICON_SIZE) / 2 }}>
-      <Svg width={RING_SIZE} height={RING_SIZE}>
-        <AnimatedCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={14} stroke="#6366F1" strokeWidth={2} fill="none" animatedProps={outerProps} />
-        <AnimatedCircle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={10} stroke="#f59e0b" strokeWidth={2} fill="none" animatedProps={innerProps} />
-      </Svg>
-    </View>
-  );
-}
-
-function Particle({ angle, color, delay }: { angle: number; color: string; delay: number }) {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = withDelay(delay, withTiming(1, { duration: 480, easing: Easing.out(Easing.cubic) }));
-  }, [progress, delay]);
-
-  const style = useAnimatedStyle(() => {
-    const distance = 22 + progress.value * 26;
-    return {
-      opacity: 1 - progress.value,
-      transform: [
-        { translateX: Math.cos(angle) * distance },
-        { translateY: Math.sin(angle) * distance },
-        { scale: 1 - progress.value * 0.5 },
-      ],
-    };
-  });
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        { position: 'absolute', top: ICON_SIZE / 2 - 3, left: ICON_SIZE / 2 - 3, width: 6, height: 6, borderRadius: 999, backgroundColor: color },
-        style,
-      ]}
-    />
-  );
-}
 
 function FlyingCoin({ origin, target, delay }: { origin: { x: number; y: number }; target: { x: number; y: number }; delay: number }) {
   const progress = useSharedValue(0);
@@ -169,17 +101,13 @@ export function GoldBarCelebration() {
 
   const fallback = { x: Dimensions.get('window').width - 46, y: 56 };
   const target = anchor ?? fallback;
-  const particleAngles = Array.from({ length: PARTICLE_COUNT }, (_, i) => (i / PARTICLE_COUNT) * Math.PI * 2);
 
   return (
     <View pointerEvents="none" className="absolute inset-0">
       <Animated.View className="absolute inset-x-0 top-16 items-center px-6" style={cardStyle}>
         <View className="max-w-xs flex-row items-center gap-3 rounded-2xl border border-amber-400/30 bg-surface/95 px-4 py-3.5 shadow-2xl shadow-amber-500/20">
           <View key={activeCelebration.id} ref={iconRef} collapsable={false} className="relative h-11 w-11 items-center justify-center">
-            <RingBurst />
-            {particleAngles.map((angle, i) => (
-              <Particle key={i} angle={angle} delay={i * 14} color={PARTICLE_COLORS[i % PARTICLE_COLORS.length]} />
-            ))}
+            <ParticleRing iconSize={ICON_SIZE} />
             <View className="h-11 w-11 items-center justify-center rounded-full bg-amber-400/15">
               <Coins color="#d97706" size={20} />
             </View>

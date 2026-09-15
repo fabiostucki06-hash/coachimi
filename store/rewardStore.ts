@@ -2,7 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { BadgeId, Rank, RankId, RewardTransaction, ShopItem } from '@/types';
+import type {
+  BadgeId,
+  BorderId,
+  BorderItem,
+  IconPackId,
+  IconPackItem,
+  PerkId,
+  PerkItem,
+  Rank,
+  RankId,
+  RewardTransaction,
+  ShopItem,
+  ThemeId,
+  ThemeItem,
+} from '@/types';
 import { addDays, getLocalDateKey } from '@/utils/calendarDates';
 
 function makeId(): string {
@@ -28,10 +42,42 @@ export const RANKS: Rank[] = [
 export const STREAK_SAVER_COST = 20;
 export const MAX_STREAK_SAVERS = 3;
 
+/** Exclusive OLED app themes - swaps background/surface/primary via CSS vars, see utils/themePalettes.ts. "classic" is the free default everyone starts with. */
+export const THEMES: ThemeItem[] = [
+  { id: 'classic', name: 'Indigo Classic', description: 'Der originale Coach imi Look.', cost: 0 },
+  { id: 'pure_black', name: 'Pure Pitch Black', description: 'Reinstes OLED-Schwarz für maximalen Kontrast.', cost: 40 },
+  { id: 'deep_indigo', name: 'Deep Indigo', description: 'Tiefes Indigo-Schwarz mit satteren Akzenten.', cost: 60 },
+  { id: 'cyberpunk_neon', name: 'Cyberpunk Neon', description: 'Neon-Cyan-Akzente für den Night-Mode-Look.', cost: 80 },
+];
+
+/** Alternate icon sets for the meal cards on the dashboard - "default" is the free starting pack. */
+export const ICON_PACKS: IconPackItem[] = [
+  { id: 'default', name: 'Standard', description: 'Die klassischen Mahlzeiten-Icons.', cost: 0 },
+  { id: 'minimal_line', name: 'Minimal Line', description: 'Reduzierte Linien-Icons für deine Mahlzeiten.', cost: 25 },
+  { id: 'retro_bites', name: 'Retro Bites', description: 'Verspielte Retro-Icons für deine Mahlzeiten.', cost: 25 },
+];
+
+/** Avatar ring shown on your card in a friend's activity feed - "none" is the free default. */
+export const BORDERS: BorderItem[] = [
+  { id: 'none', name: 'Kein Rahmen', description: 'Standard-Avatar ohne Rahmen.', cost: 0 },
+  { id: 'indigo_glow', name: 'Indigo Glow', description: 'Leuchtender Indigo-Rahmen in der Freundes-Ansicht.', cost: 30 },
+  { id: 'gold_frame', name: 'Gold-Rahmen', description: 'Edler Gold-Rahmen, sichtbar für alle Freunde.', cost: 45 },
+];
+
+/** One-time real-world unlocks - placeholder for Swiss/EU macro content, not equippable. */
+export const PERKS: PerkItem[] = [
+  { id: 'macro_recipes_pdf', name: 'Makro-Rezepte PDF', description: 'Exportierbare Rezeptvorlagen mit Makro-Aufschlüsselung.', cost: 35 },
+];
+
 export interface Celebration {
   id: number;
   amount: number;
   reason: string;
+}
+
+export interface PurchaseCelebration {
+  id: number;
+  itemName: string;
 }
 
 interface RewardState {
@@ -45,12 +91,21 @@ interface RewardState {
   unlockedBadges: BadgeId[];
   transactionHistory: RewardTransaction[];
   celebration: Celebration | null;
+  purchaseCelebration: PurchaseCelebration | null;
   streakSavers: number;
   activeRank: RankId;
   unlockedRanks: RankId[];
+  activeTheme: ThemeId;
+  unlockedThemes: ThemeId[];
+  activeIconPack: IconPackId;
+  unlockedIconPacks: IconPackId[];
+  activeBorder: BorderId;
+  unlockedBorders: BorderId[];
+  unlockedPerks: PerkId[];
 
   addGoldBars: (amount: number, reason: string) => void;
   dismissCelebration: () => void;
+  dismissPurchaseCelebration: () => void;
   /** Call whenever the user logs a meal or a completed training session - advances the daily streak at most once per calendar day. */
   recordDailyActivity: (dateKey?: string) => void;
   /** +5 Goldbarren, once per day, but only once today's activity (meal or workout) has actually been recorded. Returns whether it was claimed. */
@@ -70,6 +125,14 @@ interface RewardState {
   buyRank: (rankId: RankId) => boolean;
   /** Verbraucht bei einer verpassten Aktivitätslücke ein Schutzschild statt den Streak zu reißen. Returns whether a shield was consumed. */
   checkAndApplyStreakProtection: (dateKey?: string) => boolean;
+  /** Schaltet ein Theme frei (falls nötig) und setzt es aktiv. Returns whether it succeeded. */
+  buyTheme: (themeId: ThemeId) => boolean;
+  /** Schaltet ein Mahlzeiten-Icon-Pack frei (falls nötig) und setzt es aktiv. Returns whether it succeeded. */
+  buyIconPack: (packId: IconPackId) => boolean;
+  /** Schaltet einen Avatar-Rahmen frei (falls nötig) und setzt ihn aktiv. Returns whether it succeeded. */
+  buyBorder: (borderId: BorderId) => boolean;
+  /** Einmaliger Kauf eines Perks (nicht ausrüstbar). Returns whether it succeeded. */
+  buyPerk: (perkId: PerkId) => boolean;
 }
 
 let nextCelebrationId = 0;
@@ -93,9 +156,17 @@ export const useRewardStore = create<RewardState>()(
       unlockedBadges: [],
       transactionHistory: [],
       celebration: null,
+      purchaseCelebration: null,
       streakSavers: 0,
       activeRank: 'neuling',
       unlockedRanks: ['neuling'],
+      activeTheme: 'classic',
+      unlockedThemes: ['classic'],
+      activeIconPack: 'default',
+      unlockedIconPacks: ['default'],
+      activeBorder: 'none',
+      unlockedBorders: ['none'],
+      unlockedPerks: [],
 
       addGoldBars: (amount, reason) => {
         if (amount === 0) return;
@@ -107,6 +178,8 @@ export const useRewardStore = create<RewardState>()(
       },
 
       dismissCelebration: () => set({ celebration: null }),
+
+      dismissPurchaseCelebration: () => set({ purchaseCelebration: null }),
 
       recordDailyActivity: (dateKey) => {
         const today = dateKey ?? getLocalDateKey();
@@ -161,6 +234,7 @@ export const useRewardStore = create<RewardState>()(
           goldBars: state.goldBars - item.cost,
           unlockedBadges: [...state.unlockedBadges, badgeId],
           transactionHistory: pushTransaction(state.transactionHistory, -item.cost, `Freigeschaltet: ${item.name}`),
+          purchaseCelebration: { id: ++nextCelebrationId, itemName: item.name },
         }));
         return true;
       },
@@ -173,6 +247,7 @@ export const useRewardStore = create<RewardState>()(
           goldBars: state.goldBars - STREAK_SAVER_COST,
           streakSavers: state.streakSavers + 1,
           transactionHistory: pushTransaction(state.transactionHistory, -STREAK_SAVER_COST, 'Streak-Schutzschild gekauft'),
+          purchaseCelebration: { id: ++nextCelebrationId, itemName: 'Streak-Schutzschild' },
         }));
         return true;
       },
@@ -194,6 +269,7 @@ export const useRewardStore = create<RewardState>()(
           unlockedRanks: [...state.unlockedRanks, rankId],
           activeRank: rankId,
           transactionHistory: rank.cost > 0 ? pushTransaction(state.transactionHistory, -rank.cost, `Rang freigeschaltet: ${rank.name}`) : state.transactionHistory,
+          purchaseCelebration: rank.cost > 0 ? { id: ++nextCelebrationId, itemName: rank.name } : state.purchaseCelebration,
         }));
         return true;
       },
@@ -212,13 +288,93 @@ export const useRewardStore = create<RewardState>()(
         }));
         return true;
       },
+
+      buyTheme: (themeId) => {
+        const theme = THEMES.find((candidate) => candidate.id === themeId);
+        if (!theme) return false;
+
+        const { unlockedThemes, goldBars } = get();
+        if (unlockedThemes.includes(themeId)) {
+          set({ activeTheme: themeId });
+          return true;
+        }
+
+        if (goldBars < theme.cost) return false;
+
+        set((state) => ({
+          goldBars: state.goldBars - theme.cost,
+          unlockedThemes: [...state.unlockedThemes, themeId],
+          activeTheme: themeId,
+          transactionHistory: pushTransaction(state.transactionHistory, -theme.cost, `Theme freigeschaltet: ${theme.name}`),
+          purchaseCelebration: { id: ++nextCelebrationId, itemName: theme.name },
+        }));
+        return true;
+      },
+
+      buyIconPack: (packId) => {
+        const pack = ICON_PACKS.find((candidate) => candidate.id === packId);
+        if (!pack) return false;
+
+        const { unlockedIconPacks, goldBars } = get();
+        if (unlockedIconPacks.includes(packId)) {
+          set({ activeIconPack: packId });
+          return true;
+        }
+
+        if (goldBars < pack.cost) return false;
+
+        set((state) => ({
+          goldBars: state.goldBars - pack.cost,
+          unlockedIconPacks: [...state.unlockedIconPacks, packId],
+          activeIconPack: packId,
+          transactionHistory: pushTransaction(state.transactionHistory, -pack.cost, `Icon-Pack freigeschaltet: ${pack.name}`),
+          purchaseCelebration: { id: ++nextCelebrationId, itemName: pack.name },
+        }));
+        return true;
+      },
+
+      buyBorder: (borderId) => {
+        const border = BORDERS.find((candidate) => candidate.id === borderId);
+        if (!border) return false;
+
+        const { unlockedBorders, goldBars } = get();
+        if (unlockedBorders.includes(borderId)) {
+          set({ activeBorder: borderId });
+          return true;
+        }
+
+        if (goldBars < border.cost) return false;
+
+        set((state) => ({
+          goldBars: state.goldBars - border.cost,
+          unlockedBorders: [...state.unlockedBorders, borderId],
+          activeBorder: borderId,
+          transactionHistory: pushTransaction(state.transactionHistory, -border.cost, `Rahmen freigeschaltet: ${border.name}`),
+          purchaseCelebration: { id: ++nextCelebrationId, itemName: border.name },
+        }));
+        return true;
+      },
+
+      buyPerk: (perkId) => {
+        const perk = PERKS.find((candidate) => candidate.id === perkId);
+        const { unlockedPerks, goldBars } = get();
+        if (!perk || unlockedPerks.includes(perkId) || goldBars < perk.cost) return false;
+
+        set((state) => ({
+          goldBars: state.goldBars - perk.cost,
+          unlockedPerks: [...state.unlockedPerks, perkId],
+          transactionHistory: pushTransaction(state.transactionHistory, -perk.cost, `Freigeschaltet: ${perk.name}`),
+          purchaseCelebration: { id: ++nextCelebrationId, itemName: perk.name },
+        }));
+        return true;
+      },
     }),
     {
       name: 'coach-imi-reward-storage',
       storage: createJSONStorage(() => AsyncStorage),
       version: 1,
       // The celebration pop-up is transient UI state - never worth restoring on app relaunch.
-      partialize: (state) => ({ ...state, celebration: null }),
+      partialize: (state) => ({ ...state, celebration: null, purchaseCelebration: null }),
     },
   ),
 );

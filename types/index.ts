@@ -170,3 +170,42 @@ export interface Rank {
   /** Goldbarren-Kosten - 0 für den kostenlosen Standardrang. */
   cost: number;
 }
+
+export type ThemeId = 'classic' | 'pure_black' | 'deep_indigo' | 'cyberpunk_neon';
+
+export interface ThemeItem {
+  id: ThemeId;
+  name: string;
+  description: string;
+  /** Goldbarren-Kosten - 0 für das kostenlose Standard-Theme. */
+  cost: number;
+}
+
+export type IconPackId = 'default' | 'minimal_line' | 'retro_bites';
+
+export interface IconPackItem {
+  id: IconPackId;
+  name: string;
+  description: string;
+  /** Goldbarren-Kosten - 0 für das kostenlose Standard-Pack. */
+  cost: number;
+}
+
+export type BorderId = 'none' | 'indigo_glow' | 'gold_frame';
+
+export interface BorderItem {
+  id: BorderId;
+  name: string;
+  description: string;
+  /** Goldbarren-Kosten - 0 für "Kein Rahmen". */
+  cost: number;
+}
+
+export type PerkId = 'macro_recipes_pdf';
+
+export interface PerkItem {
+  id: PerkId;
+  name: string;
+  description: string;
+  cost: number;
+}

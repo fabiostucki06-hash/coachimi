@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { CloudSnapshot } from '@/services/cloudSync';
+import type { BorderId } from '@/types';
 
 export type FriendshipStatus = 'pending' | 'accepted' | 'rejected';
 
@@ -33,6 +34,8 @@ export interface FriendActivitySummary {
   calories: number;
   calorieGoal: number;
   completedWorkoutNames: string[];
+  /** Coin Shop "Social Highlight Border" the friend has equipped, shown as a ring around their avatar. */
+  activeBorder: BorderId;
 }
 
 interface ProfileRow {
@@ -244,6 +247,7 @@ function summarizeSnapshot(friendId: string, snapshot: CloudSnapshot | null | un
     calories: Math.round(calories),
     calorieGoal: snapshot?.user?.dailyCalorieGoal ?? 0,
     completedWorkoutNames,
+    activeBorder: snapshot?.rewards?.activeBorder ?? 'none',
   };
 }
 

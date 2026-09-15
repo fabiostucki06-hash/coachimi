@@ -8,13 +8,14 @@ import { AiRecommendationCard } from '@/components/features/AiRecommendationCard
 import { DateSelector } from '@/components/features/DateSelector';
 import { DayDetailModal } from '@/components/features/DayDetailModal';
 import { DeficitAnalyzerCard } from '@/components/features/DeficitAnalyzerCard';
-import { MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
+import { getMealIcon, MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
 import { ExtraNutrientsSection, MacroBadge } from '@/components/features/NutrientProgress';
 import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { useDiaryStore } from '@/store/diaryStore';
+import { useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
@@ -38,7 +39,9 @@ function formatSyncTime(iso: string): string {
 }
 
 function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntry[] }) {
-  const { label, Icon } = MEAL_TYPE_META[mealType];
+  const { label } = MEAL_TYPE_META[mealType];
+  const activeIconPack = useRewardStore((state) => state.activeIconPack);
+  const Icon = getMealIcon(mealType, activeIconPack);
   const kcal = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
   const protein = entries.reduce((sum, entry) => sum + entry.foodItem.macrosPerServing.protein * entry.servings, 0);
 

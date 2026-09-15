@@ -4,7 +4,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { RankId } from '@/types';
+import type { BorderId, IconPackId, RankId, ThemeId } from '@/types';
 
 import { useRewardStore } from './rewardStore';
 
@@ -19,9 +19,17 @@ const RESET_STATE = {
   unlockedBadges: [],
   transactionHistory: [],
   celebration: null,
+  purchaseCelebration: null,
   streakSavers: 0,
   activeRank: 'neuling' as RankId,
   unlockedRanks: ['neuling'] as RankId[],
+  activeTheme: 'classic' as ThemeId,
+  unlockedThemes: ['classic'] as ThemeId[],
+  activeIconPack: 'default' as IconPackId,
+  unlockedIconPacks: ['default'] as IconPackId[],
+  activeBorder: 'none' as BorderId,
+  unlockedBorders: ['none'] as BorderId[],
+  unlockedPerks: [],
 };
 
 beforeEach(async () => {
@@ -236,6 +244,82 @@ describe('buyRank', () => {
     expect(useRewardStore.getState().buyRank('gold_standard_athlet')).toBe(true);
     expect(useRewardStore.getState().activeRank).toBe('gold_standard_athlet');
     expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+});
+
+describe('buyTheme', () => {
+  it('unlocks and equips a theme when affordable, and triggers a purchase celebration', () => {
+    useRewardStore.getState().addGoldBars(40, 'Testguthaben');
+    expect(useRewardStore.getState().buyTheme('pure_black')).toBe(true);
+    expect(useRewardStore.getState().unlockedThemes).toContain('pure_black');
+    expect(useRewardStore.getState().activeTheme).toBe('pure_black');
+    expect(useRewardStore.getState().goldBars).toBe(0);
+    expect(useRewardStore.getState().purchaseCelebration).toMatchObject({ itemName: 'Pure Pitch Black' });
+  });
+
+  it('refuses when the balance is too low', () => {
+    expect(useRewardStore.getState().buyTheme('cyberpunk_neon')).toBe(false);
+    expect(useRewardStore.getState().unlockedThemes).not.toContain('cyberpunk_neon');
+  });
+
+  it('re-equips an already unlocked theme for free', () => {
+    useRewardStore.getState().addGoldBars(40, 'Testguthaben');
+    useRewardStore.getState().buyTheme('pure_black');
+    useRewardStore.getState().buyTheme('classic');
+    expect(useRewardStore.getState().activeTheme).toBe('classic');
+    expect(useRewardStore.getState().buyTheme('pure_black')).toBe(true);
+    expect(useRewardStore.getState().activeTheme).toBe('pure_black');
+    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+});
+
+describe('buyIconPack', () => {
+  it('unlocks and equips an icon pack when affordable', () => {
+    useRewardStore.getState().addGoldBars(25, 'Testguthaben');
+    expect(useRewardStore.getState().buyIconPack('minimal_line')).toBe(true);
+    expect(useRewardStore.getState().unlockedIconPacks).toContain('minimal_line');
+    expect(useRewardStore.getState().activeIconPack).toBe('minimal_line');
+    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+
+  it('refuses when the balance is too low', () => {
+    expect(useRewardStore.getState().buyIconPack('retro_bites')).toBe(false);
+    expect(useRewardStore.getState().unlockedIconPacks).not.toContain('retro_bites');
+  });
+});
+
+describe('buyBorder', () => {
+  it('unlocks and equips a border when affordable', () => {
+    useRewardStore.getState().addGoldBars(30, 'Testguthaben');
+    expect(useRewardStore.getState().buyBorder('indigo_glow')).toBe(true);
+    expect(useRewardStore.getState().unlockedBorders).toContain('indigo_glow');
+    expect(useRewardStore.getState().activeBorder).toBe('indigo_glow');
+    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+
+  it('refuses when the balance is too low', () => {
+    expect(useRewardStore.getState().buyBorder('gold_frame')).toBe(false);
+    expect(useRewardStore.getState().unlockedBorders).not.toContain('gold_frame');
+  });
+});
+
+describe('buyPerk', () => {
+  it('unlocks a perk and deducts its cost when affordable', () => {
+    useRewardStore.getState().addGoldBars(35, 'Testguthaben');
+    expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(true);
+    expect(useRewardStore.getState().unlockedPerks).toContain('macro_recipes_pdf');
+    expect(useRewardStore.getState().goldBars).toBe(0);
+  });
+
+  it('refuses to unlock the same perk twice', () => {
+    useRewardStore.getState().addGoldBars(70, 'Testguthaben');
+    expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(true);
+    expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(false);
+  });
+
+  it('refuses when the balance is too low', () => {
+    expect(useRewardStore.getState().buyPerk('macro_recipes_pdf')).toBe(false);
+    expect(useRewardStore.getState().unlockedPerks).not.toContain('macro_recipes_pdf');
   });
 });
 
