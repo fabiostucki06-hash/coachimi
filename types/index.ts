@@ -62,6 +62,8 @@ export interface User {
   macroRatioPreset?: MacroRatioPreset;
   micronutrientFocus?: MicronutrientFocus;
   dietType?: DietType;
+  /** Public Supabase Storage URL for the user's uploaded profile photo (see services/profile.ts) - undefined falls back to the initials avatar (see components/features/UserAvatar.tsx). */
+  avatarUrl?: string;
   visibleNutrients: NutrientVisibility;
 }
 
@@ -192,7 +194,14 @@ export interface IconPackItem {
   cost: number;
 }
 
-export type BorderId = 'none' | 'indigo_glow' | 'gold_frame';
+export type BorderId =
+  | 'none'
+  | 'indigo_glow'
+  | 'gold_frame'
+  | 'oled_gold_glow'
+  | 'cyber_neon_border'
+  | 'minimal_white_ring'
+  | 'swiss_red_accent';
 
 export interface BorderItem {
   id: BorderId;

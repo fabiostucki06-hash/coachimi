@@ -68,6 +68,7 @@ interface UserState {
   weightHistory: WeightEntry[];
   hasOnboarded: boolean;
   updateAccount: (input: { name: string; email: string }) => void;
+  setAvatarUrl: (avatarUrl: string) => void;
   updateProfile: (input: ProfileInput) => void;
   updateGoals: (input: GoalsInput) => void;
   addWeightEntry: (weightKg: number, date?: string) => void;
@@ -90,6 +91,10 @@ export const useUserStore = create<UserState>()(
         set((state) => ({
           user: { ...state.user, name: input.name.trim(), email: input.email.trim() },
         }));
+      },
+
+      setAvatarUrl: (avatarUrl) => {
+        set((state) => ({ user: { ...state.user, avatarUrl } }));
       },
 
       updateProfile: (input) => {

@@ -34,8 +34,10 @@ export interface FriendActivitySummary {
   calories: number;
   calorieGoal: number;
   completedWorkoutNames: string[];
-  /** Coin Shop "Social Highlight Border" the friend has equipped, shown as a ring around their avatar. */
+  /** Coin Shop "Avatar Frame" the friend has equipped, shown as a ring around their avatar. */
   activeBorder: BorderId;
+  /** The friend's uploaded profile photo (see services/profile.ts) - undefined falls back to initials. */
+  avatarUrl?: string;
 }
 
 interface ProfileRow {
@@ -248,6 +250,7 @@ function summarizeSnapshot(friendId: string, snapshot: CloudSnapshot | null | un
     calorieGoal: snapshot?.user?.dailyCalorieGoal ?? 0,
     completedWorkoutNames,
     activeBorder: snapshot?.rewards?.activeBorder ?? 'none',
+    avatarUrl: snapshot?.user?.avatarUrl,
   };
 }
 

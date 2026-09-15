@@ -11,6 +11,7 @@ import { DeficitAnalyzerCard } from '@/components/features/DeficitAnalyzerCard';
 import { getMealIcon, MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
 import { ExtraNutrientsSection, MacroBadge } from '@/components/features/NutrientProgress';
 import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
+import { UserAvatar } from '@/components/features/UserAvatar';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
@@ -100,6 +101,7 @@ export default function DiaryScreen() {
   const lastSyncedAt = useSyncStore((state) => state.lastSyncedAt);
   const syncNow = useSyncStore((state) => state.syncNow);
   const syncedAt = remoteUpdatedAt ?? lastSyncedAt;
+  const activeBorder = useRewardStore((state) => state.activeBorder);
 
   const [, forceRelativeTimeRefresh] = useState(0);
   useEffect(() => {
@@ -182,6 +184,9 @@ export default function DiaryScreen() {
         <View className="flex-1 flex-row items-center justify-end gap-2">
           <GoldBarBadge />
           <HardRefreshButton />
+          <Pressable onPress={() => router.push('/(tabs)/profil')} accessibilityLabel="Zum Profil" className="active:opacity-80">
+            <UserAvatar name={user.name} avatarUrl={user.avatarUrl} frameId={activeBorder} size={32} />
+          </Pressable>
         </View>
       </View>
 

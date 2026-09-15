@@ -43,7 +43,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Der Fotozugriff wird verwendet, um Mahlzeiten-Fotos für die KI-Nährwertanalyse auszuwählen.",
+          "photosPermission": "Der Fotozugriff wird verwendet, um Mahlzeiten-Fotos für die KI-Nährwertanalyse und dein Profilbild auszuwählen.",
           "cameraPermission": "Die Kamera wird verwendet, um Fotos von Mahlzeiten für die KI-Nährwertanalyse aufzunehmen."
         }
       ]

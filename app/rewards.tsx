@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getMealIcon } from '@/components/features/mealMeta';
 import { type PendingPurchase, PurchaseConfirmModal } from '@/components/features/PurchaseConfirmModal';
+import { AVATAR_FRAME_CLASSES } from '@/components/features/UserAvatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import {
@@ -21,7 +22,7 @@ import {
   useRewardStore,
 } from '@/store/rewardStore';
 import { useToastStore } from '@/store/toastStore';
-import type { BorderId, RewardTransaction, ThemeId } from '@/types';
+import type { RewardTransaction, ThemeId } from '@/types';
 
 function formatTransactionDate(dateKey: string): string {
   return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
@@ -50,12 +51,6 @@ const THEME_SWATCH_CLASSES: Record<ThemeId, string> = {
   pure_black: 'bg-black border border-neutral-700',
   deep_indigo: 'bg-indigo-950 border border-indigo-800',
   cyberpunk_neon: 'bg-cyan-400',
-};
-
-const BORDER_PREVIEW_CLASSES: Record<BorderId, string> = {
-  none: 'border border-surface-border',
-  indigo_glow: 'border-2 border-primary shadow-md shadow-primary/40',
-  gold_frame: 'border-2 border-amber-500 shadow-md shadow-amber-500/40',
 };
 
 interface CatalogCardProps {
@@ -286,6 +281,9 @@ export default function RewardsScreen() {
             );
           })}
 
+        </SectionCard>
+
+        <SectionCard title="Avatar Frames">
           {BORDERS.filter((border) => border.cost > 0).map((border) => {
             const isOwned = unlockedBorders.includes(border.id);
             return (
@@ -298,8 +296,8 @@ export default function RewardsScreen() {
                 isOwned={isOwned}
                 isActive={activeBorder === border.id}
                 affordable={goldBars >= border.cost}
-                preview={<View className={`h-6 w-6 rounded-full ${BORDER_PREVIEW_CLASSES[border.id]}`} />}
-                onBuy={() => requestPurchase(border.name, `Social Highlight Border: ${border.description}`, border.cost, () => buyBorder(border.id))}
+                preview={<View className={`h-6 w-6 rounded-full border-surface-border ${AVATAR_FRAME_CLASSES[border.id]}`} />}
+                onBuy={() => requestPurchase(border.name, `Avatar Frame: ${border.description}`, border.cost, () => buyBorder(border.id))}
                 onEquip={() => buyBorder(border.id)}
               />
             );

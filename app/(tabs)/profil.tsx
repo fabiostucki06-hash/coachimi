@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
+import { Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CloudSyncCard } from '@/components/features/CloudSyncCard';
@@ -10,15 +10,18 @@ import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibi
 import { PatchNotes } from '@/components/features/PatchNotes';
 import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
 import { UsernameEditor } from '@/components/features/UsernameEditor';
+import { UserAvatar } from '@/components/features/UserAvatar';
 import { ACTIVITY_OPTIONS, ChipGroup, DIET_TYPE_OPTIONS, GENDER_OPTIONS, GOAL_OPTIONS } from '@/components/features/ProfileOptions';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
+import { AvatarUploadError, pickAndUploadAvatar } from '@/services/profile';
 import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
+import { useToastStore } from '@/store/toastStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { WeightEntry } from '@/types';
@@ -157,6 +160,7 @@ export default function ProfilScreen() {
   const updateProfile = useUserStore((state) => state.updateProfile);
   const updateGoals = useUserStore((state) => state.updateGoals);
   const setDietType = useUserStore((state) => state.setDietType);
+  const setAvatarUrl = useUserStore((state) => state.setAvatarUrl);
   const addWeightEntry = useUserStore((state) => state.addWeightEntry);
   const updateWeightEntry = useUserStore((state) => state.updateWeightEntry);
   const removeWeightEntry = useUserStore((state) => state.removeWeightEntry);
@@ -166,13 +170,29 @@ export default function ProfilScreen() {
   const signOut = useSyncStore((state) => state.signOut);
   const activeRank = useRewardStore((state) => state.activeRank);
   const activeRankName = RANKS.find((rank) => rank.id === activeRank)?.name ?? RANKS[0].name;
+  const activeBorder = useRewardStore((state) => state.activeBorder);
   const myId = session?.user.id;
   const myEmail = session?.user.email ?? '';
   const friendProfile = useProfileStore((state) => state.profile);
+  const showToast = useToastStore((state) => state.show);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   async function handleSignOut() {
     await signOut();
     router.replace('/onboarding');
+  }
+
+  async function handlePickAvatar() {
+    if (!myId || uploadingAvatar) return;
+    setUploadingAvatar(true);
+    try {
+      const url = await pickAndUploadAvatar(myId);
+      if (url) setAvatarUrl(url);
+    } catch (err) {
+      showToast(err instanceof AvatarUploadError ? err.message : 'Profilbild-Upload fehlgeschlagen.', 'error');
+    } finally {
+      setUploadingAvatar(false);
+    }
   }
 
   const [name, setName] = useState(user.name);
@@ -224,8 +244,6 @@ export default function ProfilScreen() {
     setFatGoal(text);
     recalcCalorieGoal(carbsGoal, proteinGoal, text);
   }
-
-  const initial = user.name.charAt(0).toUpperCase();
 
   const parsedAge = Number.parseInt(age, 10);
   const parsedHeight = Number.parseFloat(heightCm.replace(',', '.'));
@@ -292,9 +310,12 @@ export default function ProfilScreen() {
         <Text className="text-3xl font-bold tracking-tight text-white">Profil</Text>
 
         <View className="items-center gap-3 rounded-[28px] border border-surface-border bg-surface py-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30">
-            <Text className="text-2xl font-bold text-white">{initial || '?'}</Text>
-          </View>
+          <Pressable onPress={handlePickAvatar} disabled={uploadingAvatar} className="relative active:opacity-80">
+            <UserAvatar name={user.name} avatarUrl={user.avatarUrl} frameId={activeBorder} size={72} />
+            <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-primary">
+              {uploadingAvatar ? <ActivityIndicator size="small" color="#ffffff" /> : <Camera color="#ffffff" size={12} />}
+            </View>
+          </Pressable>
           <View className="items-center gap-1">
             <Text className="text-lg font-semibold tracking-tight text-white">{user.name || 'Ohne Namen'}</Text>
             {friendProfile?.username && <Text className="text-sm font-medium text-primary">@{friendProfile.username}</Text>}

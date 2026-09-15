@@ -57,11 +57,15 @@ export const ICON_PACKS: IconPackItem[] = [
   { id: 'retro_bites', name: 'Retro Bites', description: 'Verspielte Retro-Icons für deine Mahlzeiten.', cost: 25 },
 ];
 
-/** Avatar ring shown on your card in a friend's activity feed - "none" is the free default. */
+/** Avatar Frames: the ring shown around your profile picture on Dashboard, Profile, and in a friend's activity feed - "none" is the free default. */
 export const BORDERS: BorderItem[] = [
   { id: 'none', name: 'Kein Rahmen', description: 'Standard-Avatar ohne Rahmen.', cost: 0 },
   { id: 'indigo_glow', name: 'Indigo Glow', description: 'Leuchtender Indigo-Rahmen in der Freundes-Ansicht.', cost: 30 },
   { id: 'gold_frame', name: 'Gold-Rahmen', description: 'Edler Gold-Rahmen, sichtbar für alle Freunde.', cost: 45 },
+  { id: 'minimal_white_ring', name: 'Minimal White Ring', description: 'Schlichter weißer Ring für den High-Contrast-OLED-Look.', cost: 30 },
+  { id: 'oled_gold_glow', name: 'OLED Gold Glow', description: 'Warmer Gold-Schimmer, gebaut für echtes OLED-Schwarz.', cost: 50 },
+  { id: 'cyber_neon_border', name: 'Cyber Neon Border', description: 'Knalliger Cyan-Neon-Rahmen im Night-Mode-Look.', cost: 75 },
+  { id: 'swiss_red_accent', name: 'Swiss Red Accent', description: 'Kräftiger Schweizer-Rot-Akzent als Statement-Rahmen.', cost: 100 },
 ];
 
 /** One-time real-world unlocks - placeholder for Swiss/EU macro content, not equippable. */
