@@ -8,7 +8,11 @@ import { addDays, buildMonthGrid, monthYearOf, WEEKDAY_LABELS } from '@/utils/ca
 
 const ACCENT = '#6366F1';
 
-function formatDayLabel(dateKey: string): string {
+// Compact (header pill) drops the weekday and abbreviates the month - e.g.
+// "15. Sept." instead of "Di, 15. September" - so a non-today date never
+// pushes the header's date column wide enough to crowd the coin badge next
+// to it on narrow (~360px) viewports.
+function formatDayLabel(dateKey: string, compact: boolean): string {
   const today = todayKey();
   const diffDays = Math.round(
     (new Date(`${dateKey}T00:00:00Z`).getTime() - new Date(`${today}T00:00:00Z`).getTime()) / 86_400_000,
@@ -16,11 +20,10 @@ function formatDayLabel(dateKey: string): string {
   if (diffDays === 0) return 'Heute';
   if (diffDays === -1) return 'Gestern';
   if (diffDays === 1) return 'Morgen';
-  return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString('de-DE', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'long',
-  });
+  return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString(
+    'de-DE',
+    compact ? { day: '2-digit', month: 'short' } : { weekday: 'short', day: '2-digit', month: 'long' },
+  );
 }
 
 interface DateSelectorProps {
@@ -95,9 +98,12 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
             className={compact ? 'shrink text-xs font-semibold text-white' : 'text-sm font-semibold text-white'}
             numberOfLines={1}
           >
-            {formatDayLabel(selectedDate)}
+            {formatDayLabel(selectedDate, compact)}
           </Text>
-          {!isToday && (
+          {/* Full year is redundant with the short label above once compact
+              already shows day + month - only the full (non-header) card
+              needs it spelled out. */}
+          {!isToday && !compact && (
             <Text className="shrink text-xs text-text-secondary" numberOfLines={1}>
               {new Date(`${selectedDate}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </Text>

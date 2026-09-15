@@ -46,7 +46,10 @@ export function Header({ onDaySelected }: HeaderProps = {}) {
   });
 
   return (
-    <View className="flex-row items-center justify-between overflow-hidden border-b border-surface-border bg-background px-4 py-3 lg:px-10">
+    // gap-2.5 (10px) is an unconditional minimum between the brand/date/actions
+    // groups - unlike justify-between's spacing, flexbox `gap` isn't consumed
+    // when a sibling shrinks, so the date pill and coin badge can't ever touch.
+    <View className="flex-row items-center justify-between gap-2.5 overflow-hidden border-b border-surface-border bg-background px-4 py-3 lg:px-10">
       <View className="min-w-0 flex-1 gap-0.5">
         <Text className="text-[10px] font-semibold uppercase tracking-wide text-primary" numberOfLines={1}>
           Coach imi
@@ -79,7 +82,13 @@ export function Header({ onDaySelected }: HeaderProps = {}) {
         <DateSelector compact onDaySelected={onDaySelected} />
       </View>
 
-      <View className="flex-1 flex-row items-center justify-end gap-1.5">
+      {/* shrink-0 (not flex-1): this group's children (coin badge, refresh
+          button, avatar) don't shrink themselves, so a flex-1 parent could be
+          squeezed by its siblings below their combined width - with default
+          `overflow: visible` that let them spill left on top of the date
+          pill instead of actually shrinking. Sized to its natural content
+          width, it can only ever be pushed by gap-2.5 above, never overlapped. */}
+      <View className="shrink-0 flex-row items-center justify-end gap-1.5">
         <GoldBarBadge compact={isNarrow} />
         <HardRefreshButton compact={isNarrow} />
         <Pressable
