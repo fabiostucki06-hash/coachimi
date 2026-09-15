@@ -268,24 +268,50 @@ export const useUserStore = create<UserState>()(
     {
       name: 'coach-imi-user-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 6,
+      version: 7,
       migrate: (persistedState, version) => {
         const state = persistedState as UserState;
+        const mergedUser: User = {
+          ...defaultUser,
+          ...state?.user,
+          // Merge (not replace): a persisted visibleNutrients from before this
+          // nutrient list grew only has the old keys, so newly added nutrients
+          // need their default (hidden) rather than being left undefined.
+          visibleNutrients: { ...DEFAULT_VISIBLE_NUTRIENTS, ...state?.user?.visibleNutrients },
+          // Pre-v5 users have neither field persisted — same "balanced"/"none" defaults as new signups.
+          macroRatioPreset: state?.user?.macroRatioPreset ?? 'balanced',
+          micronutrientFocus: state?.user?.micronutrientFocus ?? 'none',
+          // Pre-v6 users have no diet type persisted - same "balanced" default as new signups.
+          dietType: state?.user?.dietType ?? 'balanced',
+        };
+
+        // Pre-v7 users have a dailyMacroGoal computed under the old (lower, pre-2.0g/kg-
+        // floor) protein rates - a code change to calculateDietMacros alone can't reach
+        // already-persisted numbers, only new calls to it. Recompute here once, same as
+        // setDietType/updateProfile normally would, so the floor actually reaches
+        // existing accounts on their next load rather than only new signups. Skipped for
+        // 'custom' (an explicit user override this must not clobber) and for anyone
+        // missing a profile field the calc needs (mirrors setDietType's own guard).
+        const canRecompute =
+          version < 7 &&
+          mergedUser.macroRatioPreset !== 'custom' &&
+          mergedUser.age !== undefined &&
+          mergedUser.gender !== undefined &&
+          mergedUser.heightCm !== undefined &&
+          mergedUser.weightKg !== undefined &&
+          mergedUser.activityLevel !== undefined &&
+          mergedUser.goal !== undefined;
+        if (canRecompute) {
+          const bmr = calculateBMR({ age: mergedUser.age!, gender: mergedUser.gender!, weightKg: mergedUser.weightKg!, heightCm: mergedUser.heightCm! });
+          const tdee = calculateTDEE(bmr, mergedUser.activityLevel!);
+          const targetCalories = calculateDailyTargets(tdee, mergedUser.goal!);
+          mergedUser.dailyMacroGoal = calculateDietMacros(mergedUser.dietType ?? 'balanced', targetCalories, mergedUser.weightKg!, mergedUser.activityLevel!);
+          mergedUser.dailyCalorieGoal = caloriesFromMacros(mergedUser.dailyMacroGoal);
+        }
+
         return {
           ...state,
-          user: {
-            ...defaultUser,
-            ...state?.user,
-            // Merge (not replace): a persisted visibleNutrients from before this
-            // nutrient list grew only has the old keys, so newly added nutrients
-            // need their default (hidden) rather than being left undefined.
-            visibleNutrients: { ...DEFAULT_VISIBLE_NUTRIENTS, ...state?.user?.visibleNutrients },
-            // Pre-v5 users have neither field persisted — same "balanced"/"none" defaults as new signups.
-            macroRatioPreset: state?.user?.macroRatioPreset ?? 'balanced',
-            micronutrientFocus: state?.user?.micronutrientFocus ?? 'none',
-            // Pre-v6 users have no diet type persisted - same "balanced" default as new signups.
-            dietType: state?.user?.dietType ?? 'balanced',
-          },
+          user: mergedUser,
           // Users persisted before onboarding existed already have a profile, so don't force them through it.
           hasOnboarded: version >= 3 ? (state?.hasOnboarded ?? false) : true,
         };
