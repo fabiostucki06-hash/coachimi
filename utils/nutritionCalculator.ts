@@ -153,13 +153,16 @@ const MICRONUTRIENT_KEYS = Object.keys(MICRONUTRIENT_GOALS) as (keyof Micronutri
  * double-count it (e.g. an apple's ~10g total sugar would balloon to ~16g by re-adding
  * its ~6g fructose). So: prefer the total when the source reports one, and only fall
  * back to the fructose figure alone when the source has no total sugar value at all
- * (better than silently dropping the only sugar figure available).
+ * (better than silently dropping the only sugar figure available). A `sugar` of exactly
+ * 0 is treated the same as missing here: sugar is a strict superset of fructose, so a
+ * source reporting 0 total sugar alongside a nonzero fructose is an inconsistent/unpopulated
+ * field rather than a genuine zero, and the fructose figure is the more trustworthy one.
  * Used where a raw API response has sugar and fructose as two separate numbers,
  * before either is written into a FoodItem's micronutrientsPerServing.
  */
 export function foldFructoseIntoSugar(sugar: number | undefined, fructose: number | undefined): number | undefined {
-  if (sugar !== undefined) return sugar;
-  return fructose;
+  if (sugar) return sugar;
+  return fructose ?? sugar;
 }
 
 /**
@@ -167,12 +170,12 @@ export function foldFructoseIntoSugar(sugar: number | undefined, fructose: numbe
  * blob read back from the local `foods`/`community_barcodes` tables) that may carry
  * an untyped `fructose` key alongside `sugar` - strips it out after merging so it
  * never leaks into the UI as a nutrient of its own. See foldFructoseIntoSugar for why
- * a present `sugar` total wins outright instead of being added to `fructose`.
+ * a present nonzero `sugar` total wins outright instead of being added to `fructose`.
  */
 export function withFructoseFoldedIntoSugar(micronutrients: Micronutrients | null | undefined): Micronutrients {
   const { fructose, ...rest } = (micronutrients ?? {}) as Micronutrients & { fructose?: number };
-  if (fructose === undefined || rest.sugar !== undefined) return rest;
-  return { ...rest, sugar: fructose };
+  if (fructose === undefined) return rest;
+  return { ...rest, sugar: foldFructoseIntoSugar(rest.sugar, fructose) };
 }
 
 /**
