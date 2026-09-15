@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
+import { getDietTargetSummary } from '@/services/dietEngine';
 import { AvatarUploadError, pickAndUploadAvatar } from '@/services/profile';
 import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
@@ -270,6 +271,9 @@ export default function ProfilScreen() {
     Number.isFinite(parsedFatGoal) &&
     parsedFatGoal > 0;
 
+  const currentDietType = user.dietType ?? 'balanced';
+  const dietTargetSummary = getDietTargetSummary(currentDietType);
+
   function handleSaveProfile() {
     if (!isFormValid) return;
     updateProfile({ age: parsedAge, gender, heightCm: parsedHeight, weightKg: parsedWeight, activityLevel, goal });
@@ -361,6 +365,7 @@ export default function ProfilScreen() {
           <GoalInputRow icon={<Wheat color="#3b82f6" size={18} />} label="Carbs" value={carbsGoal} onChangeText={handleCarbsChange} suffix="g" accentColor="#3b82f6" />
           <GoalInputRow icon={<Egg color="#ef4444" size={18} />} label="Protein" value={proteinGoal} onChangeText={handleProteinChange} suffix="g" accentColor="#ef4444" />
           <GoalInputRow icon={<Droplet color="#f59e0b" size={18} />} label="Fett" value={fatGoal} onChangeText={handleFatChange} suffix="g" accentColor="#f59e0b" />
+          {dietTargetSummary && <Text className="px-1 text-xs text-text-secondary">{dietTargetSummary}</Text>}
           <Button label="Ziele speichern" onPress={handleSaveGoals} disabled={!isGoalsFormValid} className="mt-1" />
         </View>
 
@@ -369,7 +374,8 @@ export default function ProfilScreen() {
           <Text className="text-xs text-text-secondary">
             Passt Makroziele, MND-Bewertung und Essensvorschläge sofort an - keine weitere Bestätigung nötig.
           </Text>
-          <ChipGroup options={DIET_TYPE_OPTIONS} selected={user.dietType ?? 'balanced'} onSelect={setDietType} />
+          <ChipGroup options={DIET_TYPE_OPTIONS} selected={currentDietType} onSelect={setDietType} />
+          {dietTargetSummary && <Text className="text-xs text-text-secondary">{dietTargetSummary}</Text>}
         </Card>
 
         <Card className="gap-4">

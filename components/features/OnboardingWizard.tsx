@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
-import { getMacroRatioForDiet } from '@/services/dietEngine';
+import { calculateDietMacros } from '@/services/dietEngine';
 import {
   calculateBMR,
   calculateDailyTargets,
@@ -107,11 +107,14 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
     const bmr = calculateBMR({ age: parsedAge, gender, weightKg: parsedWeight, heightCm: parsedHeight });
     const tdee = calculateTDEE(bmr, activityLevel);
     const calories = calculateDailyTargets(tdee, goal);
-    const ratio =
+    const macros =
       macroPreset === 'custom'
-        ? { protein: (parsedCustomProtein || 0) / 100, carbs: (parsedCustomCarbs || 0) / 100, fat: (parsedCustomFat || 0) / 100 }
-        : getMacroRatioForDiet(dietType);
-    const macros = calculateMacros(calories, ratio);
+        ? calculateMacros(calories, {
+            protein: (parsedCustomProtein || 0) / 100,
+            carbs: (parsedCustomCarbs || 0) / 100,
+            fat: (parsedCustomFat || 0) / 100,
+          })
+        : calculateDietMacros(dietType, calories, parsedWeight, activityLevel);
     // Shown together in the preview below - reconciled so it always matches
     // macros.carbs*4 + macros.protein*4 + macros.fat*9 exactly (see caloriesFromMacros),
     // rather than the pre-rounding TDEE target the two would otherwise silently disagree with.

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { getMacroRatioForDiet } from '@/services/dietEngine';
+import { calculateDietMacros } from '@/services/dietEngine';
 import type { Macros, NutrientKey, User, WeightEntry } from '@/types';
 import {
   calculateBMR,
@@ -110,8 +110,12 @@ export const useUserStore = create<UserState>()(
         const dietType = input.dietType ?? get().user.dietType ?? 'balanced';
         // The diet type is the primary driver of macro targets - a preset of 'custom' is
         // the one explicit escape hatch a user has to override it with their own split.
-        const ratio = macroRatioPreset === 'custom' ? input.customMacroRatio ?? MACRO_RATIO_PRESET_VALUES.balanced : getMacroRatioForDiet(dietType);
-        const dailyMacroGoal = calculateMacros(targetCalories, ratio);
+        // Every non-custom diet is weight-pinned/evidence-based (see calculateDietMacros),
+        // not a plain %-of-calories ratio.
+        const dailyMacroGoal =
+          macroRatioPreset === 'custom'
+            ? calculateMacros(targetCalories, input.customMacroRatio ?? MACRO_RATIO_PRESET_VALUES.balanced)
+            : calculateDietMacros(dietType, targetCalories, input.weightKg, input.activityLevel);
         // Re-derived from the rounded macro grams (not `targetCalories` directly) so the
         // displayed calorie goal always exactly matches carbs*4 + protein*4 + fat*9 - see
         // caloriesFromMacros.
@@ -201,7 +205,7 @@ export const useUserStore = create<UserState>()(
           const bmr = calculateBMR({ age: user.age, gender: user.gender, weightKg: user.weightKg, heightCm: user.heightCm });
           const tdee = calculateTDEE(bmr, user.activityLevel);
           const targetCalories = calculateDailyTargets(tdee, user.goal);
-          const dailyMacroGoal = calculateMacros(targetCalories, getMacroRatioForDiet(dietType));
+          const dailyMacroGoal = calculateDietMacros(dietType, targetCalories, user.weightKg, user.activityLevel);
           const dailyCalorieGoal = caloriesFromMacros(dailyMacroGoal);
 
           return { user: { ...user, dietType, dailyMacroGoal, dailyCalorieGoal } };

@@ -15,6 +15,7 @@ import { UserAvatar } from '@/components/features/UserAvatar';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { getDietTargetSummary, getIronGoalForDiet } from '@/services/dietEngine';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
@@ -110,6 +111,7 @@ export default function DiaryScreen() {
   }, []);
 
   const [detailDate, setDetailDate] = useState<string | null>(null);
+  const dietTargetSummary = getDietTargetSummary(user.dietType ?? 'balanced');
 
   const selectedDateLabel = new Date(`${date}T00:00:00Z`).toLocaleDateString('de-DE', {
     weekday: 'long',
@@ -130,7 +132,11 @@ export default function DiaryScreen() {
     const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
     const nutrientAmounts = sumEntryNutrients(entries);
     const totalMacros: Macros = { carbs: nutrientAmounts.carbs, protein: nutrientAmounts.protein, fat: nutrientAmounts.fat };
-    const nutrientGoals: Record<NutrientKey, number> = { ...user.dailyMacroGoal, ...MICRONUTRIENT_GOALS };
+    const nutrientGoals: Record<NutrientKey, number> = {
+      ...user.dailyMacroGoal,
+      ...MICRONUTRIENT_GOALS,
+      iron: getIronGoalForDiet(user.dietType ?? 'balanced'),
+    };
     const secondaryNutrients = NUTRIENT_ORDER.filter(
       (key) => user.visibleNutrients[key] && !CORE_MACROS.includes(key),
     );
@@ -222,6 +228,7 @@ export default function DiaryScreen() {
                   <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                 ))}
               </View>
+              {dietTargetSummary && <Text className="text-[11px] text-text-secondary">{dietTargetSummary}</Text>}
 
               <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
             </View>
