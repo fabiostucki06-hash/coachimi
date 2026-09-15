@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { GoldBarCelebration } from '@/components/ui/GoldBarCelebration';
 import { PurchaseCelebration } from '@/components/ui/PurchaseCelebration';
 import { Toast } from '@/components/ui/Toast';
@@ -13,6 +14,7 @@ import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
 import { useWidgetDeepLinks } from '@/hooks/useWidgetDeepLinks';
 import { useWidgetSync } from '@/hooks/useWidgetSync';
+import { startSyncManager } from '@/services/syncManager';
 import { useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
 import { getThemeVars } from '@/utils/themePalettes';
@@ -30,6 +32,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     init();
+    startSyncManager();
   }, [init]);
 
   // RootLayout only mounts once per real page load (a fresh open, or the user
@@ -70,6 +73,7 @@ export default function RootLayout() {
         <Toast />
         <GoldBarCelebration />
         <PurchaseCelebration />
+        <OfflineBanner />
       </View>
     </ErrorBoundary>
   );

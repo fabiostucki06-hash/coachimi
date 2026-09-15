@@ -1,4 +1,5 @@
 import { buildSnapshot, pushSnapshotData } from '@/services/cloudSync';
+import { isNetworkError, useOfflineQueueStore } from '@/services/offlineQueue';
 import { makeEntryId, useDiaryStore, type MealEntryUpdate } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { describeSyncError, useSyncStore, withSyncSuppressed } from '@/store/syncStore';
@@ -53,6 +54,21 @@ async function pushThenCommit(date: string, nextEntriesForDate: MealEntry[], use
   try {
     updatedAt = await pushSnapshotData(userId, snapshot);
   } catch (err) {
+    if (isNetworkError(err)) {
+      // Offline: commit the mutation locally right away (optimistic UI -
+      // makeEntryId() below already hands out a permanent client-side id, so
+      // there's no server id to reconcile later) instead of losing it, and
+      // leave status 'error' for store/syncStore.ts's existing reconnect
+      // listener to retry. That retry pushes the FULL current snapshot,
+      // which already contains this change - see services/syncManager.ts.
+      useOfflineQueueStore.getState().setOnline(false);
+      useOfflineQueueStore.getState().markPending(date);
+      withSyncSuppressed(() => {
+        useDiaryStore.setState({ entriesByDate: nextEntriesByDate });
+      });
+      useSyncStore.setState({ status: 'error', error: 'Offline – wird synchronisiert, sobald wieder online.' });
+      return;
+    }
     const message = describeSyncError(err);
     useSyncStore.setState({ status: 'error', error: message });
     showFailureToast(message);

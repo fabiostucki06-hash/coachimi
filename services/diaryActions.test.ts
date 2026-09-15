@@ -27,6 +27,7 @@ jest.mock('@/lib/supabase', () => ({
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { addMealAndSync, copyEntryAndSync, copyMealAndSync, updateMealAndSync } from '@/services/diaryActions';
+import { useOfflineQueueStore } from '@/services/offlineQueue';
 import { useDiaryStore, todayKey } from '@/store/diaryStore';
 import { useSyncStore } from '@/store/syncStore';
 
@@ -58,6 +59,7 @@ beforeEach(async () => {
   await AsyncStorage.clear();
   useDiaryStore.setState({ entriesByDate: {} });
   mockUpsert.mockClear();
+  useOfflineQueueStore.setState({ online: true, pendingDates: [] });
 });
 
 // Each addMealAndSync call reads the current diary state, pushes a FULL
@@ -87,6 +89,42 @@ it('serializes back-to-back meal additions so neither push drops the other', asy
   expect(mockUpsert).toHaveBeenCalledTimes(2);
   const secondPushPayload = mockUpsert.mock.calls[1][0];
   expect(secondPushPayload.data.entriesByDate[date]).toHaveLength(2);
+});
+
+describe('offline handling', () => {
+  it('commits the meal locally and marks the date pending when the push fails with a network error, instead of dropping the entry', async () => {
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u-offline' }, access_token: 'tok-offline' });
+    await flush();
+    await flush();
+
+    mockUpsert.mockRejectedValueOnce(new Error('Network request failed'));
+
+    const date = todayKey();
+    await addMealAndSync(date, foodA, 'breakfast', 1);
+
+    const entries = useDiaryStore.getState().entriesByDate[date] ?? [];
+    expect(entries).toHaveLength(1);
+    expect(entries[0].foodItem.id).toBe('food-a');
+    expect(useSyncStore.getState().status).toBe('error');
+    expect(useOfflineQueueStore.getState().online).toBe(false);
+    expect(useOfflineQueueStore.getState().pendingDates).toEqual([date]);
+  });
+
+  it('still rejects and leaves the entry uncommitted for a genuine (non-network) push error', async () => {
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u-error' }, access_token: 'tok-error' });
+    await flush();
+    await flush();
+
+    mockUpsert.mockRejectedValueOnce(new Error('duplicate key value violates unique constraint'));
+
+    const date = todayKey();
+    await expect(addMealAndSync(date, foodA, 'breakfast', 1)).rejects.toThrow();
+
+    expect(useDiaryStore.getState().entriesByDate[date] ?? []).toHaveLength(0);
+    expect(useOfflineQueueStore.getState().pendingDates).toEqual([]);
+  });
 });
 
 describe('copyEntryAndSync', () => {
