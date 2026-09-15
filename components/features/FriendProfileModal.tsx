@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
-import { MacroBadge, NutrientTile } from '@/components/features/NutrientProgress';
+import { ExtraNutrientsSection, MacroBadge } from '@/components/features/NutrientProgress';
 import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { fetchFriendSnapshot, formatFriendLabel, type FriendProfile } from '@/services/friends';
@@ -17,6 +17,7 @@ import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 // and macro row, kept in lockstep on purpose so a friend's diary renders as
 // the exact same visual language as the caller's own, not a lookalike.
 const ACCENT = '#6366F1';
+const OVER_LIMIT_ACCENT = '#F59E0B';
 const RING_SIZE = 176;
 const RING_STROKE = 16;
 const CORE_MACROS: NutrientKey[] = ['protein', 'carbs', 'fat'];
@@ -127,7 +128,7 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
   // Mirrors the dashboard's own useMemo block exactly (same sumEntryNutrients/
   // NUTRIENT_ORDER helpers, same remaining/percent math) so a friend's ring
   // and badges land on identical numbers for identical underlying data.
-  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, caloriePct } = useMemo(() => {
+  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, isOverLimit, surplusCalories, caloriePct } = useMemo(() => {
     const grouped: Record<MealType, MealEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [], drinks: [] };
     for (const entry of entries) {
       grouped[entry.mealType].push(entry);
@@ -143,9 +144,11 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
 
     const calorieGoal = friendUser?.dailyCalorieGoal ?? 0;
     const remainingCalories = Math.round(Math.max(calorieGoal - totalCalories, 0));
+    const isOverLimit = calorieGoal > 0 && totalCalories > calorieGoal;
+    const surplusCalories = Math.round(Math.max(totalCalories - calorieGoal, 0));
     const caloriePct = calorieGoal > 0 ? totalCalories / calorieGoal : 0;
 
-    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, caloriePct };
+    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, isOverLimit, surplusCalories, caloriePct };
   }, [entries, friendUser]);
 
   const calorieGoal = friendUser?.dailyCalorieGoal ?? 0;
@@ -218,14 +221,26 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
                   identical structure and components, only the data source differs. */}
               <View className="items-center gap-5 rounded-[28px] border border-surface-border bg-surface p-6 shadow-2xl shadow-primary/10 backdrop-blur-xl">
                 <View className="items-center gap-1">
-                  <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={ACCENT}>
-                    <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Verbleibend</Text>
-                    <Text className="text-3xl font-bold tracking-tight text-white">{remainingCalories}</Text>
+                  <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={isOverLimit ? OVER_LIMIT_ACCENT : ACCENT}>
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {isOverLimit ? 'Über Ziel' : 'Verbleibend'}
+                    </Text>
+                    <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-white'}`}>
+                      {isOverLimit ? `+${surplusCalories}` : remainingCalories}
+                    </Text>
                     <Text className="text-xs text-text-secondary">von {calorieGoal} kcal</Text>
                   </ProgressRing>
-                  <Text className="text-base font-semibold text-primary">
-                    {Math.round(totalCalories)} kcal gegessen
-                  </Text>
+                  {isOverLimit ? (
+                    <View className="flex-row items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1">
+                      <Text className="text-sm font-semibold text-amber-500">
+                        +{surplusCalories} kcal über Limit
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text className="text-base font-semibold text-primary">
+                      {Math.round(totalCalories)} kcal gegessen
+                    </Text>
+                  )}
                 </View>
 
                 <View className="w-full flex-row gap-3 border-t border-surface-border pt-5">
@@ -233,15 +248,9 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
                     <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                   ))}
                 </View>
-
-                {secondaryNutrients.length > 0 && (
-                  <View className="w-full flex-row flex-wrap gap-x-4 gap-y-4 border-t border-surface-border pt-4">
-                    {secondaryNutrients.map((key) => (
-                      <NutrientTile key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
-                    ))}
-                  </View>
-                )}
               </View>
+
+              <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
 
               <View className="gap-3">
                 <Text className="px-1 text-sm font-semibold text-text-secondary">Mahlzeiten</Text>

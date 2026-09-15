@@ -141,6 +141,43 @@ export const MICRONUTRIENT_GOALS: Required<Micronutrients> = {
 
 const MICRONUTRIENT_KEYS = Object.keys(MICRONUTRIENT_GOALS) as (keyof Micronutrients)[];
 
+/**
+ * This app has no separate fructose nutrient/UI - every source (USDA, FatSecret, OFF,
+ * the local `foods`/`community_barcodes` tables) that can report fructose as its own
+ * value gets folded into `sugar` right at ingestion, so fructose is always tracked
+ * as part of total sugar rather than silently dropped or surfaced as a new nutrient.
+ * Used where a raw API response has sugar and fructose as two separate numbers,
+ * before either is written into a FoodItem's micronutrientsPerServing.
+ */
+export function foldFructoseIntoSugar(sugar: number | undefined, fructose: number | undefined): number | undefined {
+  if (sugar === undefined && fructose === undefined) return undefined;
+  return (sugar ?? 0) + (fructose ?? 0);
+}
+
+/**
+ * Same fold, applied to an already-assembled micronutrients object (e.g. a jsonb
+ * blob read back from the local `foods`/`community_barcodes` tables) that may carry
+ * an untyped `fructose` key alongside `sugar` - strips it out after merging so it
+ * never leaks into the UI as a nutrient of its own.
+ */
+export function withFructoseFoldedIntoSugar(micronutrients: Micronutrients | null | undefined): Micronutrients {
+  const { fructose, ...rest } = (micronutrients ?? {}) as Micronutrients & { fructose?: number };
+  if (fructose === undefined) return rest;
+  return { ...rest, sugar: (rest.sugar ?? 0) + fructose };
+}
+
+/**
+ * FatSecret's `food.get` reports calcium/iron/vitamin A/vitamin C on a serving as a
+ * percentage of the (US FDA) recommended Daily Value rather than an absolute amount,
+ * unlike every other nutrient it returns (and unlike USDA/OFF, which are already
+ * absolute mg/µg). `MICRONUTRIENT_GOALS` above already tracks this app's own
+ * reference Daily Value for each of those nutrients, so it doubles as the
+ * conversion basis here instead of duplicating the same numbers a second time.
+ */
+export function percentDvToAmount(percentDv: number | undefined, referenceDv: number): number | undefined {
+  return percentDv === undefined ? undefined : (percentDv / 100) * referenceDv;
+}
+
 type ScalableFood = Pick<FoodItem, 'caloriesPerServing' | 'macrosPerServing' | 'micronutrientsPerServing' | 'servingSize'>;
 
 export interface ScaledNutrients {

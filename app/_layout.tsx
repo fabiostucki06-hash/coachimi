@@ -1,6 +1,6 @@
 import '@/global.css';
 
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
@@ -25,6 +25,19 @@ export default function RootLayout() {
   useEffect(() => {
     init();
   }, [init]);
+
+  // RootLayout only mounts once per real page load (a fresh open, or the user
+  // hitting reload) - client-side navigation between tabs/screens never remounts
+  // it. So this fires exactly on "the PWA was just opened/reloaded", never on an
+  // in-app Link/router.push, which is what lets it force every fresh load back to
+  // the dashboard route without also cancelling normal in-app navigation to other
+  // tabs or modals.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (window.location.pathname !== '/') {
+      router.replace('/');
+    }
+  }, []);
 
   useAutoUpdate();
   useWidgetSync();

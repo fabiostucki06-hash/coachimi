@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { FoodItem, Micronutrients } from '@/types';
+import { foldFructoseIntoSugar, withFructoseFoldedIntoSugar } from '@/utils/nutritionCalculator';
 
 const SEARCH_URL = 'https://de.openfoodfacts.org/cgi/search.pl';
 const SEARCH_URL_WORLD = 'https://world.openfoodfacts.org/cgi/search.pl';
@@ -57,6 +58,8 @@ interface OffNutriments {
   fat_100g?: number;
   fiber_100g?: number;
   sugars_100g?: number;
+  /** Rarely populated by Open Food Facts, but folded into `sugars_100g` when present - see foldFructoseIntoSugar. */
+  fructose_100g?: number;
   'saturated-fat_100g'?: number;
   'monounsaturated-fat_100g'?: number;
   'polyunsaturated-fat_100g'?: number;
@@ -158,7 +161,7 @@ function normalizeFoodItem(product: OffProduct, fallbackId: string): FoodItem {
     },
     micronutrientsPerServing: {
       fiber: nutriments.fiber_100g || 0,
-      sugar: nutriments.sugars_100g || 0,
+      sugar: foldFructoseIntoSugar(nutriments.sugars_100g, nutriments.fructose_100g) ?? 0,
       saturatedFat: nutriments['saturated-fat_100g'],
       unsaturatedFat: sumOptional(nutriments['monounsaturated-fat_100g'], nutriments['polyunsaturated-fat_100g']),
       cholesterol: gramsToMg(nutriments.cholesterol_100g),
@@ -363,7 +366,7 @@ function communityRowToFoodItem(row: CommunityBarcodeRow): FoodItem {
       protein: toNonNegative(row.protein_per_100g),
       fat: toNonNegative(row.fat_per_100g),
     },
-    micronutrientsPerServing: row.micronutrients ?? {},
+    micronutrientsPerServing: withFructoseFoldedIntoSugar(row.micronutrients),
     servingSize: 100,
     servingUnit: 'g',
     source: 'community',
@@ -458,6 +461,7 @@ const USDA_NUTRIENT_IDS = {
   carbs: 1005,
   fiber: 1079,
   sugar: 2000,
+  fructose: 1010,
   saturatedFat: 1258,
   sodium: 1093,
   potassium: 1092,
@@ -498,7 +502,7 @@ function normalizeUsdaFood(food: UsdaFood, fallbackId: string): FoodItem {
     },
     micronutrientsPerServing: {
       fiber: toNonNegative(get(USDA_NUTRIENT_IDS.fiber)),
-      sugar: toNonNegative(get(USDA_NUTRIENT_IDS.sugar)),
+      sugar: toNonNegative(foldFructoseIntoSugar(get(USDA_NUTRIENT_IDS.sugar), get(USDA_NUTRIENT_IDS.fructose))),
       saturatedFat: get(USDA_NUTRIENT_IDS.saturatedFat),
       sodium: get(USDA_NUTRIENT_IDS.sodium),
       potassium: get(USDA_NUTRIENT_IDS.potassium),

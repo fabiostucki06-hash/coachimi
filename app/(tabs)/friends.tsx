@@ -1,14 +1,16 @@
 import { router } from 'expo-router';
-import { Check, Search, UserPlus, Users, X } from 'lucide-react-native';
+import { Check, Inbox, Search, UserPlus, Users, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FriendActivityCard } from '@/components/features/FriendActivityCard';
 import { FriendProfileModal } from '@/components/features/FriendProfileModal';
+import { MEAL_TYPE_META } from '@/components/features/mealMeta';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
+import { addMealAndSync } from '@/services/diaryActions';
 import {
   fetchFriendActivity,
   fetchFriendships,
@@ -22,6 +24,7 @@ import {
   type FriendListItem,
   type FriendProfile,
 } from '@/services/friends';
+import { fetchInboxMealShares, removeMealShare, type MealShare } from '@/services/mealShares';
 import { useProfileStore } from '@/store/profileStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
@@ -134,6 +137,44 @@ function SearchResultRow({ profile, onSend, sent }: { profile: FriendProfile; on
   );
 }
 
+/** One entry in the "Geteilte Mahlzeiten" inbox - a meal a friend sent (services/mealShares.ts), reviewed here before it ever touches the caller's own diary. */
+function MealShareRow({ share, onAdd, onDismiss }: { share: MealShare; onAdd: () => void; onDismiss: () => void }) {
+  const [adding, setAdding] = useState(false);
+  const { label: mealLabel } = MEAL_TYPE_META[share.mealType];
+  const kcal = Math.round(share.foodItem.caloriesPerServing * share.servings);
+
+  async function handleAdd() {
+    if (adding) return;
+    setAdding(true);
+    try {
+      await onAdd();
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <View className="flex-row items-center justify-between gap-3 py-2">
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-white" numberOfLines={1}>
+          {share.foodItem.name}
+        </Text>
+        <Text className="text-xs text-text-secondary">
+          {mealLabel} · {kcal} kcal
+        </Text>
+      </View>
+      <View className="flex-row items-center gap-2">
+        <Pressable onPress={handleAdd} disabled={adding} className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+          {adding ? <ActivityIndicator size="small" color="#6366F1" /> : <Check color="#6366F1" size={16} />}
+        </Pressable>
+        <Pressable onPress={onDismiss} disabled={adding} className="h-9 w-9 items-center justify-center rounded-full bg-red-500/10">
+          <X color="#ef4444" size={16} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 function IncomingRequestRow({ item, onRespond }: { item: FriendListItem; onRespond: (accept: boolean) => void }) {
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
@@ -167,6 +208,8 @@ export default function FriendsScreen() {
 
   const [viewedFriend, setViewedFriend] = useState<FriendProfile | null>(null);
 
+  const [inbox, setInbox] = useState<MealShare[]>([]);
+
   const myId = session?.user.id;
 
   const loadFriends = useCallback(async () => {
@@ -190,11 +233,41 @@ export default function FriendsScreen() {
     }
   }, [myId, showToast]);
 
+  const loadInbox = useCallback(async () => {
+    if (!myId) return;
+    try {
+      setInbox(await fetchInboxMealShares(myId));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Geteilte Mahlzeiten konnten nicht geladen werden');
+    }
+  }, [myId, showToast]);
+
   useEffect(() => {
     loadFriends();
-  }, [loadFriends]);
+    loadInbox();
+  }, [loadFriends, loadInbox]);
 
   if (!session || !myId) return <SignedOutPrompt />;
+
+  async function handleAddSharedMeal(share: MealShare) {
+    try {
+      await addMealAndSync(getLocalDateKey(), share.foodItem, share.mealType, share.servings);
+      await removeMealShare(share.id);
+      setInbox((current) => current.filter((item) => item.id !== share.id));
+      showToast('Zum Tagebuch hinzugefügt', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Hinzufügen fehlgeschlagen');
+    }
+  }
+
+  async function handleDismissSharedMeal(shareId: string) {
+    try {
+      await removeMealShare(shareId);
+      setInbox((current) => current.filter((item) => item.id !== shareId));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Aktion fehlgeschlagen');
+    }
+  }
 
   async function handleSearch() {
     if (!myId || searchQuery.trim().length === 0) return;
@@ -278,6 +351,23 @@ export default function FriendsScreen() {
             </View>
           )}
         </Card>
+
+        {inbox.length > 0 && (
+          <Card className="gap-1">
+            <View className="flex-row items-center gap-2">
+              <Inbox color="#6366F1" size={16} />
+              <Text className="text-sm font-semibold text-text-secondary">Geteilte Mahlzeiten</Text>
+            </View>
+            {inbox.map((share) => (
+              <MealShareRow
+                key={share.id}
+                share={share}
+                onAdd={() => handleAddSharedMeal(share)}
+                onDismiss={() => handleDismissSharedMeal(share.id)}
+              />
+            ))}
+          </Card>
+        )}
 
         {incoming.length > 0 && (
           <Card className="gap-1">

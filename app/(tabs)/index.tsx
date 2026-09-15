@@ -9,7 +9,7 @@ import { DateSelector } from '@/components/features/DateSelector';
 import { DayDetailModal } from '@/components/features/DayDetailModal';
 import { DeficitAnalyzerCard } from '@/components/features/DeficitAnalyzerCard';
 import { MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
-import { MacroBadge, NutrientTile } from '@/components/features/NutrientProgress';
+import { ExtraNutrientsSection, MacroBadge } from '@/components/features/NutrientProgress';
 import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { GoldBarBadge } from '@/components/ui/GoldBarBadge';
 import { HardRefreshButton } from '@/components/ui/HardRefreshButton';
@@ -28,6 +28,7 @@ import { MICRONUTRIENT_GOALS } from '@/utils/nutritionCalculator';
 const RELATIVE_TIME_REFRESH_MS = 60_000;
 
 const ACCENT = '#6366F1';
+const OVER_LIMIT_ACCENT = '#F59E0B';
 const RING_SIZE = 176;
 const RING_STROKE = 16;
 const EMPTY_ENTRIES: MealEntry[] = [];
@@ -117,7 +118,7 @@ export default function DiaryScreen() {
   // every render (e.g. while the sync-status indicator ticks) would repeat that work
   // without `entries` or `user` actually having changed, which is where scroll-time
   // jank on this always-mounted screen tends to come from.
-  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, caloriePct, remainingMacros } = useMemo(() => {
+  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, isOverLimit, surplusCalories, caloriePct, remainingMacros } = useMemo(() => {
     const grouped: Record<MealType, MealEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [], drinks: [] };
     for (const entry of entries) {
       grouped[entry.mealType].push(entry);
@@ -132,6 +133,8 @@ export default function DiaryScreen() {
     );
 
     const remainingCalories = Math.round(Math.max(user.dailyCalorieGoal - totalCalories, 0));
+    const isOverLimit = user.dailyCalorieGoal > 0 && totalCalories > user.dailyCalorieGoal;
+    const surplusCalories = Math.round(Math.max(totalCalories - user.dailyCalorieGoal, 0));
     const caloriePct = user.dailyCalorieGoal > 0 ? totalCalories / user.dailyCalorieGoal : 0;
     const remainingMacros: Macros = {
       carbs: Math.max(user.dailyMacroGoal.carbs - totalMacros.carbs, 0),
@@ -139,7 +142,7 @@ export default function DiaryScreen() {
       fat: Math.max(user.dailyMacroGoal.fat - totalMacros.fat, 0),
     };
 
-    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, caloriePct, remainingMacros };
+    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, isOverLimit, surplusCalories, caloriePct, remainingMacros };
   }, [entries, user]);
 
   return (
@@ -186,14 +189,26 @@ export default function DiaryScreen() {
           <View className="gap-6 lg:w-[380px] lg:shrink-0">
             <View className="items-center gap-5 rounded-[28px] border border-surface-border bg-surface p-6 shadow-2xl shadow-primary/10 backdrop-blur-xl">
               <View className="items-center gap-1">
-                <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={ACCENT}>
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Verbleibend</Text>
-                  <Text className="text-3xl font-bold tracking-tight text-white">{remainingCalories}</Text>
+                <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={isOverLimit ? OVER_LIMIT_ACCENT : ACCENT}>
+                  <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                    {isOverLimit ? 'Über Ziel' : 'Verbleibend'}
+                  </Text>
+                  <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-white'}`}>
+                    {isOverLimit ? `+${surplusCalories}` : remainingCalories}
+                  </Text>
                   <Text className="text-xs text-text-secondary">von {user.dailyCalorieGoal} kcal</Text>
                 </ProgressRing>
-                <Text className="text-base font-semibold text-primary">
-                  {Math.round(totalCalories)} kcal gegessen
-                </Text>
+                {isOverLimit ? (
+                  <View className="flex-row items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1">
+                    <Text className="text-sm font-semibold text-amber-500">
+                      +{surplusCalories} kcal über Limit
+                    </Text>
+                  </View>
+                ) : (
+                  <Text className="text-base font-semibold text-primary">
+                    {Math.round(totalCalories)} kcal gegessen
+                  </Text>
+                )}
               </View>
 
               <View className="w-full flex-row gap-3 border-t border-surface-border pt-5">
@@ -201,15 +216,9 @@ export default function DiaryScreen() {
                   <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                 ))}
               </View>
-
-              {secondaryNutrients.length > 0 && (
-                <View className="w-full flex-row flex-wrap gap-x-4 gap-y-4 border-t border-surface-border pt-4">
-                  {secondaryNutrients.map((key) => (
-                    <NutrientTile key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
-                  ))}
-                </View>
-              )}
             </View>
+
+            <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
 
             <View className="gap-3 rounded-[28px]">
               <Text className="px-1 text-sm font-semibold text-text-secondary">Für dich</Text>

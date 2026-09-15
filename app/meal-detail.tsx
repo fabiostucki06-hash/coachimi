@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Camera, Copy, Plus, Trash2, X } from 'lucide-react-native';
+import { Camera, Copy, Plus, Send, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
@@ -9,7 +9,10 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { copyEntryAndSync, copyMealAndSync, removeMealAndSync } from '@/services/diaryActions';
+import { fetchFriendships, formatFriendLabel, type FriendListItem } from '@/services/friends';
+import { shareMealWithFriend } from '@/services/mealShares';
 import { useDiaryStore } from '@/store/diaryStore';
+import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
@@ -51,6 +54,52 @@ function NutrientStat({ nutrientKey, value }: { nutrientKey: NutrientKey; value:
         {label}
       </Text>
     </View>
+  );
+}
+
+/** Friend picker for "Send Meal to Friend" - only shows accepted friends, since sending is DB-gated on an accepted friendship anyway (supabase/migrations/0002_meal_shares.sql). */
+function ShareSheet({
+  entry,
+  friends,
+  loading,
+  onConfirm,
+  onClose,
+}: {
+  entry: MealEntry;
+  friends: FriendListItem[];
+  loading: boolean;
+  onConfirm: (friendId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Card className="gap-3">
+      <View className="flex-row items-center justify-between">
+        <Text className="flex-1 pr-3 text-sm font-semibold text-text-secondary" numberOfLines={1}>
+          &quot;{entry.foodItem.name}&quot; an Freund senden
+        </Text>
+        <Pressable onPress={onClose}>
+          <X color="#A1A1AA" size={16} />
+        </Pressable>
+      </View>
+      {loading ? (
+        <ActivityIndicator color="#6366F1" />
+      ) : friends.length === 0 ? (
+        <Text className="py-2 text-sm text-text-secondary">Noch keine Freunde - füge zuerst welche im Freunde-Tab hinzu.</Text>
+      ) : (
+        <View className="gap-1">
+          {friends.map((friend) => (
+            <Pressable
+              key={friend.friendshipId}
+              onPress={() => onConfirm(friend.profile.id)}
+              className="flex-row items-center justify-between rounded-2xl bg-white/5 px-4 py-3 active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-white">{formatFriendLabel(friend.profile)}</Text>
+              <Send color="#6366F1" size={16} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </Card>
   );
 }
 
@@ -98,9 +147,41 @@ export default function MealDetailScreen() {
   const visibleNutrients = useUserStore((state) => state.user.visibleNutrients);
   const [copyTarget, setCopyTarget] = useState<CopyTarget | null>(null);
 
+  const session = useSyncStore((state) => state.session);
+  const myId = session?.user.id;
+  const [shareEntry, setShareEntry] = useState<MealEntry | null>(null);
+  const [friends, setFriends] = useState<FriendListItem[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+
   const totalKcal = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
   const nutrientAmounts = sumEntryNutrients(entries);
   const visibleNutrientKeys = NUTRIENT_ORDER.filter((key) => visibleNutrients[key]);
+
+  async function handleOpenShare(entry: MealEntry) {
+    setShareEntry(entry);
+    if (!myId) return;
+    setLoadingFriends(true);
+    try {
+      const items = await fetchFriendships(myId);
+      setFriends(items.filter((item) => item.status === 'accepted'));
+    } catch (err) {
+      useToastStore.getState().show(err instanceof Error ? err.message : 'Freunde konnten nicht geladen werden');
+    } finally {
+      setLoadingFriends(false);
+    }
+  }
+
+  async function handleConfirmShare(friendId: string) {
+    const entry = shareEntry;
+    if (!entry || !myId) return;
+    setShareEntry(null);
+    try {
+      await shareMealWithFriend(myId, friendId, entry.foodItem, entry.mealType, entry.servings);
+      useToastStore.getState().show('Mahlzeit gesendet', 'success');
+    } catch (err) {
+      useToastStore.getState().show(err instanceof Error ? err.message : 'Senden fehlgeschlagen');
+    }
+  }
 
   async function handleConfirmCopy(toDate: string) {
     const target = copyTarget;
@@ -154,6 +235,18 @@ export default function MealDetailScreen() {
         </View>
       )}
 
+      {shareEntry && (
+        <View className="px-6 pt-4">
+          <ShareSheet
+            entry={shareEntry}
+            friends={friends}
+            loading={loadingFriends}
+            onConfirm={handleConfirmShare}
+            onClose={() => setShareEntry(null)}
+          />
+        </View>
+      )}
+
       <View className="mx-6 mt-4 gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl  ">
         <View className="flex-row items-center justify-between">
           <Text className="text-sm font-semibold text-text-secondary">{MEAL_LABELS[mealType]} gesamt</Text>
@@ -189,6 +282,15 @@ export default function MealDetailScreen() {
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
+                {myId && (
+                  <Pressable
+                    className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 active:opacity-80"
+                    onPress={() => handleOpenShare(entry)}
+                    accessibilityLabel="An Freund senden"
+                  >
+                    <Send color="#6366F1" size={14} />
+                  </Pressable>
+                )}
                 <Pressable
                   className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 active:opacity-80"
                   onPress={() => setCopyTarget({ kind: 'entry', entryId: entry.id })}

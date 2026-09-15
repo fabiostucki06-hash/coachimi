@@ -30,7 +30,14 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-broetchen', name: 'Brötchen', caloriesPer100g: 275, carbsPer100g: 52, proteinPer100g: 9, fatPer100g: 2 },
   { id: 'local-reis', name: 'Reis, gekocht', caloriesPer100g: 130, carbsPer100g: 28, proteinPer100g: 2.7, fatPer100g: 0.3 },
   { id: 'local-vollkornreis', name: 'Vollkornreis, gekocht', caloriesPer100g: 123, carbsPer100g: 26, proteinPer100g: 2.7, fatPer100g: 1, fiberPer100g: 1.8 },
+  // Raw/dry and cooked are kept as separate entries rather than one with a
+  // "cooked" toggle - cooking absorbs water, so per-100g values genuinely
+  // differ (raw is denser/more caloric per gram than the same pasta cooked),
+  // and a search for "Nudeln" should surface both explicitly rather than
+  // silently picking one preparation state.
+  { id: 'local-nudeln-roh', name: 'Nudeln, roh', caloriesPer100g: 371, carbsPer100g: 75, proteinPer100g: 13, fatPer100g: 1.5, fiberPer100g: 3 },
   { id: 'local-nudeln', name: 'Nudeln, gekocht', caloriesPer100g: 158, carbsPer100g: 31, proteinPer100g: 5.8, fatPer100g: 0.9 },
+  { id: 'local-vollkornnudeln-roh', name: 'Vollkornnudeln, roh', caloriesPer100g: 348, carbsPer100g: 66, proteinPer100g: 14, fatPer100g: 2.5, fiberPer100g: 9 },
   { id: 'local-vollkornnudeln', name: 'Vollkornnudeln, gekocht', caloriesPer100g: 149, carbsPer100g: 28, proteinPer100g: 6.3, fatPer100g: 1.4, fiberPer100g: 4 },
   { id: 'local-kartoffeln', name: 'Kartoffeln, gekocht', caloriesPer100g: 87, carbsPer100g: 20, proteinPer100g: 1.9, fatPer100g: 0.1 },
   { id: 'local-suesskartoffel', name: 'Süßkartoffel, gekocht', caloriesPer100g: 90, carbsPer100g: 21, proteinPer100g: 2, fatPer100g: 0.1 },

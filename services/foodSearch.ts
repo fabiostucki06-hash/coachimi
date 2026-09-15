@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { translateDeToEn, translateEnToDe } from '@/services/translate';
 import type { FoodItem, Macros, Micronutrients } from '@/types';
+import { foldFructoseIntoSugar, MICRONUTRIENT_GOALS, percentDvToAmount, withFructoseFoldedIntoSugar } from '@/utils/nutritionCalculator';
 
 const FOODS_TABLE = 'foods';
 const MAX_RESULTS = 20;
@@ -73,7 +74,7 @@ function rowToFoodItem(row: FoodRow): FoodItem {
       protein: toNonNegative(row.protein_per_100g),
       fat: toNonNegative(row.fat_per_100g),
     },
-    micronutrientsPerServing: row.micronutrients ?? {},
+    micronutrientsPerServing: withFructoseFoldedIntoSugar(row.micronutrients),
     servingSize: 100,
     servingUnit: 'g',
     source: row.source === 'local' ? 'local' : row.source,
@@ -161,7 +162,19 @@ interface FatSecretServing {
   fat?: string;
   fiber?: string;
   sugar?: string;
+  /** Rarely populated by FatSecret, but folded into `sugar` when present - see foldFructoseIntoSugar. */
+  fructose?: string;
+  saturated_fat?: string;
   sodium?: string;
+  potassium?: string;
+  /** Reported as %DV (per FatSecret's docs), not an absolute amount - see percentDvToAmount. */
+  calcium?: string;
+  /** Reported as %DV (per FatSecret's docs), not an absolute amount - see percentDvToAmount. */
+  iron?: string;
+  /** Reported as %DV (per FatSecret's docs), not an absolute amount - see percentDvToAmount. */
+  vitamin_a?: string;
+  /** Reported as %DV (per FatSecret's docs), not an absolute amount - see percentDvToAmount. */
+  vitamin_c?: string;
 }
 
 interface FatSecretGetResponse {
@@ -194,8 +207,14 @@ function servingToPer100g(serving: FatSecretServing): { macros: Macros; calories
     },
     micronutrients: {
       fiber: num(serving.fiber),
-      sugar: num(serving.sugar),
+      sugar: foldFructoseIntoSugar(num(serving.sugar), num(serving.fructose)),
+      saturatedFat: num(serving.saturated_fat),
       sodium: num(serving.sodium),
+      potassium: num(serving.potassium),
+      calcium: percentDvToAmount(num(serving.calcium), MICRONUTRIENT_GOALS.calcium),
+      iron: percentDvToAmount(num(serving.iron), MICRONUTRIENT_GOALS.iron),
+      vitaminA: percentDvToAmount(num(serving.vitamin_a), MICRONUTRIENT_GOALS.vitaminA),
+      vitaminC: percentDvToAmount(num(serving.vitamin_c), MICRONUTRIENT_GOALS.vitaminC),
     },
   };
 }
@@ -258,7 +277,31 @@ interface UsdaSearchResponse {
   foods?: UsdaFood[];
 }
 
-const USDA_NUTRIENT_IDS = { calories: 1008, protein: 1003, fat: 1004, carbs: 1005, fiber: 1079, sugar: 2000 } as const;
+// Same USDA FoodData Central nutrient IDs services/foodApi.ts's own USDA tier uses -
+// duplicated here (not imported) since each search tier normalizes its own raw API
+// shape independently, same pattern the rest of this file already follows.
+const USDA_NUTRIENT_IDS = {
+  calories: 1008,
+  protein: 1003,
+  fat: 1004,
+  carbs: 1005,
+  fiber: 1079,
+  sugar: 2000,
+  fructose: 1010,
+  saturatedFat: 1258,
+  sodium: 1093,
+  potassium: 1092,
+  calcium: 1087,
+  iron: 1089,
+  magnesium: 1090,
+  zinc: 1095,
+  vitaminA: 1106,
+  vitaminC: 1162,
+  vitaminD: 1114,
+  vitaminE: 1109,
+  vitaminK: 1185,
+  vitaminB12: 1178,
+} as const;
 
 function findUsdaNutrient(nutrients: UsdaNutrient[], nutrientId: number): number | undefined {
   return nutrients.find((nutrient) => nutrient.nutrientId === nutrientId)?.value;
@@ -282,7 +325,20 @@ async function normalizeUsdaFood(food: UsdaFood): Promise<FoodItem> {
     },
     micronutrientsPerServing: {
       fiber: get(USDA_NUTRIENT_IDS.fiber),
-      sugar: get(USDA_NUTRIENT_IDS.sugar),
+      sugar: foldFructoseIntoSugar(get(USDA_NUTRIENT_IDS.sugar), get(USDA_NUTRIENT_IDS.fructose)),
+      saturatedFat: get(USDA_NUTRIENT_IDS.saturatedFat),
+      sodium: get(USDA_NUTRIENT_IDS.sodium),
+      potassium: get(USDA_NUTRIENT_IDS.potassium),
+      calcium: get(USDA_NUTRIENT_IDS.calcium),
+      iron: get(USDA_NUTRIENT_IDS.iron),
+      magnesium: get(USDA_NUTRIENT_IDS.magnesium),
+      zinc: get(USDA_NUTRIENT_IDS.zinc),
+      vitaminA: get(USDA_NUTRIENT_IDS.vitaminA),
+      vitaminC: get(USDA_NUTRIENT_IDS.vitaminC),
+      vitaminD: get(USDA_NUTRIENT_IDS.vitaminD),
+      vitaminE: get(USDA_NUTRIENT_IDS.vitaminE),
+      vitaminK: get(USDA_NUTRIENT_IDS.vitaminK),
+      vitaminB12: get(USDA_NUTRIENT_IDS.vitaminB12),
     },
     servingSize: 100,
     servingUnit: 'g',
