@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
-import { getDietTargetSummary } from '@/services/dietEngine';
+import { getDietTargetSummary, PROTEIN_FLOOR_G_PER_KG } from '@/services/dietEngine';
 import { AvatarUploadError, pickAndUploadAvatar } from '@/services/profile';
 import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
@@ -261,6 +261,11 @@ export default function ProfilScreen() {
   const parsedCarbsGoal = Number.parseFloat(carbsGoal.replace(',', '.'));
   const parsedProteinGoal = Number.parseFloat(proteinGoal.replace(',', '.'));
   const parsedFatGoal = Number.parseFloat(fatGoal.replace(',', '.'));
+  // 2.0g/kg is a hard floor system-wide (see services/dietEngine.ts's applyProteinFloor) -
+  // a manual override here must not be able to undercut it. Falls back to 0 (no floor)
+  // if weight isn't known yet, same as every other weight-pinned calc in this app.
+  const proteinFloorG = Math.round((user.weightKg ?? 0) * PROTEIN_FLOOR_G_PER_KG);
+  const isProteinBelowFloor = Number.isFinite(parsedProteinGoal) && parsedProteinGoal < proteinFloorG;
   const isGoalsFormValid =
     Number.isFinite(parsedCalorieGoal) &&
     parsedCalorieGoal > 0 &&
@@ -268,6 +273,7 @@ export default function ProfilScreen() {
     parsedCarbsGoal > 0 &&
     Number.isFinite(parsedProteinGoal) &&
     parsedProteinGoal > 0 &&
+    !isProteinBelowFloor &&
     Number.isFinite(parsedFatGoal) &&
     parsedFatGoal > 0;
 
@@ -364,6 +370,11 @@ export default function ProfilScreen() {
           <GoalInputRow icon={<Target color="#6366F1" size={18} />} label="Tagesziel Kalorien" value={calorieGoal} onChangeText={setCalorieGoal} suffix="kcal" accentColor="#6366F1" />
           <GoalInputRow icon={<Wheat color="#3b82f6" size={18} />} label="Carbs" value={carbsGoal} onChangeText={handleCarbsChange} suffix="g" accentColor="#3b82f6" />
           <GoalInputRow icon={<Egg color="#ef4444" size={18} />} label="Protein" value={proteinGoal} onChangeText={handleProteinChange} suffix="g" accentColor="#ef4444" />
+          {isProteinBelowFloor && (
+            <Text className="px-1 text-xs text-red-500">
+              Mindestens {proteinFloorG}g Protein (2.0g/kg Körpergewicht) - Muskelerhalt-Untergrenze.
+            </Text>
+          )}
           <GoalInputRow icon={<Droplet color="#f59e0b" size={18} />} label="Fett" value={fatGoal} onChangeText={handleFatChange} suffix="g" accentColor="#f59e0b" />
           {dietTargetSummary && <Text className="px-1 text-xs text-text-secondary">{dietTargetSummary}</Text>}
           <Button label="Ziele speichern" onPress={handleSaveGoals} disabled={!isGoalsFormValid} className="mt-1" />

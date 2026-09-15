@@ -1,6 +1,5 @@
 import type { FoodItem, Macros, Micronutrients } from '@/types';
 import {
-  calculateMacros,
   calculateScaledNutrients,
   getBaseMicronutrientGoals,
   MICRONUTRIENT_GOALS,
@@ -41,14 +40,29 @@ export function getMacroRatioForDiet(dietType: DietType): MacroRatio {
 // its own, so it stays a plain 45/25/30 split) instead pins protein directly to body
 // weight, then fills the rest of the calorie budget with carbs/fat.
 
-/** g protein / kg bodyweight, fixed value or midpoint of the diet's ISSN/D-A-CH range. Carnivore/High-Protein instead scale by activity level - see HIGH_PROTEIN_MULTIPLIER_BY_ACTIVITY. */
+/** g protein / kg bodyweight, fixed value or midpoint of the diet's ISSN/D-A-CH range. Carnivore/High-Protein instead scale by activity level - see HIGH_PROTEIN_MULTIPLIER_BY_ACTIVITY. All values here sit at or below PROTEIN_FLOOR_G_PER_KG (2.0) except low_carb - applyProteinFloor is what actually guarantees the 2.0g/kg minimum for balanced/vegetarian/vegan/keto, this table is just each diet's own unfloored reference number. */
 export const DIET_PROTEIN_G_PER_KG: Partial<Record<DietType, number>> = {
-  balanced: 1.2,
+  balanced: 2.0, // High-Protein-Standard baseline - see PROTEIN_FLOOR_G_PER_KG
   vegetarian: 1.2,
   vegan: 1.3, // 1.2-1.4g/kg range, offsets lower plant-protein bioavailability
   keto: 1.4, // 1.3-1.5g/kg range, high enough to preserve muscle without enough protein to blunt ketosis
   low_carb: 1.8,
 };
+
+/**
+ * Hard floor: no diet's protein target may drop below 2.0g/kg bodyweight, regardless
+ * of that diet's own ISSN/D-A-CH-derived rate above. Applied via applyProteinFloor
+ * after each branch of calculateDietMacros computes its own protein value - carbs/fat
+ * are always derived AFTER this floor (from whatever calorie budget remains once
+ * floored protein is subtracted), never before, so the floor can't be silently
+ * undercut by a stale carbs/fat split computed against the lower unfloored number.
+ */
+export const PROTEIN_FLOOR_G_PER_KG = 2.0;
+
+/** Raises `proteinG` to the 2.0g/kg floor if the diet's own rate would have landed below it - a no-op for diets already at/above it (low_carb, carnivore, high_protein). */
+export function applyProteinFloor(proteinG: number, weightKg: number): number {
+  return Math.max(Math.round(weightKg * PROTEIN_FLOOR_G_PER_KG), proteinG);
+}
 
 /** g protein / kg bodyweight for diets sharing the 2.0x-2.5x range (Carnivore, High-Protein), by activity level. 2.2x (moderate) is the default. */
 export const HIGH_PROTEIN_MULTIPLIER_BY_ACTIVITY: Record<ActivityLevel, number> = {
@@ -82,7 +96,7 @@ export function calculateHighProteinMacros(targetCalories: number, weightKg: num
   if (weightKg <= 0) throw new Error('weightKg must be greater than 0');
 
   const multiplier = HIGH_PROTEIN_MULTIPLIER_BY_ACTIVITY[activityLevel] ?? HIGH_PROTEIN_DEFAULT_MULTIPLIER;
-  const protein = Math.round(weightKg * multiplier);
+  const protein = applyProteinFloor(Math.round(weightKg * multiplier), weightKg);
   const remainingCalories = Math.max(targetCalories - protein * 4, 0);
 
   const { carbs: carbShare, fat: fatShare } = DIET_MACRO_RATIOS.high_protein;
@@ -106,18 +120,29 @@ export function calculateDietMacros(dietType: DietType, targetCalories: number, 
   if (weightKg <= 0) throw new Error('weightKg must be greater than 0');
 
   switch (dietType) {
-    case 'fasting_focused':
-      return calculateMacros(targetCalories, DIET_MACRO_RATIOS.fasting_focused);
+    case 'fasting_focused': {
+      // Only diet with no weight-pinned rate of its own (see DIET_PROTEIN_G_PER_KG's
+      // comment) - starts from its plain %-of-calories protein like before, but still
+      // gets floored to 2.0g/kg like every other diet, then carbs/fat are derived from
+      // whatever calorie budget is left AFTER that floor (never before).
+      const { protein: proteinShare, carbs: carbShare, fat: fatShare } = DIET_MACRO_RATIOS.fasting_focused;
+      const protein = applyProteinFloor(Math.round((targetCalories * proteinShare) / 4), weightKg);
+      const remainingCalories = Math.max(targetCalories - protein * 4, 0);
+      const shareSum = carbShare + fatShare;
+      const carbs = Math.round((remainingCalories * (carbShare / shareSum)) / 4);
+      const fat = Math.round((remainingCalories * (fatShare / shareSum)) / 9);
+      return { protein, carbs, fat };
+    }
 
     case 'keto': {
-      const protein = Math.round(weightKg * (DIET_PROTEIN_G_PER_KG.keto ?? 1.4));
+      const protein = applyProteinFloor(Math.round(weightKg * (DIET_PROTEIN_G_PER_KG.keto ?? 1.4)), weightKg);
       const carbs = Math.min(KETO_DAILY_CARB_CAP_G, Math.round((targetCalories * KETO_DAILY_CARB_PERCENT) / 4));
       const fat = Math.round(Math.max(targetCalories - protein * 4 - carbs * 4, 0) / 9);
       return { protein, carbs, fat };
     }
 
     case 'low_carb': {
-      const protein = Math.round(weightKg * (DIET_PROTEIN_G_PER_KG.low_carb ?? 1.8));
+      const protein = applyProteinFloor(Math.round(weightKg * (DIET_PROTEIN_G_PER_KG.low_carb ?? 1.8)), weightKg);
       const carbs = Math.min(LOW_CARB_DAILY_CARB_CAP_G, Math.round((targetCalories * LOW_CARB_DAILY_CARB_PERCENT) / 4));
       const fat = Math.round(Math.max(targetCalories - protein * 4 - carbs * 4, 0) / 9);
       return { protein, carbs, fat };
@@ -125,7 +150,7 @@ export function calculateDietMacros(dietType: DietType, targetCalories: number, 
 
     case 'carnivore': {
       const multiplier = HIGH_PROTEIN_MULTIPLIER_BY_ACTIVITY[activityLevel] ?? HIGH_PROTEIN_DEFAULT_MULTIPLIER;
-      const protein = Math.round(weightKg * multiplier);
+      const protein = applyProteinFloor(Math.round(weightKg * multiplier), weightKg);
       const carbs = 0;
       const fat = Math.round(Math.max(targetCalories - protein * 4 - carbs * 4, 0) / 9);
       return { protein, carbs, fat };
@@ -138,8 +163,8 @@ export function calculateDietMacros(dietType: DietType, targetCalories: number, 
     case 'vegan':
     case 'vegetarian':
     default: {
-      const gPerKg = DIET_PROTEIN_G_PER_KG[dietType] ?? DIET_PROTEIN_G_PER_KG.balanced ?? 1.2;
-      const protein = Math.round(weightKg * gPerKg);
+      const gPerKg = DIET_PROTEIN_G_PER_KG[dietType] ?? DIET_PROTEIN_G_PER_KG.balanced ?? PROTEIN_FLOOR_G_PER_KG;
+      const protein = applyProteinFloor(Math.round(weightKg * gPerKg), weightKg);
       const remainingCalories = Math.max(targetCalories - protein * 4, 0);
       const { carbs: carbShare, fat: fatShare } = DIET_MACRO_RATIOS[dietType] ?? DIET_MACRO_RATIOS.balanced;
       const shareSum = carbShare + fatShare;
@@ -239,7 +264,7 @@ export function getMicronutrientGoalsForDiet(dietType: DietType, gender?: Gender
 export function getDietTargetSummary(dietType: DietType): string {
   switch (dietType) {
     case 'balanced':
-      return 'Ausgewogen: 50% Carbs • 1.2g/kg Protein • 30% Fett';
+      return 'Ausgewogen: 50% Carbs • 2.0g/kg Protein • 30% Fett';
     case 'keto':
       return `Keto: Max ${KETO_DAILY_CARB_CAP_G}g Carbs • High Fat • Ballaststoff-Ziel auf ${FIBER_GOAL_OVERRIDE.keto}g reduziert`;
     case 'vegan':

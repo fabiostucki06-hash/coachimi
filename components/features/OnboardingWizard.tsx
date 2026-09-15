@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
-import { calculateDietMacros } from '@/services/dietEngine';
+import { calculateDietMacros, PROTEIN_FLOOR_G_PER_KG } from '@/services/dietEngine';
 import {
   calculateBMR,
   calculateDailyTargets,
@@ -98,9 +98,12 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
   const parsedCustomCarbs = Number.parseFloat(customCarbs.replace(',', '.'));
   const parsedCustomFat = Number.parseFloat(customFat.replace(',', '.'));
   const customSum = (parsedCustomProtein || 0) + (parsedCustomCarbs || 0) + (parsedCustomFat || 0);
-  const isCustomRatioValid = macroPreset !== 'custom' || (Number.isFinite(customSum) && Math.abs(customSum - 100) <= 2);
-
-  const isStepValid = step === 'basics' ? isBasicsValid : step === 'macros' ? isCustomRatioValid : true;
+  const isCustomSumValid = Number.isFinite(customSum) && Math.abs(customSum - 100) <= 2;
+  // A custom %-of-calories split can still undercut the system-wide 2.0g/kg floor
+  // (services/dietEngine.ts's applyProteinFloor) - e.g. 20% protein at a 1600kcal
+  // target for a 100kg user is only 80g, well under the 200g floor. Resolved below
+  // once `preview` (which needs calories, computed further down) exists.
+  const customProteinFloorG = Number.isFinite(parsedWeight) && parsedWeight > 0 ? Math.round(parsedWeight * PROTEIN_FLOOR_G_PER_KG) : 0;
 
   const preview = useMemo(() => {
     if (!isBasicsValid) return null;
@@ -120,6 +123,11 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
     // rather than the pre-rounding TDEE target the two would otherwise silently disagree with.
     return { calories: caloriesFromMacros(macros), macros };
   }, [isBasicsValid, parsedAge, gender, parsedWeight, parsedHeight, activityLevel, goal, dietType, macroPreset, parsedCustomProtein, parsedCustomCarbs, parsedCustomFat]);
+
+  const isCustomProteinBelowFloor =
+    macroPreset === 'custom' && preview !== null && customProteinFloorG > 0 && preview.macros.protein < customProteinFloorG;
+  const isCustomRatioValid = macroPreset !== 'custom' || (isCustomSumValid && !isCustomProteinBelowFloor);
+  const isStepValid = step === 'basics' ? isBasicsValid : step === 'macros' ? isCustomRatioValid : true;
 
   function handleBack() {
     if (stepIndex === 0) return;
@@ -227,7 +235,12 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
                         <TextField label="Fett" keyboardType="number-pad" value={customFat} onChangeText={setCustomFat} suffix="%" />
                       </View>
                     </View>
-                    {!isCustomRatioValid && <Text className="text-xs text-red-500">Die drei Werte müssen zusammen ca. 100% ergeben.</Text>}
+                    {!isCustomSumValid && <Text className="text-xs text-red-500">Die drei Werte müssen zusammen ca. 100% ergeben.</Text>}
+                    {isCustomSumValid && isCustomProteinBelowFloor && (
+                      <Text className="text-xs text-red-500">
+                        Protein-Anteil zu niedrig - ergibt nur {preview?.macros.protein}g, mindestens {customProteinFloorG}g (2.0g/kg) nötig.
+                      </Text>
+                    )}
                   </>
                 )}
                 {preview && (
