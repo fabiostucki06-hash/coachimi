@@ -144,26 +144,35 @@ const MICRONUTRIENT_KEYS = Object.keys(MICRONUTRIENT_GOALS) as (keyof Micronutri
 /**
  * This app has no separate fructose nutrient/UI - every source (USDA, FatSecret, OFF,
  * the local `foods`/`community_barcodes` tables) that can report fructose as its own
- * value gets folded into `sugar` right at ingestion, so fructose is always tracked
- * as part of total sugar rather than silently dropped or surfaced as a new nutrient.
+ * value gets folded into `sugar` at ingestion, so fructose is always tracked as part
+ * of total sugar rather than silently dropped or surfaced as a new nutrient.
+ *
+ * IMPORTANT: `sugar` (USDA nutrient 2000 "Sugars, total including NLEA", FatSecret's/OFF's
+ * `sugar`/`sugars_100g`) is already a TOTAL that fructose is one component of - it is not
+ * a disjoint "other sugars" figure. Adding fructose on top of a present total would
+ * double-count it (e.g. an apple's ~10g total sugar would balloon to ~16g by re-adding
+ * its ~6g fructose). So: prefer the total when the source reports one, and only fall
+ * back to the fructose figure alone when the source has no total sugar value at all
+ * (better than silently dropping the only sugar figure available).
  * Used where a raw API response has sugar and fructose as two separate numbers,
  * before either is written into a FoodItem's micronutrientsPerServing.
  */
 export function foldFructoseIntoSugar(sugar: number | undefined, fructose: number | undefined): number | undefined {
-  if (sugar === undefined && fructose === undefined) return undefined;
-  return (sugar ?? 0) + (fructose ?? 0);
+  if (sugar !== undefined) return sugar;
+  return fructose;
 }
 
 /**
  * Same fold, applied to an already-assembled micronutrients object (e.g. a jsonb
  * blob read back from the local `foods`/`community_barcodes` tables) that may carry
  * an untyped `fructose` key alongside `sugar` - strips it out after merging so it
- * never leaks into the UI as a nutrient of its own.
+ * never leaks into the UI as a nutrient of its own. See foldFructoseIntoSugar for why
+ * a present `sugar` total wins outright instead of being added to `fructose`.
  */
 export function withFructoseFoldedIntoSugar(micronutrients: Micronutrients | null | undefined): Micronutrients {
   const { fructose, ...rest } = (micronutrients ?? {}) as Micronutrients & { fructose?: number };
-  if (fructose === undefined) return rest;
-  return { ...rest, sugar: (rest.sugar ?? 0) + fructose };
+  if (fructose === undefined || rest.sugar !== undefined) return rest;
+  return { ...rest, sugar: fructose };
 }
 
 /**
