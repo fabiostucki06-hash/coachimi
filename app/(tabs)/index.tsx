@@ -216,9 +216,9 @@ export default function DiaryScreen() {
                   <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                 ))}
               </View>
-            </View>
 
-            <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
+              <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
+            </View>
 
             <View className="gap-3 rounded-[28px]">
               <Text className="px-1 text-sm font-semibold text-text-secondary">Für dich</Text>

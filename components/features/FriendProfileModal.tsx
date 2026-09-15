@@ -78,7 +78,7 @@ interface FriendProfileModalProps {
 
 /**
  * Read-only day view of a friend's log, deliberately built from the same
- * pieces as the dashboard (ProgressRing, MacroBadge/NutrientTile from
+ * pieces as the dashboard (ProgressRing, MacroBadge/ExtraNutrientsSection from
  * components/features/NutrientProgress, the same rounded-[28px]/OLED-black/
  * indigo card language) instead of a simplified lookalike, so it reads as
  * "your own diary, someone else's data" rather than a separate feature.
@@ -217,7 +217,8 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
               </View>
 
               {/* Same card as the dashboard's hero: rounded-[28px] OLED surface,
-                  ProgressRing, core macro badges, then secondary nutrient tiles -
+                  ProgressRing, core macro badges, then extra macro/micro badges in
+                  the same MacroBadge form as more divider rows of the same card -
                   identical structure and components, only the data source differs. */}
               <View className="items-center gap-5 rounded-[28px] border border-surface-border bg-surface p-6 shadow-2xl shadow-primary/10 backdrop-blur-xl">
                 <View className="items-center gap-1">
@@ -248,9 +249,9 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
                     <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
                   ))}
                 </View>
-              </View>
 
-              <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
+                <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
+              </View>
 
               <View className="gap-3">
                 <Text className="px-1 text-sm font-semibold text-text-secondary">Mahlzeiten</Text>
