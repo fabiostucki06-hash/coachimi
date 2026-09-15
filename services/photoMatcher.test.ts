@@ -32,7 +32,10 @@ function makeDetected(overrides: Partial<DetectedFoodItem> = {}): DetectedFoodIt
     macrosPer100g: { carbs: 1, protein: 28, fat: 8 },
     micronutrientsPer100g: { iron: 0.6, sugar: 0, sodium: 90 },
     confidence: 0.7,
+    confidenceTier: 'medium',
     needsVerification: false,
+    hiddenFatGrams: 0,
+    nameAlternatives: [],
     ...overrides,
   };
 }

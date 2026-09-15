@@ -1,18 +1,19 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AlertTriangle, Camera, Check, ImagePlus, Minus, Plus, RotateCcw, Search, Sparkles, X } from 'lucide-react-native';
+import { AlertTriangle, Camera, Check, Droplet, ImagePlus, Minus, Plus, RotateCcw, Search, Sparkles, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { GramSlider } from '@/components/features/GramSlider';
 import { TextField } from '@/components/ui/TextField';
 import { addMealsAndSync } from '@/services/diaryActions';
 import { searchFoodHybrid } from '@/services/foodSearch';
 import { correctedValuesFromMatch, matchDetectedFoods } from '@/services/photoMatcher';
-import { analyzeFoodPhoto, type DetectedFoodItem, type VisionAnalysisResult } from '@/services/visionFoodApi';
+import { analyzeFoodPhoto, type ConfidenceTier, type DetectedFoodItem, type VisionAnalysisResult } from '@/services/visionFoodApi';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { FoodItem, MealType, Micronutrients } from '@/types';
@@ -40,6 +41,18 @@ const MAX_ANALYSIS_DIMENSION = 1024;
 const ANALYSIS_JPEG_QUALITY = 0.8;
 const GRAM_STEP = 10;
 
+/** Per-item Confidence Score badge - High/Medium/Low replaces a bare percentage so the review screen reads at a glance. */
+const CONFIDENCE_TIER_META: Record<ConfidenceTier, { label: string; color: string; bg: string }> = {
+  high: { label: 'Hohe Konfidenz', color: '#10b981', bg: 'bg-emerald-500/10' },
+  medium: { label: 'Mittlere Konfidenz', color: '#d97706', bg: 'bg-amber-500/10' },
+  low: { label: 'Niedrige Konfidenz', color: '#ef4444', bg: 'bg-red-500/10' },
+};
+
+/** Upper bound for the GramSlider - generous enough for a large single-component portion, but scales up with the item's own AI/DB estimate so a big detected weight doesn't get clipped. */
+function sliderMaxForGrams(currentGrams: number): number {
+  return Math.max(500, Math.ceil((currentGrams * 2) / 50) * 50);
+}
+
 /**
  * 'matching' while services/photoMatcher.ts's DB/USDA cross-check is still in
  * flight for this item, 'manual' for a user-added blank item (never matched
@@ -58,7 +71,10 @@ interface EditableItem {
   fatPer100g: string;
   micronutrientsPer100g: Micronutrients;
   confidence: number;
+  confidenceTier: ConfidenceTier;
   needsVerification: boolean;
+  hiddenFatGrams: number;
+  nameAlternatives: string[];
   matchStatus: MatchStatus;
   matchScore: number;
   dbCandidate: FoodItem | null;
@@ -81,7 +97,10 @@ function toEditableItem(detected: DetectedFoodItem, index: number): EditableItem
     fatPer100g: String(Math.round(detected.macrosPer100g.fat)),
     micronutrientsPer100g: detected.micronutrientsPer100g,
     confidence: detected.confidence,
+    confidenceTier: detected.confidenceTier,
     needsVerification: detected.needsVerification,
+    hiddenFatGrams: detected.hiddenFatGrams,
+    nameAlternatives: detected.nameAlternatives,
     matchStatus: 'matching',
     matchScore: 0,
     dbCandidate: null,
@@ -100,7 +119,10 @@ function makeBlankItem(): EditableItem {
     fatPer100g: '',
     micronutrientsPer100g: { fiber: 0, sugar: 0, sodium: 0, vitaminC: 0 },
     confidence: 1,
+    confidenceTier: 'high',
     needsVerification: false,
+    hiddenFatGrams: 0,
+    nameAlternatives: [],
     matchStatus: 'manual',
     matchScore: 0,
     dbCandidate: null,
@@ -296,6 +318,8 @@ export default function AnalyzeFoodScreen() {
             fatPer100g: String(Math.round(corrected.macrosPer100g.fat)),
             micronutrientsPer100g: corrected.micronutrientsPer100g,
             needsVerification: false,
+            confidenceTier: 'high',
+            nameAlternatives: [],
           };
         }
 
@@ -304,6 +328,8 @@ export default function AnalyzeFoodScreen() {
           matchStatus: 'db_verified',
           matchScore: match.score,
           dbCandidate: match.candidate,
+          confidenceTier: 'high',
+          nameAlternatives: [],
           micronutrientsPer100g: {
             ...item.micronutrientsPer100g,
             iron: match.candidate.micronutrientsPerServing.iron ?? item.micronutrientsPer100g.iron,
@@ -331,11 +357,52 @@ export default function AnalyzeFoodScreen() {
               matchScore: 1,
               dbCandidate: food,
               needsVerification: false,
+              confidenceTier: 'high',
+              nameAlternatives: [],
             }
           : item,
       ),
     );
     setPrecisionEditItemId(null);
+  }
+
+  /**
+   * Quick-confirm chip tap: the user picked one of the Vision model's own
+   * identity alternatives (e.g. "Rindfleisch" over "Schweinefleisch") for a
+   * low-confidence item. Commits the name, clears the ambiguity, and re-runs
+   * the DB-grounding match (services/photoMatcher.ts) against the confirmed
+   * name so a correction this specific can still pull real lab-tested values.
+   */
+  function confirmAlternativeName(itemId: string, name: string) {
+    const item = items.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+
+    setItems((prev) =>
+      prev.map((candidate) =>
+        candidate.id === itemId
+          ? { ...candidate, name, nameAlternatives: [], confidence: 1, confidenceTier: 'high', matchStatus: 'matching' }
+          : candidate,
+      ),
+    );
+
+    const rematchTarget: DetectedFoodItem = {
+      name,
+      cookingMethod: item.cookingMethod,
+      estimatedGrams: parseNumber(item.grams, 100),
+      caloriesPer100g: parseNumber(item.kcalPer100g, 0),
+      macrosPer100g: {
+        carbs: parseNumber(item.carbsPer100g, 0),
+        protein: parseNumber(item.proteinPer100g, 0),
+        fat: parseNumber(item.fatPer100g, 0),
+      },
+      micronutrientsPer100g: item.micronutrientsPer100g,
+      confidence: 1,
+      confidenceTier: 'high',
+      needsVerification: false,
+      hiddenFatGrams: item.hiddenFatGrams,
+      nameAlternatives: [],
+    };
+    void runMatching([rematchTarget], [itemId]);
   }
 
   async function handleTakePhoto() {
@@ -606,12 +673,37 @@ export default function AnalyzeFoodScreen() {
                     </Pressable>
                   </View>
 
-                  {item.needsVerification && (
-                    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-amber-500/10 px-2.5 py-1">
-                      <AlertTriangle color="#d97706" size={12} />
-                      <Text className="text-[11px] font-medium text-amber-400">
-                        Unsicher ({Math.round(item.confidence * 100)}% Konfidenz) – bitte prüfen
+                  <View className="flex-row flex-wrap items-center gap-1.5">
+                    <View className={`flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${CONFIDENCE_TIER_META[item.confidenceTier].bg}`}>
+                      <AlertTriangle color={CONFIDENCE_TIER_META[item.confidenceTier].color} size={12} />
+                      <Text className="text-[11px] font-medium" style={{ color: CONFIDENCE_TIER_META[item.confidenceTier].color }}>
+                        {CONFIDENCE_TIER_META[item.confidenceTier].label} ({Math.round(item.confidence * 100)}%)
                       </Text>
+                    </View>
+                    {item.hiddenFatGrams > 0 && (
+                      <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/5 px-2.5 py-1">
+                        <Droplet color="#f59e0b" size={12} />
+                        <Text className="text-[11px] font-medium text-text-secondary">
+                          Gekocht in Öl/Butter: ~{Math.round(item.hiddenFatGrams)}g Fett
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {item.nameAlternatives.length > 0 && (
+                    <View className="gap-1.5">
+                      <Text className="text-[11px] font-medium text-text-secondary">Was ist das genau?</Text>
+                      <View className="flex-row flex-wrap gap-1.5">
+                        {[item.name, ...item.nameAlternatives].map((candidateName) => (
+                          <Pressable
+                            key={candidateName}
+                            className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 active:opacity-70"
+                            onPress={() => confirmAlternativeName(item.id, candidateName)}
+                          >
+                            <Text className="text-[11px] font-semibold text-primary">{candidateName}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
                     </View>
                   )}
 
@@ -672,6 +764,11 @@ export default function AnalyzeFoodScreen() {
                     />
                   )}
 
+                  <GramSlider
+                    value={parseNumber(item.grams, 0)}
+                    max={sliderMaxForGrams(parseNumber(item.grams, 0))}
+                    onChange={(grams) => updateItem(item.id, { grams: String(grams) })}
+                  />
                   <View className="flex-row items-start gap-2">
                     <Pressable
                       className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-white/5 active:opacity-80 "

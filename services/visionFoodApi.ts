@@ -1,6 +1,8 @@
 import { parseJsonLoose } from '@/services/aiJson';
 import type { Macros, Micronutrients } from '@/types';
 
+export type ConfidenceTier = 'high' | 'medium' | 'low';
+
 export interface DetectedFoodItem {
   name: string;
   cookingMethod: string | null;
@@ -9,7 +11,12 @@ export interface DetectedFoodItem {
   macrosPer100g: Macros;
   micronutrientsPer100g: Micronutrients;
   confidence: number;
+  confidenceTier: ConfidenceTier;
   needsVerification: boolean;
+  /** Grams of cooking oil/butter/fat the model inferred from visual cues (sheen, crust, greasy plate edge) - already folded into fatPer100g/caloriesPer100g above, surfaced separately so the review UI can show it as its own "[Gekocht in Öl: ~Xg Fett]" tag instead of hiding it inside one opaque number. 0 when no hidden-fat indicator was detected. */
+  hiddenFatGrams: number;
+  /** 1-2 alternative names the model considered when the component's IDENTITY (not just its quantity) was ambiguous, e.g. ['Rindfleisch', 'Schweinefleisch'] - drives the quick-confirm chips in the review UI. Empty when identity was clear. */
+  nameAlternatives: string[];
 }
 
 export interface VisionAnalysisResult {
@@ -34,6 +41,14 @@ const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const VISION_TIMEOUT_MS = 25000;
 const LOW_CONFIDENCE_THRESHOLD = 0.55;
+const HIGH_CONFIDENCE_THRESHOLD = 0.8;
+
+/** Buckets a raw 0-1 confidence into the three tiers the review UI shows (High/Medium/Low) instead of a bare percentage - same LOW_CONFIDENCE_THRESHOLD boundary needsVerification already uses, so a "needs verification" item is always at most 'medium'. */
+export function toConfidenceTier(confidence: number): ConfidenceTier {
+  if (confidence >= HIGH_CONFIDENCE_THRESHOLD) return 'high';
+  if (confidence >= LOW_CONFIDENCE_THRESHOLD) return 'medium';
+  return 'low';
+}
 
 const ANALYSIS_SCHEMA_PROMPT = `Du bist ein Ernährungsexperte mit Fokus auf präzise Bildanalyse von Mahlzeiten.
 
@@ -42,19 +57,26 @@ Analysiere das Foto Stück für Stück, nicht als Ganzes:
    Gemüse/Salat, UND separat auch Saucen, Dressings, Dips und Beilagen, die eigene Nährwerte haben (z. B. "Hähnchenbrust",
    "Reis", "Brokkoli", "Sojasauce" statt nur "Teller mit Essen").
 2. Bestimme für jede Komponente die Zubereitungsart (z. B. gebraten, gekocht, roh, frittiert, paniert), falls erkennbar.
-3. Schätze für jede Komponente das Volumen (in ml bei Flüssigem/Suppen) bzw. Gewicht (in Gramm) anhand von Referenzgrößen
-   im Bild (Tellerdurchmesser ca. 26-28cm, Besteck, Gläser, Hände, Fingerbreiten) und rechne Volumen über die typische
-   Dichte des Lebensmittels in Gramm um.
-4. Erkenne versteckte/unsichtbare Kalorien, die auf dem Foto nicht direkt als eigenes Objekt sichtbar sind, aber die
-   Nährwerte deutlich verändern: Brat-/Frittieröl, Butter, Sahne, Dressing-Reste, Marinade. Nutze visuelle Hinweise
-   (Glanz/Schlieren auf der Oberfläche, angebratene Kruste, öliger Tellerrand, sichtbare Pfanne/Fritteuse im Bild) als
-   Indiz. Liegt eine Zubereitungsart wie "gebraten", "frittiert" oder "paniert" vor und ist kein Öl/Fett als eigene
-   Komponente gelistet, gehe von mindestens 1 Esslöffel (ca. 10-14g) Öl/Fett pro Portion aus und ergänze dafür eine
-   eigene Komponente (z. B. "Bratöl (geschätzt)", cookingMethod: null) mit niedrigerer confidence statt es zu ignorieren.
+3. Schätze für jede Komponente das Volumen (in cm³, ml bei Flüssigem/Suppen) über räumliche Referenzanker im Bild -
+   primär der Tellerdurchmesser (Standard-Esstellerdurchmesser ca. 26cm, Beilagenteller ca. 20cm), ergänzt um Besteck
+   (Gabel ca. 18-20cm, Löffel-Kopf ca. 4x7cm), Gläser, Hände/Finger als Sekundär-Maßstab. Rechne das geschätzte Volumen
+   über eine typische Dichte (g/cm³) für die jeweilige Lebensmittelgruppe in Gramm um (Richtwerte: Fleisch/Fisch gegart
+   ~1.0-1.1, gekochter Reis/Getreide ~0.9, Blattsalat/Rohgemüse ~0.3-0.4, gegartes Gemüse ~0.6-0.8, Saucen/Dips ~1.0-1.05,
+   frittierte/panierte Komponenten ~0.5-0.6 wegen Lufteinschluss) statt grob zu schätzen.
+4. Erkenne versteckte/unsichtbare Fette, die auf dem Foto nicht als eigenes Objekt sichtbar sind, aber die Nährwerte
+   deutlich verändern: Brat-/Frittieröl, Butter, Sahne, Dressing-Reste, Marinade. Nutze visuelle Hinweise (Glanz/
+   Schlieren auf der Oberfläche, angebratene Kruste, öliger Tellerrand, sichtbare Pfanne/Fritteuse im Bild) als Indiz.
+   Liegt eine Zubereitungsart wie "gebraten", "frittiert" oder "paniert" vor und zeigt das Bild eines dieser Indizien,
+   gehe von mindestens 1 Esslöffel (ca. 10-15g) verstecktem Öl/Fett pro Portion aus. Anders als bisher NICHT als eigene
+   Komponente auflisten, sondern direkt am betroffenen Item über "hiddenFatGrams" ausweisen (0, wenn kein Hinweis auf
+   verstecktes Fett vorliegt) - das Fett fließt trotzdem in die Nährwerte (fatPer100g etc.) dieser Komponente ein.
 5. Schätze für jede Komponente die Nährwerte pro 100g möglichst genau.
 6. Gib für jede Komponente eine confidence zwischen 0 und 1 an, wie sicher du dir bei Erkennung UND Mengenschätzung bist.
+   Ist die Kalorien-/Mengenschätzung unsicher, aber die IDENTITÄT der Komponente selbst mehrdeutig (z. B. Rind- vs.
+   Schweinefleisch bei einem panierten Schnitzel, Vollmilch- vs. Magerjoghurt), liste die 1-2 wahrscheinlichsten
+   Alternativnamen in "nameAlternatives" (sonst leeres Array) - NICHT verwenden für reine Mengen-Unsicherheit.
 7. Gib zusätzlich eine Gesamt-confidenceScore (0-1) für die ganze Analyse an, sowie eine kurze "reasoning" (1-2 Sätze,
-   Deutsch) die knapp erklärt, wie Mengen/versteckte Kalorien geschätzt wurden (z. B. welche Referenzgrößen benutzt
+   Deutsch) die knapp erklärt, wie Mengen/verstecktes Fett geschätzt wurden (z. B. welche Referenzgrößen benutzt
    wurden, ob Öl angenommen wurde).
 
 Falls das Bild unscharf, zu dunkel, teilweise verdeckt oder anderweitig schwer auswertbar ist: gib trotzdem deine
@@ -75,6 +97,8 @@ Antworte ausschließlich mit kompaktem JSON in genau diesem Schema, ohne weitere
       "cookingMethod": string | null,
       "estimatedGrams": number,
       "confidence": number,
+      "hiddenFatGrams": number,
+      "nameAlternatives": string[],
       "caloriesPer100g": number,
       "carbsPer100g": number,
       "proteinPer100g": number,
@@ -83,7 +107,13 @@ Antworte ausschließlich mit kompaktem JSON in genau diesem Schema, ohne weitere
       "sugarPer100g": number,
       "sodiumPer100gMg": number,
       "vitaminCPer100gMg": number,
-      "ironPer100gMg": number
+      "ironPer100gMg": number,
+      "calciumPer100gMg": number,
+      "vitaminB12Per100gMcg": number,
+      "vitaminDPer100gMcg": number,
+      "zincPer100gMg": number,
+      "magnesiumPer100gMg": number,
+      "potassiumPer100gMg": number
     }
   ]
 }`;
@@ -93,6 +123,8 @@ interface OpenAiVisionItemJson {
   cookingMethod?: string | null;
   estimatedGrams?: number;
   confidence?: number;
+  hiddenFatGrams?: number;
+  nameAlternatives?: string[];
   caloriesPer100g?: number;
   carbsPer100g?: number;
   proteinPer100g?: number;
@@ -102,6 +134,12 @@ interface OpenAiVisionItemJson {
   sodiumPer100gMg?: number;
   vitaminCPer100gMg?: number;
   ironPer100gMg?: number;
+  calciumPer100gMg?: number;
+  vitaminB12Per100gMcg?: number;
+  vitaminDPer100gMcg?: number;
+  zincPer100gMg?: number;
+  magnesiumPer100gMg?: number;
+  potassiumPer100gMg?: number;
 }
 
 interface OpenAiVisionJson {
@@ -139,9 +177,18 @@ function normalizeDetectedItem(raw: OpenAiVisionItemJson): DetectedFoodItem {
       sodium: toNonNegative(raw.sodiumPer100gMg, 0),
       vitaminC: toNonNegative(raw.vitaminCPer100gMg, 0),
       iron: toNonNegative(raw.ironPer100gMg, 0),
+      calcium: toNonNegative(raw.calciumPer100gMg, 0),
+      vitaminB12: toNonNegative(raw.vitaminB12Per100gMcg, 0),
+      vitaminD: toNonNegative(raw.vitaminDPer100gMcg, 0),
+      zinc: toNonNegative(raw.zincPer100gMg, 0),
+      magnesium: toNonNegative(raw.magnesiumPer100gMg, 0),
+      potassium: toNonNegative(raw.potassiumPer100gMg, 0),
     },
     confidence,
+    confidenceTier: toConfidenceTier(confidence),
     needsVerification: confidence < LOW_CONFIDENCE_THRESHOLD,
+    hiddenFatGrams: toNonNegative(raw.hiddenFatGrams, 0),
+    nameAlternatives: (raw.nameAlternatives ?? []).map((name) => name.trim()).filter(Boolean).slice(0, 2),
   };
 }
 
@@ -239,7 +286,10 @@ function fallbackEstimate(notice: string): VisionAnalysisResult {
         macrosPer100g: { carbs: 24, protein: 10, fat: 9 },
         micronutrientsPer100g: { fiber: 3, sugar: 5, sodium: 280, vitaminC: 4, iron: 1 },
         confidence: 0.3,
+        confidenceTier: toConfidenceTier(0.3),
         needsVerification: true,
+        hiddenFatGrams: 0,
+        nameAlternatives: [],
       },
     ],
     notice,
