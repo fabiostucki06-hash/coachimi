@@ -5,6 +5,42 @@
   "display": "standalone",
   "background_color": "#F4F6F8",
   "theme_color": "#22c55e",
+  "shortcuts": [
+    {
+      "name": "OLED Widget",
+      "short_name": "Widget",
+      "description": "Kalorien, Eisen und Zucker auf einen Blick",
+      "url": "/widget",
+      "icons": [
+        {
+          "src": "https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=5",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Barcode scannen",
+      "short_name": "Scannen",
+      "url": "/barcode-scanner",
+      "icons": [
+        {
+          "src": "https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=5",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Essen hinzufügen",
+      "short_name": "Hinzufügen",
+      "url": "/add-food",
+      "icons": [
+        {
+          "src": "https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=5",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "https://nejndycalbepcfmmuiai.supabase.co/storage/v1/object/public/assets/Logo/Coach%20imi_Logo_Kiwi.png?v=5",

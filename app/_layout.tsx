@@ -9,6 +9,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GoldBarCelebration } from '@/components/ui/GoldBarCelebration';
 import { Toast } from '@/components/ui/Toast';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import { useServiceWorker } from '@/hooks/useServiceWorker';
 import { useWidgetDeepLinks } from '@/hooks/useWidgetDeepLinks';
 import { useWidgetSync } from '@/hooks/useWidgetSync';
 import { useSyncStore } from '@/store/syncStore';
@@ -31,15 +32,17 @@ export default function RootLayout() {
   // it. So this fires exactly on "the PWA was just opened/reloaded", never on an
   // in-app Link/router.push, which is what lets it force every fresh load back to
   // the dashboard route without also cancelling normal in-app navigation to other
-  // tabs or modals.
+  // tabs or modals. /widget is exempt: it's a manifest.json `shortcuts` target
+  // meant to be opened directly (and to stay put once opened, not bounce to '/').
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    if (window.location.pathname !== '/') {
+    if (window.location.pathname !== '/' && window.location.pathname !== '/widget') {
       router.replace('/');
     }
   }, []);
 
   useAutoUpdate();
+  useServiceWorker();
   useWidgetSync();
   useWidgetDeepLinks();
 
@@ -57,6 +60,7 @@ export default function RootLayout() {
           <Stack.Screen name="meal-detail" options={{ presentation: 'modal' }} />
           <Stack.Screen name="edit-meal-entry" options={{ presentation: 'modal' }} />
           <Stack.Screen name="rewards" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="widget" options={{ animation: 'fade' }} />
         </Stack>
         <Toast />
         <GoldBarCelebration />

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 
+import { notifyDataChanged } from '@/hooks/useServiceWorker';
 import { syncWidgetData } from '@/services/widgetBridge';
 import { todayKey, useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
@@ -20,6 +21,7 @@ function pushWidgetSnapshot() {
     goldBars,
     streak,
   });
+  notifyDataChanged();
 }
 
 /**
