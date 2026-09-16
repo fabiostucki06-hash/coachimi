@@ -107,13 +107,13 @@ export default function LogQuantityScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View className="flex-1 pr-3">
-          <Text className="text-lg font-bold tracking-tight text-white" numberOfLines={1}>
+          <Text className="text-lg font-bold tracking-tight text-foreground" numberOfLines={1}>
             {foodItem.name}
           </Text>
           <Text className="text-xs text-text-secondary">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
           <X color="#A1A1AA" size={18} />
@@ -145,26 +145,26 @@ export default function LogQuantityScreen() {
           <Text className="text-sm font-semibold text-text-secondary">Nährwerte</Text>
           <View className="flex-row items-center justify-between">
             <Text className="text-sm text-text-secondary">Kalorien</Text>
-            <Text className="text-base font-bold text-white">
+            <Text className="text-base font-bold text-foreground">
               {(scaled?.calories ?? 0).toFixed(1)} kcal
             </Text>
           </View>
           {visibleNutrients.carbs && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-text-secondary">Kohlenhydrate</Text>
-              <Text className="text-sm text-white">{(scaled?.macros.carbs ?? 0).toFixed(1)} g</Text>
+              <Text className="text-sm text-foreground">{(scaled?.macros.carbs ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleNutrients.protein && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-text-secondary">Eiweiß</Text>
-              <Text className="text-sm text-white">{(scaled?.macros.protein ?? 0).toFixed(1)} g</Text>
+              <Text className="text-sm text-foreground">{(scaled?.macros.protein ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleNutrients.fat && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-text-secondary">Fett</Text>
-              <Text className="text-sm text-white">{(scaled?.macros.fat ?? 0).toFixed(1)} g</Text>
+              <Text className="text-sm text-foreground">{(scaled?.macros.fat ?? 0).toFixed(1)} g</Text>
             </View>
           )}
           {visibleMicronutrientKeys.length > 0 && scaled && (
@@ -174,7 +174,7 @@ export default function LogQuantityScreen() {
                 return (
                   <View key={key} className="flex-row items-center justify-between">
                     <Text className="text-sm text-text-secondary">{meta.label}</Text>
-                    <Text className="text-sm text-white">
+                    <Text className="text-sm text-foreground">
                       {scaled.micronutrients[key].toFixed(1)} {meta.unit}
                     </Text>
                   </View>

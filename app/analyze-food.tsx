@@ -169,17 +169,17 @@ function PrecisionSearchPanel({ onSelect, onClose }: { onSelect: (food: FoodItem
   }, [query]);
 
   return (
-    <View className="gap-2 rounded-2xl border border-surface-border bg-white/5 p-3">
+    <View className="gap-2 rounded-2xl border border-surface-border bg-overlay/5 p-3">
       <View className="flex-row items-center justify-between">
         <Text className="text-xs font-semibold text-text-secondary">Genauen DB-Eintrag suchen</Text>
-        <Pressable onPress={onClose} accessibilityLabel="Suche schließen" className="h-6 w-6 items-center justify-center rounded-full bg-white/10 active:opacity-70">
+        <Pressable onPress={onClose} accessibilityLabel="Suche schließen" className="h-6 w-6 items-center justify-center rounded-full bg-overlay/10 active:opacity-70">
           <X color="#A1A1AA" size={12} />
         </Pressable>
       </View>
       <View className="flex-row items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-2">
         <Search color="#A1A1AA" size={14} />
         <TextInput
-          className="flex-1 text-sm text-white"
+          className="flex-1 text-sm text-foreground"
           placeholder="z. B. Basmati Reis gekocht"
           placeholderTextColor="#A1A1AA"
           value={query}
@@ -194,7 +194,7 @@ function PrecisionSearchPanel({ onSelect, onClose }: { onSelect: (food: FoodItem
           className="flex-row items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2 active:opacity-80"
           onPress={() => onSelect(result)}
         >
-          <Text className="flex-1 text-xs font-medium text-white" numberOfLines={1}>
+          <Text className="flex-1 text-xs font-medium text-foreground" numberOfLines={1}>
             {result.name}
           </Text>
           <Text className="text-[11px] text-text-secondary">
@@ -553,11 +553,11 @@ export default function AnalyzeFoodScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View>
-          <Text className="text-lg font-bold tracking-tight text-white">KI-Foto-Analyse</Text>
+          <Text className="text-lg font-bold tracking-tight text-foreground">KI-Foto-Analyse</Text>
           <Text className="text-xs text-text-secondary">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
           <X color="#A1A1AA" size={18} />
@@ -566,7 +566,7 @@ export default function AnalyzeFoodScreen() {
 
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 pt-4 pb-12">
         {!imageUri ? (
-          <View className="gap-4 rounded-[28px] border border-dashed border-surface-border bg-white/5 p-5">
+          <View className="gap-4 rounded-[28px] border border-dashed border-surface-border bg-overlay/5 p-5">
             <View className="items-center gap-1.5 pb-1">
               <View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <Sparkles color="#6366F1" size={20} />
@@ -595,7 +595,7 @@ export default function AnalyzeFoodScreen() {
           </View>
         ) : (
           <View className="gap-3">
-            <View className="aspect-[4/3] w-full overflow-hidden rounded-[28px] border border-surface-border bg-white/10 ">
+            <View className="aspect-[4/3] w-full overflow-hidden rounded-[28px] border border-surface-border bg-overlay/10 ">
               <Image source={{ uri: imageUri }} className="h-full w-full" resizeMode="cover" />
             </View>
             <Pressable
@@ -668,7 +668,7 @@ export default function AnalyzeFoodScreen() {
                       )}
                     </View>
                     <Pressable
-                      className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80 "
+                      className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80 "
                       onPress={() => removeItem(item.id)}
                     >
                       <X color="#A1A1AA" size={14} />
@@ -683,7 +683,7 @@ export default function AnalyzeFoodScreen() {
                       </Text>
                     </View>
                     {item.hiddenFatGrams > 0 && (
-                      <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/5 px-2.5 py-1">
+                      <View className="flex-row items-center gap-1.5 self-start rounded-full bg-overlay/5 px-2.5 py-1">
                         <Droplet color="#f59e0b" size={12} />
                         <Text className="text-[11px] font-medium text-text-secondary">
                           Gekocht in Öl/Butter: ~{Math.round(item.hiddenFatGrams)}g Fett
@@ -710,7 +710,7 @@ export default function AnalyzeFoodScreen() {
                   )}
 
                   {item.matchStatus === 'matching' && (
-                    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/5 px-2.5 py-1">
+                    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-overlay/5 px-2.5 py-1">
                       <ActivityIndicator size="small" color="#A1A1AA" />
                       <Text className="text-[11px] font-medium text-text-secondary">DB-Abgleich läuft …</Text>
                     </View>
@@ -734,23 +734,23 @@ export default function AnalyzeFoodScreen() {
                     </View>
                   )}
                   {item.matchStatus === 'ai_estimate' && (
-                    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/5 px-2.5 py-1">
+                    <View className="flex-row items-center gap-1.5 self-start rounded-full bg-overlay/5 px-2.5 py-1">
                       <Sparkles color="#A1A1AA" size={12} />
                       <Text className="text-[11px] font-medium text-text-secondary">AI-Schätzung</Text>
                     </View>
                   )}
 
                   <View className="flex-row flex-wrap gap-1.5">
-                    <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
+                    <View className="rounded-full border border-surface-border bg-overlay/5 px-2.5 py-1">
                       <Text className="text-[11px] font-medium text-text-secondary">Eisen: {totals.iron.toFixed(1)} mg</Text>
                     </View>
-                    <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
+                    <View className="rounded-full border border-surface-border bg-overlay/5 px-2.5 py-1">
                       <Text className="text-[11px] font-medium text-text-secondary">
                         Zucker: {totals.sugar.toFixed(1)}g
                         {totals.fructose > 0 ? ` (davon Fruchtzucker: ${totals.fructose.toFixed(1)}g)` : ''}
                       </Text>
                     </View>
-                    <View className="rounded-full border border-surface-border bg-white/5 px-2.5 py-1">
+                    <View className="rounded-full border border-surface-border bg-overlay/5 px-2.5 py-1">
                       <Text className="text-[11px] font-medium text-text-secondary">Ballaststoffe: {totals.fiber.toFixed(1)} g</Text>
                     </View>
                   </View>
@@ -776,7 +776,7 @@ export default function AnalyzeFoodScreen() {
                   />
                   <View className="flex-row items-start gap-2">
                     <Pressable
-                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-white/5 active:opacity-80 "
+                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-overlay/5 active:opacity-80 "
                       onPress={() => updateItem(item.id, { grams: String(Math.max(0, parseNumber(item.grams, 0) - GRAM_STEP)) })}
                       accessibilityLabel="Menge verringern"
                     >
@@ -786,7 +786,7 @@ export default function AnalyzeFoodScreen() {
                       <TextField label="Menge" keyboardType="decimal-pad" value={item.grams} onChangeText={(text) => updateItem(item.id, { grams: text })} suffix="g" />
                     </View>
                     <Pressable
-                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-white/5 active:opacity-80 "
+                      className="mt-6 h-[52px] w-10 items-center justify-center rounded-2xl bg-overlay/5 active:opacity-80 "
                       onPress={() => updateItem(item.id, { grams: String(parseNumber(item.grams, 0) + GRAM_STEP) })}
                       accessibilityLabel="Menge erhöhen"
                     >
@@ -839,32 +839,32 @@ export default function AnalyzeFoodScreen() {
                 <Text className="text-sm font-semibold text-text-secondary">Gesamt</Text>
                 <View className="flex-row items-center justify-between">
                   <Text className="text-sm text-text-secondary">Kalorien</Text>
-                  <Text className="text-base font-bold text-white">
+                  <Text className="text-base font-bold text-foreground">
                     {Math.round(grandTotal.kcal)} kcal
                   </Text>
                 </View>
                 {visibleNutrients.carbs && (
                   <View className="flex-row items-center justify-between">
                     <Text className="text-sm text-text-secondary">{showNetCarbs ? 'Kohlenhydrate (netto)' : 'Kohlenhydrate'}</Text>
-                    <Text className="text-sm text-white">{Math.round(showNetCarbs ? grandTotal.netCarbs : grandTotal.carbs)} g</Text>
+                    <Text className="text-sm text-foreground">{Math.round(showNetCarbs ? grandTotal.netCarbs : grandTotal.carbs)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.protein && (
                   <View className="flex-row items-center justify-between">
                     <Text className="text-sm text-text-secondary">Eiweiß</Text>
-                    <Text className="text-sm text-white">{Math.round(grandTotal.protein)} g</Text>
+                    <Text className="text-sm text-foreground">{Math.round(grandTotal.protein)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.fat && (
                   <View className="flex-row items-center justify-between">
                     <Text className="text-sm text-text-secondary">Fett</Text>
-                    <Text className="text-sm text-white">{Math.round(grandTotal.fat)} g</Text>
+                    <Text className="text-sm text-foreground">{Math.round(grandTotal.fat)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.fiber && (
                   <View className="flex-row items-center justify-between">
                     <Text className="text-sm text-text-secondary">Ballaststoffe</Text>
-                    <Text className="text-sm text-white">{Math.round(grandTotal.fiber)} g</Text>
+                    <Text className="text-sm text-foreground">{Math.round(grandTotal.fiber)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.sugar && (
@@ -872,13 +872,13 @@ export default function AnalyzeFoodScreen() {
                     <Text className="text-sm text-text-secondary">
                       Zucker{grandTotal.fructose > 0 ? ` (davon Fruchtzucker: ${Math.round(grandTotal.fructose)}g)` : ''}
                     </Text>
-                    <Text className="text-sm text-white">{Math.round(grandTotal.sugar)} g</Text>
+                    <Text className="text-sm text-foreground">{Math.round(grandTotal.sugar)} g</Text>
                   </View>
                 )}
                 {visibleNutrients.iron && (
                   <View className="flex-row items-center justify-between">
                     <Text className="text-sm text-text-secondary">Eisen</Text>
-                    <Text className="text-sm text-white">{grandTotal.iron.toFixed(1)} mg</Text>
+                    <Text className="text-sm text-foreground">{grandTotal.iron.toFixed(1)} mg</Text>
                   </View>
                 )}
               </Card>

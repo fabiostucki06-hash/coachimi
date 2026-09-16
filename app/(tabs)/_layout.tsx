@@ -3,11 +3,21 @@ import { Link, Tabs, usePathname } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { ThemeToggle } from '@/components/features/ThemeToggle';
 import { Logo } from '@/components/ui/Logo';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useResolvedColorScheme } from '@/hooks/useResolvedColorScheme';
 
 const ACTIVE_COLOR = '#6366F1';
-const INACTIVE_COLOR = '#A1A1AA';
+
+// The single hardcoded `#A1A1AA` inactive-icon gray reads fine against the dark
+// palette's near-black surface, but falls to a ~2.4:1 contrast ratio against Light
+// mode's near-white one - swapping to a darker slate keeps both nav bars legible
+// without needing a full design-token pass for every literal icon `color` prop.
+function useInactiveNavColor(): string {
+  const scheme = useResolvedColorScheme();
+  return scheme === 'light' ? '#64748B' : '#A1A1AA';
+}
 
 type TabBarRenderer = NonNullable<ComponentProps<typeof Tabs>['tabBar']>;
 type TabBarProps = Parameters<TabBarRenderer>[0];
@@ -41,6 +51,7 @@ function TabIcon({ focused, children }: { focused: boolean; children: ReactNode 
 // was `pl-64`) and any screen that forgot the padding got covered outright.
 function DesktopSidebar() {
   const pathname = usePathname();
+  const inactiveColor = useInactiveNavColor();
 
   return (
     <View className="w-64 shrink-0 gap-1 border-r border-surface-border bg-surface p-4 shadow-xl shadow-black/40 backdrop-blur-xl">
@@ -51,10 +62,10 @@ function DesktopSidebar() {
           <Link key={href} href={href} asChild>
             <Pressable
               className={`flex-row items-center gap-3 rounded-2xl px-4 py-3 transition-colors duration-150 ease-in-out ${
-                isFocused ? 'bg-primary/10' : 'active:bg-white/5'
+                isFocused ? 'bg-primary/10' : 'active:bg-overlay/5'
               }`}
             >
-              <Icon color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR} size={20} />
+              <Icon color={isFocused ? ACTIVE_COLOR : inactiveColor} size={20} />
               <Text
                 className={`text-sm font-semibold ${isFocused ? 'text-primary' : 'text-text-secondary'}`}
               >
@@ -64,6 +75,11 @@ function DesktopSidebar() {
           </Link>
         );
       })}
+
+      <View className="mt-auto gap-2 border-t border-surface-border pt-3">
+        <Text className="px-1 text-xs font-semibold text-text-secondary">Darstellung</Text>
+        <ThemeToggle />
+      </View>
     </View>
   );
 }
@@ -72,11 +88,12 @@ function DesktopSidebar() {
 // `absolute` positioning is fine here — it's meant to float over scrollable
 // content, and every screen already reserves bottom padding (`pb-32`) for it.
 function MobileTabBar({ state, descriptors, navigation }: TabBarProps) {
+  const inactiveColor = useInactiveNavColor();
   const items = state.routes.map((route, index) => {
     const { options } = descriptors[route.key];
     const isFocused = state.index === index;
     const label = typeof options.title === 'string' ? options.title : route.name;
-    const color = isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+    const color = isFocused ? ACTIVE_COLOR : inactiveColor;
     const icon = options.tabBarIcon?.({ color, size: 24, focused: isFocused });
 
     function onPress() {

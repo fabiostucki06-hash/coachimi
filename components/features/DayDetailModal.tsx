@@ -46,12 +46,12 @@ function MacroGoalRow({ nutrientKey, amount, goal }: { nutrientKey: NutrientKey;
         <Icon color={color} size={13} />
         <Text className="text-xs font-medium text-text-secondary">{label}</Text>
       </View>
-      <Text className="text-sm font-semibold text-white">
+      <Text className="text-sm font-semibold text-foreground">
         {Math.round(amount)}
         {unit}
         <Text className="text-xs font-normal text-text-secondary"> /{Math.round(goal)}{unit}</Text>
       </Text>
-      <View className="h-1.5 w-full rounded-full bg-white/10">
+      <View className="h-1.5 w-full rounded-full bg-overlay/10">
         <View className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </View>
     </View>
@@ -69,7 +69,7 @@ function MealSection({ mealType, entries }: { mealType: MealType; entries: MealE
           <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
             <Icon color={ACCENT} size={16} />
           </View>
-          <Text className="text-sm font-semibold text-white">{label}</Text>
+          <Text className="text-sm font-semibold text-foreground">{label}</Text>
         </View>
         {entries.length > 0 && (
           <Text className="text-xs text-text-secondary">
@@ -85,7 +85,7 @@ function MealSection({ mealType, entries }: { mealType: MealType; entries: MealE
           {entries.map((entry) => (
             <View key={entry.id} className="flex-row items-center justify-between gap-2">
               <View className="flex-1">
-                <Text className="text-sm text-white" numberOfLines={1}>
+                <Text className="text-sm text-foreground" numberOfLines={1}>
                   {entry.foodItem.name}
                 </Text>
                 <Text className="text-xs text-text-secondary">
@@ -149,15 +149,15 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
           onPress={(e) => e.stopPropagation()}
         >
           <View className="items-center">
-            <View className="h-1.5 w-10 rounded-full bg-white/20" />
+            <View className="h-1.5 w-10 rounded-full bg-overlay/20" />
           </View>
 
           <View className="flex-row items-start justify-between">
-            <Text className="flex-1 pr-3 text-xl font-bold tracking-tight text-white">
+            <Text className="flex-1 pr-3 text-xl font-bold tracking-tight text-foreground">
               {dateLabel}
             </Text>
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-full bg-white/10 active:opacity-80"
+              className="h-9 w-9 items-center justify-center rounded-full bg-overlay/10 active:opacity-80"
               onPress={onClose}
               accessibilityLabel="Schliessen"
             >
@@ -178,18 +178,18 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
                       Cheat / Break Period {cycle ? `· ${cycle.name}` : ''}
                     </Text>
                   </View>
-                  <Text className="text-base font-bold text-white">{Math.round(totalCalories)} kcal gegessen</Text>
+                  <Text className="text-base font-bold text-foreground">{Math.round(totalCalories)} kcal gegessen</Text>
                   <Text className="text-xs text-text-secondary">Tagesziel für diesen Zeitraum ausgesetzt</Text>
                 </View>
               ) : (
                 <>
                   <View className="flex-row items-baseline justify-between">
                     <Text className="text-sm font-semibold text-text-secondary">Kalorien</Text>
-                    <Text className="text-base font-bold text-white">
+                    <Text className="text-base font-bold text-foreground">
                       {Math.round(totalCalories)} <Text className="text-xs font-normal text-text-secondary">/ {calorieGoal} kcal</Text>
                     </Text>
                   </View>
-                  <View className="h-2 w-full rounded-full bg-white/10">
+                  <View className="h-2 w-full rounded-full bg-overlay/10">
                     <View
                       className="h-2 rounded-full bg-primary"
                       style={{ width: `${calorieGoal > 0 ? Math.min(Math.round((totalCalories / calorieGoal) * 100), 100) : 0}%` }}

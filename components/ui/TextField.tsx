@@ -13,14 +13,14 @@ export function TextField({ label, suffix, className = '', onFocus, onBlur, ...i
     <View className="gap-1.5">
       {label && <Text className="text-xs font-medium tracking-tight text-text-secondary">{label}</Text>}
       <View
-        className={`flex-row items-center gap-2 rounded-2xl border bg-white/5 px-5 py-3.5 transition-shadow duration-200 ease-in-out ${
+        className={`flex-row items-center gap-2 rounded-2xl border bg-overlay/5 px-5 py-3.5 transition-shadow duration-200 ease-in-out ${
           isFocused
             ? 'border-primary shadow-[0_0_0_4px_rgba(99,102,241,0.15)]'
             : 'border-surface-border shadow-none'
         }`}
       >
         <TextInput
-          className={`flex-1 text-base text-white ${className}`}
+          className={`flex-1 text-base text-foreground ${className}`}
           placeholderTextColor="#A1A1AA"
           onFocus={(event) => {
             setIsFocused(true);

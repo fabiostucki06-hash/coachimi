@@ -89,7 +89,7 @@ function CycleRow({ cycle, onEdit, onDelete }: { cycle: DietCycle; onEdit: () =>
       <View className="flex-1 flex-row items-center gap-3">
         <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-white" numberOfLines={1}>
+          <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>
             {cycle.name}
           </Text>
           <Text className="text-xs text-text-secondary">
@@ -101,7 +101,7 @@ function CycleRow({ cycle, onEdit, onDelete }: { cycle: DietCycle; onEdit: () =>
       <View className="flex-row items-center gap-2">
         <Pressable
           onPress={onEdit}
-          className="h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80"
+          className="h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80"
           accessibilityLabel="Zyklus bearbeiten"
         >
           <Pencil color="#A1A1AA" size={14} />
@@ -171,7 +171,7 @@ export function CycleManagerBody() {
                   key={option.id}
                   onPress={() => setForm((f) => ({ ...f, type: option.id }))}
                   className={`flex-row items-center gap-1.5 rounded-full border px-4 py-2 active:opacity-80 ${
-                    isSelected ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
+                    isSelected ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-overlay/5'
                   }`}
                 >
                   <View className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
@@ -192,9 +192,9 @@ export function CycleManagerBody() {
         </View>
         {!isDateRangeValid && <Text className="text-xs text-red-500">Enddatum darf nicht vor dem Startdatum liegen.</Text>}
 
-        <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-white/5 px-5 py-3.5">
+        <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-overlay/5 px-5 py-3.5">
           <View className="flex-1 pr-3">
-            <Text className="text-sm font-semibold text-white">Tagesziele aussetzen</Text>
+            <Text className="text-sm font-semibold text-foreground">Tagesziele aussetzen</Text>
             <Text className="text-xs text-text-secondary">Für Cheat-/Break-Tage: keine Zielwarnung, stattdessen ein Badge.</Text>
           </View>
           <Switch
@@ -257,7 +257,7 @@ export function CycleManagerModal({ visible, onClose }: CycleManagerModalProps) 
       <Pressable className="flex-1 justify-end bg-surface/50" onPress={onClose}>
         <Pressable className="max-h-[88%] gap-5 rounded-t-[32px] bg-background px-6 pb-8 pt-5" onPress={(e) => e.stopPropagation()}>
           <View className="items-center">
-            <View className="h-1.5 w-10 rounded-full bg-white/20" />
+            <View className="h-1.5 w-10 rounded-full bg-overlay/20" />
           </View>
 
           <View className="flex-row items-start justify-between">
@@ -265,10 +265,10 @@ export function CycleManagerModal({ visible, onClose }: CycleManagerModalProps) 
               <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
                 <CalendarRange color="#6366F1" size={16} />
               </View>
-              <Text className="text-xl font-bold tracking-tight text-white">Diät-Zyklen</Text>
+              <Text className="text-xl font-bold tracking-tight text-foreground">Diät-Zyklen</Text>
             </View>
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-full bg-white/10 active:opacity-80"
+              className="h-9 w-9 items-center justify-center rounded-full bg-overlay/10 active:opacity-80"
               onPress={onClose}
               accessibilityLabel="Schliessen"
             >

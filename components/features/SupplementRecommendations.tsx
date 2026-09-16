@@ -26,7 +26,7 @@ export function SupplementRecommendations() {
   return (
     <Card className="gap-4">
       <View className="flex-row items-center gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5 ">
           <Pill color="#A1A1AA" size={18} />
         </View>
         <Text className="text-sm font-semibold text-text-secondary">Supplement-Empfehlungen</Text>
@@ -35,7 +35,7 @@ export function SupplementRecommendations() {
       {recommendations.map((recommendation) => (
         <View key={recommendation.id} className="gap-1 rounded-2xl border border-surface-border bg-surface p-3  ">
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm font-semibold text-white">{recommendation.title}</Text>
+            <Text className="text-sm font-semibold text-foreground">{recommendation.title}</Text>
             <Text className="text-xs font-medium text-primary">{recommendation.dose}</Text>
           </View>
           <Text className="text-xs text-text-secondary">{recommendation.reason}</Text>

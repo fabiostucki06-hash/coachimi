@@ -21,7 +21,7 @@ export function Skeleton({ className = '' }: SkeletonProps) {
 
   return (
     <Animated.View
-      className={`rounded-2xl bg-white/10 ${className}`}
+      className={`rounded-2xl bg-overlay/10 ${className}`}
       style={{ opacity: pulse }}
     />
   );

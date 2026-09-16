@@ -33,7 +33,7 @@ function WeightInput({ weightKg, onChange }: { weightKg: number; onChange: (weig
 
   return (
     <TextInput
-      className="flex-1 rounded-xl border border-surface-border bg-white/5 px-3 py-2 text-sm text-white"
+      className="flex-1 rounded-xl border border-surface-border bg-overlay/5 px-3 py-2 text-sm text-foreground"
       keyboardType="decimal-pad"
       value={text}
       placeholder="kg"
@@ -49,7 +49,7 @@ function WeightInput({ weightKg, onChange }: { weightKg: number; onChange: (weig
 function DeltaBadge({ label, pct }: { label: string; pct: number | null }) {
   if (pct === null) {
     return (
-      <View className="flex-row items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
+      <View className="flex-row items-center gap-1 rounded-full bg-overlay/5 px-2.5 py-1">
         <Text className="text-[11px] font-medium text-text-secondary">{label}: neu</Text>
       </View>
     );
@@ -60,7 +60,7 @@ function DeltaBadge({ label, pct }: { label: string; pct: number | null }) {
   const isDown = rounded < -0.05;
   const Icon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
   const color = isUp ? '#10b981' : isDown ? '#ef4444' : '#A1A1AA';
-  const bg = isUp ? 'bg-emerald-500/10' : isDown ? 'bg-red-500/10' : 'bg-white/5';
+  const bg = isUp ? 'bg-emerald-500/10' : isDown ? 'bg-red-500/10' : 'bg-overlay/5';
 
   return (
     <View className={`flex-row items-center gap-1 rounded-full px-2.5 py-1 ${bg}`}>
@@ -85,7 +85,7 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
   return (
     <View className="gap-3 border-t border-surface-border pt-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm font-semibold text-white">{exercise.name}</Text>
+        <Text className="text-sm font-semibold text-foreground">{exercise.name}</Text>
         <Text className="text-[11px] text-text-secondary">
           Ziel: {exercise.targetRepsMin}-{exercise.targetRepsMax} Wdh.
         </Text>
@@ -111,7 +111,7 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
               onChange={(weightKg) => updateSet(session.date, session.id, exercise.id, index, { weightKg })}
             />
             <TextInput
-              className="flex-1 rounded-xl border border-surface-border bg-white/5 px-3 py-2 text-sm text-white"
+              className="flex-1 rounded-xl border border-surface-border bg-overlay/5 px-3 py-2 text-sm text-foreground"
               keyboardType="number-pad"
               value={set.reps ? String(set.reps) : ''}
               placeholder="Wdh."
@@ -153,10 +153,10 @@ function SessionCard({ session }: { session: WorkoutSession }) {
           <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
             <Dumbbell color="#6366F1" size={16} />
           </View>
-          <Text className="text-sm font-semibold text-white">{session.templateName}</Text>
+          <Text className="text-sm font-semibold text-foreground">{session.templateName}</Text>
         </View>
         <Pressable
-          className="h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80"
+          className="h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80"
           onPress={() => removeSession(session.date, session.id)}
         >
           <Trash2 color="#A1A1AA" size={14} />
@@ -195,7 +195,7 @@ function AttachTemplateSheet({ date, onClose }: { date: string; onClose: () => v
             }}
           >
             <View>
-              <Text className="text-sm font-semibold text-white">{template.name}</Text>
+              <Text className="text-sm font-semibold text-foreground">{template.name}</Text>
               <Text className="text-xs text-text-secondary">{template.exercises.length} Übungen</Text>
             </View>
             <ChevronRight color="#A1A1AA" size={16} />
@@ -222,7 +222,7 @@ export default function TrainingScreen() {
   const header = (
     <View>
       <Text className="text-xs font-semibold uppercase tracking-wide text-primary">Coach imi</Text>
-      <Text className="text-3xl font-bold tracking-tight text-white">Training</Text>
+      <Text className="text-3xl font-bold tracking-tight text-foreground">Training</Text>
     </View>
   );
 

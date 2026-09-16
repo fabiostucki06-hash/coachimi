@@ -15,14 +15,17 @@ interface ButtonProps {
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary: 'bg-primary shadow-md shadow-primary/20 active:bg-[#4F46E5]',
-  secondary: 'border border-surface-border bg-white/5 backdrop-blur-md active:bg-white/10',
-  ghost: 'bg-transparent active:bg-white/5',
+  secondary: 'border border-surface-border bg-overlay/5 backdrop-blur-md active:bg-overlay/10',
+  ghost: 'bg-transparent active:bg-overlay/5',
   danger: 'bg-red-500 shadow-md shadow-red-500/20 active:bg-red-600',
 };
 
 const VARIANT_TEXT_CLASSES: Record<Variant, string> = {
+  // `primary`/`danger` sit on a solid, always-dark-enough accent color, so white
+  // stays correct in both Light and Dark mode. `secondary` sits on the themed
+  // `overlay` tint (near-white in Light mode), so its label must follow `foreground`.
   primary: 'text-white',
-  secondary: 'text-white',
+  secondary: 'text-foreground',
   ghost: 'text-primary',
   danger: 'text-white',
 };

@@ -65,7 +65,7 @@ export function PurchaseCelebration() {
         </View>
         <View className="items-center gap-0.5">
           <Text className="text-sm font-bold tracking-tight text-primary">Freigeschaltet</Text>
-          <Text className="text-center text-sm text-white" numberOfLines={2}>
+          <Text className="text-center text-sm text-foreground" numberOfLines={2}>
             {active.itemName}
           </Text>
         </View>

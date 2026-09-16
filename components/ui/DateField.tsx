@@ -40,10 +40,10 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
       {label && <Text className="text-xs font-medium tracking-tight text-text-secondary">{label}</Text>}
       <Pressable
         onPress={open}
-        className="flex-row items-center gap-2 rounded-2xl border border-surface-border bg-white/5 px-5 py-3.5"
+        className="flex-row items-center gap-2 rounded-2xl border border-surface-border bg-overlay/5 px-5 py-3.5"
       >
         <Calendar color="#6366F1" size={16} />
-        <Text className="text-base text-white">{formatDateShort(value)}</Text>
+        <Text className="text-base text-foreground">{formatDateShort(value)}</Text>
       </Pressable>
 
       {expanded && (
@@ -51,7 +51,7 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityLabel="Vorheriger Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-overlay/5"
               onPress={() => shiftMonth(-1)}
             >
               <ChevronLeft color="#A1A1AA" size={16} />
@@ -59,7 +59,7 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
             <Text className="text-xs font-semibold capitalize text-text-secondary">{monthLabel}</Text>
             <Pressable
               accessibilityLabel="Nächster Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-overlay/5"
               onPress={() => shiftMonth(1)}
             >
               <ChevronRight color="#A1A1AA" size={16} />
@@ -97,7 +97,7 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
                         isSelected
                           ? 'font-bold text-white'
                           : !cell.inMonth
-                            ? 'text-white/20'
+                            ? 'text-foreground/20'
                             : isCellToday
                               ? 'font-semibold text-primary'
                               : 'text-text-secondary'

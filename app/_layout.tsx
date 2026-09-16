@@ -11,6 +11,7 @@ import { GoldBarCelebration } from '@/components/ui/GoldBarCelebration';
 import { PurchaseCelebration } from '@/components/ui/PurchaseCelebration';
 import { Toast } from '@/components/ui/Toast';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import { useResolvedColorScheme } from '@/hooks/useResolvedColorScheme';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
 import { useWidgetDeepLinks } from '@/hooks/useWidgetDeepLinks';
 import { useWidgetSync } from '@/hooks/useWidgetSync';
@@ -28,7 +29,8 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const init = useSyncStore((state) => state.init);
   const activeTheme = useRewardStore((state) => state.activeTheme);
-  const themeVars = getThemeVars(activeTheme);
+  const resolvedColorScheme = useResolvedColorScheme();
+  const themeVars = getThemeVars(activeTheme, resolvedColorScheme);
 
   useEffect(() => {
     init();

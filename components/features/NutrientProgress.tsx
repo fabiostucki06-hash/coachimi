@@ -25,17 +25,17 @@ export function MacroBadge({
   const pct = goal > 0 ? Math.min(Math.round((amount / goal) * 100), 100) : 0;
 
   return (
-    <View className={`${className} gap-2 rounded-2xl bg-white/5 p-3`}>
+    <View className={`${className} gap-2 rounded-2xl bg-overlay/5 p-3`}>
       <View className="flex-row items-center gap-1.5">
         <Icon color={color} size={14} />
         <Text className="text-xs font-medium text-text-secondary">{label}</Text>
       </View>
-      <Text className="text-sm font-semibold text-white">
+      <Text className="text-sm font-semibold text-foreground">
         {Math.round(amount)}
         {unit}
         <Text className="text-xs font-normal text-text-secondary"> /{Math.round(goal)}{unit}</Text>
       </Text>
-      <View className="h-1.5 w-full rounded-full bg-white/10">
+      <View className="h-1.5 w-full rounded-full bg-overlay/10">
         <View className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </View>
     </View>
@@ -46,7 +46,7 @@ export function MacroBadge({
  * "Show Extra Macros/Micros" - the user-toggled secondary nutrients
  * (NutrientVisibilitySelector), rendered as more of the exact same MacroBadge
  * card the core Protein/Carbs/Fat row above already uses (same rounded-2xl
- * bg-white/5 card, progress bar, and typography), grouped by category into
+ * bg-overlay/5 card, progress bar, and typography), grouped by category into
  * more `border-t` divider rows continuing that same hero card - not a
  * separate bordered/blurred card of its own, so it reads as native rows of
  * the existing dashboard card rather than a bolted-on secondary section.

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { useSyncStore } from '@/store/syncStore';
+import { useThemeStore } from '@/store/themeStore';
 import { useUserStore } from '@/store/userStore';
 
 // The custom LoadingScreen's pulse/glow and rotating tip need real time on screen to
@@ -17,13 +18,24 @@ export default function Index() {
   const session = useSyncStore((state) => state.session);
   const sessionChecked = useSyncStore((state) => state.sessionChecked);
   const hasOnboarded = useUserStore((state) => state.hasOnboarded);
-  const [hasHydrated, setHasHydrated] = useState(useUserStore.persist.hasHydrated());
+  const [hasHydrated, setHasHydrated] = useState(
+    useUserStore.persist.hasHydrated() && useThemeStore.persist.hasHydrated(),
+  );
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const [phase, setPhase] = useState<Phase>('loading');
 
   useEffect(() => {
     if (hasHydrated) return;
-    return useUserStore.persist.onFinishHydration(() => setHasHydrated(true));
+    const unsubUser = useUserStore.persist.onFinishHydration(() => {
+      if (useThemeStore.persist.hasHydrated()) setHasHydrated(true);
+    });
+    const unsubTheme = useThemeStore.persist.onFinishHydration(() => {
+      if (useUserStore.persist.hasHydrated()) setHasHydrated(true);
+    });
+    return () => {
+      unsubUser();
+      unsubTheme();
+    };
   }, [hasHydrated]);
 
   useEffect(() => {

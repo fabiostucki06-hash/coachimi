@@ -54,7 +54,7 @@ export function TrainingScienceTips() {
         accessibilityLabel={expanded ? 'Studien-Insights einklappen' : 'Studien-Insights ausklappen'}
       >
         <View className="flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5 ">
             <BookOpen color="#A1A1AA" size={18} />
           </View>
           <Text className="text-sm font-semibold text-text-secondary">Studien-Insights</Text>
@@ -65,10 +65,10 @@ export function TrainingScienceTips() {
       {expanded && (
         <View className="gap-3 pt-3">
           {TIPS.map((tip) => (
-            <View key={tip.id} className="flex-row items-start gap-2.5 rounded-xl bg-white/5 p-2.5 ">
+            <View key={tip.id} className="flex-row items-start gap-2.5 rounded-xl bg-overlay/5 p-2.5 ">
               <tip.Icon color="#A1A1AA" size={14} />
               <View className="flex-1 gap-0.5">
-                <Text className="text-xs font-semibold text-white">{tip.title}</Text>
+                <Text className="text-xs font-semibold text-foreground">{tip.title}</Text>
                 <Text className="text-[11px] leading-4 text-text-secondary">{tip.insight}</Text>
               </View>
             </View>

@@ -121,12 +121,12 @@ function TemplateRow({ template, onEdit, onDelete }: { template: WorkoutTemplate
           <Dumbbell color="#6366F1" size={16} />
         </View>
         <View>
-          <Text className="text-sm font-semibold text-white">{template.name}</Text>
+          <Text className="text-sm font-semibold text-foreground">{template.name}</Text>
           <Text className="text-xs text-text-secondary">{template.exercises.length} Übungen</Text>
         </View>
       </View>
       <View className="flex-row items-center gap-2">
-        <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80 " onPress={onEdit}>
+        <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80 " onPress={onEdit}>
           <Pencil color="#A1A1AA" size={14} />
         </Pressable>
         <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-red-500/10 active:opacity-80" onPress={onDelete}>
@@ -150,9 +150,9 @@ export default function TrainingTemplatesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
-        <Text className="text-lg font-bold tracking-tight text-white">Trainingspläne</Text>
+        <Text className="text-lg font-bold tracking-tight text-foreground">Trainingspläne</Text>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md active:scale-95 active:opacity-80  "
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md active:scale-95 active:opacity-80  "
           onPress={() => router.back()}
         >
           <X color="#A1A1AA" size={18} />

@@ -155,7 +155,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
         <Pressable
           accessibilityLabel="Vorheriger Tag"
           hitSlop={8}
-          className={compact ? 'h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
+          className={compact ? 'h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-overlay/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-overlay/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, -1))}
         >
           <ChevronLeft color="#A1A1AA" size={compact ? 16 : 20} />
@@ -175,7 +175,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
         >
           {!compact && <Calendar color={ACCENT} size={16} />}
           <Text
-            className={compact ? 'shrink text-xs font-semibold text-white' : 'text-sm font-semibold text-white'}
+            className={compact ? 'shrink text-xs font-semibold text-foreground' : 'text-sm font-semibold text-foreground'}
             numberOfLines={1}
           >
             {formatDayLabel(selectedDate, compact)}
@@ -193,7 +193,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
         <Pressable
           accessibilityLabel="Nächster Tag"
           hitSlop={8}
-          className={compact ? 'h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-white/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-white/5'}
+          className={compact ? 'h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-overlay/5' : 'h-10 w-10 items-center justify-center rounded-full active:bg-overlay/5'}
           onPress={() => setSelectedDate(addDays(selectedDate, 1))}
         >
           <ChevronRight color="#A1A1AA" size={compact ? 16 : 20} />
@@ -219,7 +219,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
           <View className="flex-row items-center justify-between">
             <Pressable
               accessibilityLabel="Vorheriger Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-overlay/5"
               onPress={() => shiftMonth(-1)}
             >
               <ChevronLeft color="#A1A1AA" size={16} />
@@ -227,7 +227,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
             <Text className="text-xs font-semibold capitalize text-text-secondary">{monthLabel}</Text>
             <Pressable
               accessibilityLabel="Nächster Monat"
-              className="h-8 w-8 items-center justify-center rounded-full active:bg-white/5"
+              className="h-8 w-8 items-center justify-center rounded-full active:bg-overlay/5"
               onPress={() => shiftMonth(1)}
             >
               <ChevronRight color="#A1A1AA" size={16} />
@@ -264,7 +264,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
                         isSelected
                           ? 'font-bold text-white'
                           : !cell.inMonth
-                            ? 'text-white/20'
+                            ? 'text-foreground/20'
                             : isCellToday
                               ? 'font-semibold text-primary'
                               : 'text-text-secondary'

@@ -18,14 +18,14 @@ export function HealthAdvisor() {
   return (
     <Card className="gap-4">
       <View className="flex-row items-center gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5 ">
           <HeartPulse color="#A1A1AA" size={18} />
         </View>
         <Text className="text-sm font-semibold text-text-secondary">Dein KI-Gesundheitscoach</Text>
       </View>
 
       <TextInput
-        className="min-h-[70px] rounded-2xl border border-surface-border bg-white/5 px-4 py-3 text-sm text-white"
+        className="min-h-[70px] rounded-2xl border border-surface-border bg-overlay/5 px-4 py-3 text-sm text-foreground"
         placeholder="z. B. 'Wie reduziere ich Muskelkater?' oder 'Tipps für mehr Energie am Morgen'"
         placeholderTextColor="#A1A1AA"
         value={text}

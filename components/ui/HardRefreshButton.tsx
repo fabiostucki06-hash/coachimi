@@ -46,7 +46,7 @@ export function HardRefreshButton({ className, compact = false }: HardRefreshBut
       // @ts-expect-error react-native-web forwards unknown props to the DOM node; this renders a native browser tooltip.
       title="App neu laden / Cache leeren"
       hitSlop={8}
-      className={`${compact ? 'h-8 w-8' : 'h-10 w-10'} items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 ${className ?? ''}`}
+      className={`${compact ? 'h-8 w-8' : 'h-10 w-10'} items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80 ${className ?? ''}`}
     >
       <Animated.View style={{ transform: [{ rotate }] }}>
         <RefreshCw color="#A1A1AA" size={compact ? 15 : 18} />

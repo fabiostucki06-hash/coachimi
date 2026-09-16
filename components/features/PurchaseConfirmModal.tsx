@@ -29,7 +29,7 @@ export function PurchaseConfirmModal({ purchase, goldBars, onConfirm, onCancel }
                   <Coins color="#d97706" size={22} />
                 </View>
                 <View className="items-center gap-1">
-                  <Text className="text-base font-bold tracking-tight text-white">{purchase.name}</Text>
+                  <Text className="text-base font-bold tracking-tight text-foreground">{purchase.name}</Text>
                   <Text className="text-center text-xs text-text-secondary">{purchase.description}</Text>
                 </View>
               </View>

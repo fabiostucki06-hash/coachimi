@@ -44,9 +44,9 @@ function formatAmount(entry: MealEntry): string {
 function NutrientStat({ nutrientKey, value, subLabel }: { nutrientKey: NutrientKey; value: number; subLabel?: string }) {
   const { label, unit, color, Icon } = NUTRIENT_META[nutrientKey];
   return (
-    <View className="basis-[30%] items-center gap-1 rounded-2xl bg-white/5 py-3 ">
+    <View className="basis-[30%] items-center gap-1 rounded-2xl bg-overlay/5 py-3 ">
       <Icon color={color} size={16} />
-      <Text className="text-sm font-bold text-white">
+      <Text className="text-sm font-bold text-foreground">
         {Math.round(value)}
         {unit}
       </Text>
@@ -96,9 +96,9 @@ function ShareSheet({
             <Pressable
               key={friend.friendshipId}
               onPress={() => onConfirm(friend.profile.id)}
-              className="flex-row items-center justify-between rounded-2xl bg-white/5 px-4 py-3 active:opacity-80"
+              className="flex-row items-center justify-between rounded-2xl bg-overlay/5 px-4 py-3 active:opacity-80"
             >
-              <Text className="text-sm font-semibold text-white">{formatFriendLabel(friend.profile)}</Text>
+              <Text className="text-sm font-semibold text-foreground">{formatFriendLabel(friend.profile)}</Text>
               <Send color="#6366F1" size={16} />
             </Pressable>
           ))}
@@ -208,7 +208,7 @@ export default function MealDetailScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View>
-          <Text className="text-lg font-bold tracking-tight text-white">
+          <Text className="text-lg font-bold tracking-tight text-foreground">
             {MEAL_LABELS[mealType]}
           </Text>
           <Text className="text-xs text-text-secondary">
@@ -218,7 +218,7 @@ export default function MealDetailScreen() {
         <View className="flex-row items-center gap-2">
           {entries.length > 0 && (
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
+              className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
               onPress={() => setCopyTarget({ kind: 'meal' })}
               accessibilityLabel="Ganze Mahlzeit kopieren"
             >
@@ -226,7 +226,7 @@ export default function MealDetailScreen() {
             </Pressable>
           )}
           <Pressable
-            className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
+            className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
             onPress={() => router.back()}
           >
             <X color="#A1A1AA" size={18} />
@@ -255,7 +255,7 @@ export default function MealDetailScreen() {
       <View className="mx-6 mt-4 gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl  ">
         <View className="flex-row items-center justify-between">
           <Text className="text-sm font-semibold text-text-secondary">{MEAL_LABELS[mealType]} gesamt</Text>
-          <Text className="text-lg font-bold tracking-tight text-white">{Math.round(totalKcal)} kcal</Text>
+          <Text className="text-lg font-bold tracking-tight text-foreground">{Math.round(totalKcal)} kcal</Text>
         </View>
         {visibleNutrientKeys.length > 0 && (
           <View className="flex-row flex-wrap gap-2">
@@ -284,7 +284,7 @@ export default function MealDetailScreen() {
               onPress={() => router.push({ pathname: '/edit-meal-entry', params: { entryId: entry.id } })}
             >
               <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-white" numberOfLines={1}>
+                <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>
                   {entry.foodItem.name}
                 </Text>
                 <Text className="text-xs text-text-secondary">

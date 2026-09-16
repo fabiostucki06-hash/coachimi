@@ -94,13 +94,13 @@ export default function EditMealEntryScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View className="flex-1 pr-3">
-          <Text className="text-lg font-bold tracking-tight text-white" numberOfLines={1}>
+          <Text className="text-lg font-bold tracking-tight text-foreground" numberOfLines={1}>
             {entry.foodItem.name}
           </Text>
           <Text className="text-xs text-text-secondary">Eintrag bearbeiten</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
           <X color="#A1A1AA" size={18} />
@@ -156,24 +156,24 @@ export default function EditMealEntryScreen() {
           <Text className="text-sm font-semibold text-text-secondary">Nährwerte</Text>
           <View className="flex-row items-center justify-between">
             <Text className="text-sm text-text-secondary">Kalorien</Text>
-            <Text className="text-base font-bold text-white">{Math.round(computed.kcal)} kcal</Text>
+            <Text className="text-base font-bold text-foreground">{Math.round(computed.kcal)} kcal</Text>
           </View>
           {visibleNutrients.carbs && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-text-secondary">Kohlenhydrate</Text>
-              <Text className="text-sm text-white">{Math.round(computed.carbs)} g</Text>
+              <Text className="text-sm text-foreground">{Math.round(computed.carbs)} g</Text>
             </View>
           )}
           {visibleNutrients.protein && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-text-secondary">Eiweiß</Text>
-              <Text className="text-sm text-white">{Math.round(computed.protein)} g</Text>
+              <Text className="text-sm text-foreground">{Math.round(computed.protein)} g</Text>
             </View>
           )}
           {visibleNutrients.fat && (
             <View className="flex-row items-center justify-between">
               <Text className="text-sm text-text-secondary">Fett</Text>
-              <Text className="text-sm text-white">{Math.round(computed.fat)} g</Text>
+              <Text className="text-sm text-foreground">{Math.round(computed.fat)} g</Text>
             </View>
           )}
         </Card>

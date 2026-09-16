@@ -198,6 +198,9 @@ export interface Rank {
 
 export type ThemeId = 'classic' | 'pure_black' | 'deep_indigo' | 'cyberpunk_neon';
 
+/** Light/Dark/System - independent of the Coin Shop's cosmetic `ThemeId` skins above, which only ever vary the *dark* palette's tone. */
+export type ColorSchemeMode = 'light' | 'dark' | 'system';
+
 export interface ThemeItem {
   id: ThemeId;
   name: string;

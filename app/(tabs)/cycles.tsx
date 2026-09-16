@@ -12,7 +12,7 @@ export default function CyclesScreen() {
           <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
             <CalendarSync color="#6366F1" size={18} />
           </View>
-          <Text className="text-3xl font-bold tracking-tight text-white">Diät-Zyklen</Text>
+          <Text className="text-3xl font-bold tracking-tight text-foreground">Diät-Zyklen</Text>
         </View>
 
         <CycleManagerBody />

@@ -171,11 +171,11 @@ export default function MealParserScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View>
-          <Text className="text-lg font-bold tracking-tight text-white">Essen beschreiben</Text>
+          <Text className="text-lg font-bold tracking-tight text-foreground">Essen beschreiben</Text>
           <Text className="text-xs text-text-secondary">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
           <X color="#A1A1AA" size={18} />
@@ -183,7 +183,7 @@ export default function MealParserScreen() {
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 pt-4 pb-12">
-        <View className="gap-3 rounded-[28px] border border-dashed border-surface-border bg-white/5 p-5">
+        <View className="gap-3 rounded-[28px] border border-dashed border-surface-border bg-overlay/5 p-5">
           <View className="flex-row items-center gap-2">
             <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
               <Sparkles color="#6366F1" size={16} />
@@ -193,7 +193,7 @@ export default function MealParserScreen() {
             </Text>
           </View>
           <TextInput
-            className="min-h-[90px] rounded-2xl border border-surface-border bg-white/5 px-4 py-3 text-base text-white"
+            className="min-h-[90px] rounded-2xl border border-surface-border bg-overlay/5 px-4 py-3 text-base text-foreground"
             placeholder={EXAMPLE_PLACEHOLDER}
             placeholderTextColor="#A1A1AA"
             value={description}
@@ -224,7 +224,7 @@ export default function MealParserScreen() {
                   <TextField label="Lebensmittel" value={item.name} onChangeText={(text) => updateItem(item.id, { name: text })} placeholder="Name" />
                 </View>
                 <Pressable
-                  className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80 "
+                  className="mt-6 h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80 "
                   onPress={() => removeItem(item.id)}
                 >
                   <X color="#A1A1AA" size={14} />
@@ -276,7 +276,7 @@ export default function MealParserScreen() {
         {items.length > 0 && (
           <Card className="flex-row items-center justify-between">
             <Text className="text-sm font-semibold text-text-secondary">Gesamt</Text>
-            <Text className="text-base font-bold text-white">{Math.round(grandTotalKcal)} kcal</Text>
+            <Text className="text-base font-bold text-foreground">{Math.round(grandTotalKcal)} kcal</Text>
           </Card>
         )}
 

@@ -52,7 +52,7 @@ function MealCard({ mealType, entries }: { mealType: MealType; entries: MealEntr
           <Icon color={ACCENT} size={18} />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-semibold tracking-tight text-white">{label}</Text>
+          <Text className="text-sm font-semibold tracking-tight text-foreground">{label}</Text>
           <Text className="text-xs text-text-secondary" numberOfLines={1}>
             {entries.length > 0 ? `${Math.round(kcal)} kcal · ${Math.round(protein)}g P` : 'Noch keine Einträge'}
           </Text>
@@ -184,7 +184,7 @@ export default function DiaryScreen() {
                     </Text>
                   </View>
                   <Text className="text-xs text-text-secondary">{activeCycle?.name}</Text>
-                  <Text className="text-3xl font-bold tracking-tight text-white">{Math.round(totalCalories)} kcal</Text>
+                  <Text className="text-3xl font-bold tracking-tight text-foreground">{Math.round(totalCalories)} kcal</Text>
                   <Text className="text-xs text-text-secondary">Tagesziel für diesen Zeitraum ausgesetzt</Text>
                 </View>
               ) : (
@@ -194,7 +194,7 @@ export default function DiaryScreen() {
                       <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
                         {isOverLimit ? 'Über Ziel' : 'Verbleibend'}
                       </Text>
-                      <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-white'}`}>
+                      <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-foreground'}`}>
                         {isOverLimit ? `+${surplusCalories}` : remainingCalories}
                       </Text>
                       <Text className="text-xs text-text-secondary">von {calorieGoal} kcal</Text>

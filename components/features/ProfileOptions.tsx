@@ -64,7 +64,7 @@ export function ChipGroup<T extends string>({
             key={option.id}
             onPress={() => onSelect(option.id)}
             className={`rounded-full border px-4 py-2 backdrop-blur-md transition-colors duration-150 ease-in-out active:opacity-80 ${
-              isSelected ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
+              isSelected ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-overlay/5'
             }`}
           >
             <Text

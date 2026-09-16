@@ -30,7 +30,7 @@ export function CloudSyncCard() {
     <Card className="gap-3">
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5 ">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5 ">
             {status === 'syncing' ? (
               <ActivityIndicator size="small" color="#f59e0b" />
             ) : status === 'error' ? (

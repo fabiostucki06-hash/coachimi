@@ -35,7 +35,7 @@ function SignedOutPrompt() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 items-center justify-center gap-4 px-8">
         <Users color="#A1A1AA" size={40} />
-        <Text className="text-center text-lg font-semibold text-white">Freunde brauchen ein Konto</Text>
+        <Text className="text-center text-lg font-semibold text-foreground">Freunde brauchen ein Konto</Text>
         <Text className="text-center text-sm text-text-secondary">
           Melde dich an, um Freunde zu suchen, Anfragen zu verwalten und ihren Fortschritt zu sehen.
         </Text>
@@ -95,12 +95,12 @@ function ProfileSettingsCard({ myId, profile }: { myId: string; profile: FriendP
   return (
     <Card className="gap-3">
       <Text className="text-sm font-semibold text-text-secondary">Dein Profil</Text>
-      <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
+      <Pressable onPress={handleTogglePublic} className="flex-row items-center justify-between rounded-2xl bg-overlay/5 px-4 py-3">
         <View className="flex-1 pr-3">
-          <Text className="text-sm font-medium text-white">Profil öffentlich</Text>
+          <Text className="text-sm font-medium text-foreground">Profil öffentlich</Text>
           <Text className="text-xs text-text-secondary">Andere können dich per @username finden und dir eine Anfrage senden.</Text>
         </View>
-        <View className={`h-7 w-12 justify-center rounded-full px-0.5 ${isPublic ? 'items-end bg-primary' : 'items-start bg-white/10'}`}>
+        <View className={`h-7 w-12 justify-center rounded-full px-0.5 ${isPublic ? 'items-end bg-primary' : 'items-start bg-overlay/10'}`}>
           <View className="h-6 w-6 rounded-full bg-white" />
         </View>
       </Pressable>
@@ -124,12 +124,12 @@ function SearchResultRow({ profile, onSend, sent }: { profile: FriendProfile; on
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-white">{formatFriendLabel(profile)}</Text>
+        <Text className="text-sm font-semibold text-foreground">{formatFriendLabel(profile)}</Text>
       </View>
       <Pressable
         onPress={handlePress}
         disabled={sending || sent}
-        className={`h-9 w-9 items-center justify-center rounded-full ${sent ? 'bg-white/5' : 'bg-primary/10'}`}
+        className={`h-9 w-9 items-center justify-center rounded-full ${sent ? 'bg-overlay/5' : 'bg-primary/10'}`}
       >
         {sending ? <ActivityIndicator size="small" color="#6366F1" /> : sent ? <Check color="#A1A1AA" size={16} /> : <UserPlus color="#6366F1" size={16} />}
       </Pressable>
@@ -156,7 +156,7 @@ function MealShareRow({ share, onAdd, onDismiss }: { share: MealShare; onAdd: ()
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-white" numberOfLines={1}>
+        <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>
           {share.foodItem.name}
         </Text>
         <Text className="text-xs text-text-secondary">
@@ -179,7 +179,7 @@ function IncomingRequestRow({ item, onRespond }: { item: FriendListItem; onRespo
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-white">{formatFriendLabel(item.profile)}</Text>
+        <Text className="text-sm font-semibold text-foreground">{formatFriendLabel(item.profile)}</Text>
       </View>
       <View className="flex-row gap-2">
         <Pressable onPress={() => onRespond(true)} className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
@@ -318,7 +318,7 @@ export default function FriendsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
-        <Text className="text-3xl font-bold tracking-tight text-white">Freunde</Text>
+        <Text className="text-3xl font-bold tracking-tight text-foreground">Freunde</Text>
 
         <SelfUsernameHeader profile={myProfile} />
 

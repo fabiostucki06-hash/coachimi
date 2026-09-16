@@ -73,7 +73,7 @@ export default function OnboardingScreen() {
 
           <Card className="gap-4">
             <View className="items-center gap-1">
-              <Text className="text-2xl font-bold tracking-tight text-white">
+              <Text className="text-2xl font-bold tracking-tight text-foreground">
                 {mode === 'signUp' ? 'Konto erstellen' : 'Willkommen zurück bei Coach imi'}
               </Text>
               <Text className="text-center text-sm text-text-secondary">
@@ -87,7 +87,7 @@ export default function OnboardingScreen() {
               <Pressable
                 onPress={() => selectMode('signUp')}
                 className={`flex-1 items-center rounded-full border px-4 py-2 transition-colors duration-150 ease-in-out active:opacity-80 ${
-                  mode === 'signUp' ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
+                  mode === 'signUp' ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-overlay/5'
                 }`}
               >
                 <Text
@@ -99,7 +99,7 @@ export default function OnboardingScreen() {
               <Pressable
                 onPress={() => selectMode('login')}
                 className={`flex-1 items-center rounded-full border px-4 py-2 transition-colors duration-150 ease-in-out active:opacity-80 ${
-                  mode === 'login' ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
+                  mode === 'login' ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-overlay/5'
                 }`}
               >
                 <Text

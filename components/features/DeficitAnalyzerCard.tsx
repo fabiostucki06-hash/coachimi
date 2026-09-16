@@ -77,7 +77,7 @@ export function DeficitAnalyzerCard() {
   return (
     <View className="gap-3 rounded-[28px] border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl  ">
       <View className="flex-row items-center gap-3">
-        <View className={`h-9 w-9 items-center justify-center rounded-full ${deficits.length > 0 ? 'bg-amber-500/10' : 'bg-white/10'}`}>
+        <View className={`h-9 w-9 items-center justify-center rounded-full ${deficits.length > 0 ? 'bg-amber-500/10' : 'bg-overlay/10'}`}>
           <FlaskConical color={deficits.length > 0 ? '#d97706' : '#A1A1AA'} size={16} />
         </View>
         <Text className="flex-1 text-sm font-semibold text-text-secondary">

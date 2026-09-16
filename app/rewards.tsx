@@ -24,7 +24,7 @@ function TransactionRow({ transaction }: { transaction: RewardTransaction }) {
   return (
     <View className="flex-row items-center justify-between py-2">
       <View className="flex-1 pr-3">
-        <Text className="text-sm text-white" numberOfLines={1}>
+        <Text className="text-sm text-foreground" numberOfLines={1}>
           {transaction.reason}
         </Text>
         <Text className="text-xs text-text-secondary">{formatTransactionDate(transaction.date)}</Text>
@@ -74,13 +74,13 @@ function CatalogCard({
     <View className="flex-row items-center gap-3 rounded-2xl border border-surface-border bg-surface p-3.5">
       <View
         className={`h-10 w-10 items-center justify-center overflow-hidden rounded-full ${
-          equipped ? 'bg-primary/15' : isOwned ? 'bg-white/5' : affordable ? 'bg-amber-400/15' : 'bg-white/5'
+          equipped ? 'bg-primary/15' : isOwned ? 'bg-overlay/5' : affordable ? 'bg-amber-400/15' : 'bg-overlay/5'
         }`}
       >
         {preview ?? (isOwned ? <Check color={equipped ? '#818CF8' : '#A1A1AA'} size={18} /> : <Lock color={affordable ? '#d97706' : '#52525b'} size={16} />)}
       </View>
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-white">{name}</Text>
+        <Text className="text-sm font-semibold text-foreground">{name}</Text>
         <Text className="text-xs text-text-secondary" numberOfLines={2}>
           {description}
         </Text>
@@ -92,7 +92,7 @@ function CatalogCard({
           <Pressable
             onPress={onEquip}
             accessibilityLabel={`${name} ausrüsten`}
-            className="rounded-full bg-white/5 px-3 py-2 active:opacity-80"
+            className="rounded-full bg-overlay/5 px-3 py-2 active:opacity-80"
           >
             <Text className="text-xs font-bold text-text-secondary">Ausrüsten</Text>
           </Pressable>
@@ -108,7 +108,7 @@ function CatalogCard({
           disabled={!affordable}
           onPress={onBuy}
           accessibilityLabel={`${name} kaufen`}
-          className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${affordable ? 'bg-amber-400 active:opacity-80' : 'bg-white/5'}`}
+          className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${affordable ? 'bg-amber-400 active:opacity-80' : 'bg-overlay/5'}`}
         >
           <Text className="text-xs">🪙</Text>
           <Text className={`text-xs font-bold ${affordable ? 'text-amber-950' : 'text-text-secondary'}`}>{cost}</Text>
@@ -179,9 +179,9 @@ export default function RewardsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
-        <Text className="text-lg font-bold tracking-tight text-white">Münz-Shop</Text>
+        <Text className="text-lg font-bold tracking-tight text-foreground">Münz-Shop</Text>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md active:scale-95 active:opacity-80"
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md active:scale-95 active:opacity-80"
           onPress={() => router.back()}
         >
           <X color="#A1A1AA" size={18} />
@@ -194,7 +194,7 @@ export default function RewardsScreen() {
             <View className="h-11 w-11 items-center justify-center rounded-full bg-amber-400/15">
               <Coins color="#d97706" size={20} />
             </View>
-            <Text className="text-2xl font-bold tracking-tight text-white">{goldBars}</Text>
+            <Text className="text-2xl font-bold tracking-tight text-foreground">{goldBars}</Text>
             <Text className="text-xs text-text-secondary">Goldbarren</Text>
           </Card>
           <Card className="flex-1 items-center gap-1.5 py-5">
@@ -202,7 +202,7 @@ export default function RewardsScreen() {
               <Flame color="#f97316" size={20} />
             </View>
             <View className="flex-row items-center gap-1">
-              <Text className="text-2xl font-bold tracking-tight text-white">{streak}</Text>
+              <Text className="text-2xl font-bold tracking-tight text-foreground">{streak}</Text>
               {streakSavers > 0 && <ShieldCheck color="#38bdf8" size={16} />}
             </View>
             <Text className="text-xs text-text-secondary">Tage-Streak</Text>
@@ -217,7 +217,7 @@ export default function RewardsScreen() {
               <Shield color="#0ea5e9" size={18} />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-white">
+              <Text className="text-sm font-semibold text-foreground">
                 Streak-Repair · {streakSavers} / {MAX_STREAK_SAVERS}
               </Text>
               <Text className="text-xs text-text-secondary">Rettet deinen Streak automatisch bei einem verpassten Tag.</Text>
@@ -226,7 +226,7 @@ export default function RewardsScreen() {
               disabled={streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST}
               onPress={handleBuyStreakSaver}
               className={`flex-row items-center gap-1 rounded-full px-3 py-2 ${
-                streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'bg-white/5' : 'bg-amber-400 active:opacity-80'
+                streakSavers >= MAX_STREAK_SAVERS || goldBars < STREAK_SAVER_COST ? 'bg-overlay/5' : 'bg-amber-400 active:opacity-80'
               }`}
             >
               <Text className="text-xs">🪙</Text>

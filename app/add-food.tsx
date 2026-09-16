@@ -261,11 +261,11 @@ export default function AddFoodScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
         <View>
-          <Text className="text-lg font-bold tracking-tight text-white">Lebensmittel hinzufügen</Text>
+          <Text className="text-lg font-bold tracking-tight text-foreground">Lebensmittel hinzufügen</Text>
           <Text className="text-xs text-text-secondary">{MEAL_LABELS[mealType]}</Text>
         </View>
         <Pressable
-          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-white/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
+          className="h-9 w-9 items-center justify-center rounded-full border border-surface-border bg-overlay/5 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80  "
           onPress={handleClose}
         >
           <X color="#A1A1AA" size={18} />
@@ -276,7 +276,7 @@ export default function AddFoodScreen() {
         <View className="flex-row items-center gap-2 rounded-2xl border border-surface-border bg-surface px-4 py-3 shadow-sm shadow-black/20 backdrop-blur-xl transition-shadow duration-200 ease-in-out  ">
           <Search color="#A1A1AA" size={18} />
           <TextInput
-            className="flex-1 text-base text-white"
+            className="flex-1 text-base text-foreground"
             placeholder="Lebensmittel suchen..."
             placeholderTextColor="#A1A1AA"
             value={query}
@@ -290,7 +290,7 @@ export default function AddFoodScreen() {
           {loading && <ActivityIndicator size="small" color="#6366F1" />}
           {!loading && query.length > 0 && (
             <Pressable
-              className="h-6 w-6 items-center justify-center rounded-full bg-white/10 transition-colors duration-150 ease-in-out active:opacity-70 "
+              className="h-6 w-6 items-center justify-center rounded-full bg-overlay/10 transition-colors duration-150 ease-in-out active:opacity-70 "
               onPress={() => {
                 setQuery('');
                 setShowCustomForm(false);
@@ -409,7 +409,7 @@ export default function AddFoodScreen() {
             onPress={() => handleSelect(item)}
           >
             <View className="flex-1 min-w-0 gap-1 pr-3">
-              <Text className="text-sm font-semibold text-white" numberOfLines={2}>
+              <Text className="text-sm font-semibold text-foreground" numberOfLines={2}>
                 {item.name}
               </Text>
               {((item.source && SOURCE_BADGES[item.source]) || getDietCompliance(item, dietType) === 'priority') && (

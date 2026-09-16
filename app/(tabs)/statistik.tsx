@@ -35,7 +35,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-1 gap-1 rounded-2xl border border-surface-border bg-surface p-4 shadow-md shadow-black/20 backdrop-blur-xl">
       <Text className="text-xs text-text-secondary">{label}</Text>
-      <Text className="text-xl font-bold tracking-tight text-white">{value}</Text>
+      <Text className="text-xl font-bold tracking-tight text-foreground">{value}</Text>
     </View>
   );
 }
@@ -74,7 +74,7 @@ export default function StatistikScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 gap-6 px-6 pt-4 pb-32 lg:px-10 lg:pb-12">
-        <Text className="text-3xl font-bold tracking-tight text-white">Statistik</Text>
+        <Text className="text-3xl font-bold tracking-tight text-foreground">Statistik</Text>
 
         <View className="gap-6 lg:flex-row lg:items-start">
           <View className="gap-4 lg:w-72 lg:shrink-0">

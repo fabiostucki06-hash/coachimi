@@ -10,6 +10,7 @@ import { HealthAdvisor } from '@/components/features/HealthAdvisor';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
 import { PatchNotes } from '@/components/features/PatchNotes';
 import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
+import { ThemeToggle } from '@/components/features/ThemeToggle';
 import { UsernameEditor } from '@/components/features/UsernameEditor';
 import { UserAvatar } from '@/components/features/UserAvatar';
 import { ACTIVITY_OPTIONS, ChipGroup, DIET_TYPE_OPTIONS, GENDER_OPTIONS, GOAL_OPTIONS } from '@/components/features/ProfileOptions';
@@ -52,7 +53,7 @@ function GoalInputRow({
 
   return (
     <View
-      className={`flex-row items-center justify-between rounded-2xl border bg-white/5 px-5 py-3.5 transition-shadow duration-200 ease-in-out ${
+      className={`flex-row items-center justify-between rounded-2xl border bg-overlay/5 px-5 py-3.5 transition-shadow duration-200 ease-in-out ${
         isFocused
           ? 'border-primary shadow-[0_0_0_4px_rgba(99,102,241,0.15)]'
           : 'border-surface-border shadow-none'
@@ -64,7 +65,7 @@ function GoalInputRow({
       </View>
       <View className="flex-row items-center gap-1.5">
         <TextInput
-          className="w-16 text-right text-sm font-semibold text-white"
+          className="w-16 text-right text-sm font-semibold text-foreground"
           keyboardType="decimal-pad"
           value={value}
           onChangeText={onChangeText}
@@ -121,7 +122,7 @@ function WeightHistoryRow({
           </Pressable>
           <Pressable
             onPress={() => setIsEditing(false)}
-            className="h-[50px] w-[50px] items-center justify-center rounded-2xl bg-white/5"
+            className="h-[50px] w-[50px] items-center justify-center rounded-2xl bg-overlay/5"
           >
             <X color="#A1A1AA" size={18} />
           </Pressable>
@@ -133,13 +134,13 @@ function WeightHistoryRow({
   return (
     <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3">
       <View>
-        <Text className="text-sm font-semibold text-white">{entry.weightKg} kg</Text>
+        <Text className="text-sm font-semibold text-foreground">{entry.weightKg} kg</Text>
         <Text className="text-xs text-text-secondary">{formatDateShort(entry.date)}</Text>
       </View>
       <View className="flex-row items-center gap-2">
         <Pressable
           onPress={startEdit}
-          className="h-8 w-8 items-center justify-center rounded-full bg-white/5 active:opacity-80"
+          className="h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80"
           accessibilityLabel="Eintrag bearbeiten"
         >
           <Pencil color="#A1A1AA" size={14} />
@@ -324,7 +325,7 @@ export default function ProfilScreen() {
         className="flex-1"
         contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12"
       >
-        <Text className="text-3xl font-bold tracking-tight text-white">Profil</Text>
+        <Text className="text-3xl font-bold tracking-tight text-foreground">Profil</Text>
 
         <View className="items-center gap-3 rounded-[28px] border border-surface-border bg-surface py-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <Pressable onPress={handlePickAvatar} disabled={uploadingAvatar} className="relative active:opacity-80">
@@ -334,7 +335,7 @@ export default function ProfilScreen() {
             </View>
           </Pressable>
           <View className="items-center gap-1">
-            <Text className="text-lg font-semibold tracking-tight text-white">{user.name || 'Ohne Namen'}</Text>
+            <Text className="text-lg font-semibold tracking-tight text-foreground">{user.name || 'Ohne Namen'}</Text>
             {friendProfile?.username && <Text className="text-sm font-medium text-primary">@{friendProfile.username}</Text>}
             {activeRank !== 'neuling' && (
               <View className="rounded-full bg-amber-400/15 px-2.5 py-0.5">
@@ -398,7 +399,7 @@ export default function ProfilScreen() {
 
         <Card className="gap-3">
           <View className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5">
               <CalendarRange color="#A1A1AA" size={18} />
             </View>
             <View className="flex-1">
@@ -446,13 +447,18 @@ export default function ProfilScreen() {
           <NutrientVisibilitySelector visibleNutrients={user.visibleNutrients} onToggle={toggleNutrientVisibility} />
         </Card>
 
+        <Card className="gap-3">
+          <Text className="text-sm font-semibold text-text-secondary">Darstellung</Text>
+          <ThemeToggle />
+        </Card>
+
         <SupplementRecommendations />
 
         <HealthAdvisor />
 
         <Card className="gap-4">
           <View className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5">
               <Scale color="#A1A1AA" size={18} />
             </View>
             <Text className="text-sm font-semibold text-text-secondary">Gewichtsverlauf</Text>

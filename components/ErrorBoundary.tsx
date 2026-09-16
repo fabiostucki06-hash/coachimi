@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <View className="h-14 w-14 items-center justify-center rounded-full bg-red-500/10">
           <AlertTriangle color="#ef4444" size={24} />
         </View>
-        <Text className="text-center text-lg font-bold tracking-tight text-white">
+        <Text className="text-center text-lg font-bold tracking-tight text-foreground">
           Etwas ist schiefgelaufen
         </Text>
         <Text className="text-center text-sm text-text-secondary">

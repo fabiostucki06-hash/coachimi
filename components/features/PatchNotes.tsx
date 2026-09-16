@@ -17,7 +17,7 @@ export function PatchNotes() {
         accessibilityLabel={expanded ? 'Patch Notes einklappen' : 'Patch Notes ausklappen'}
       >
         <View className="flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5">
             <Sparkles color="#A1A1AA" size={18} />
           </View>
           <View>
@@ -33,7 +33,7 @@ export function PatchNotes() {
           {RELEASE_NOTES.map((release) => (
             <View key={release.version} className="gap-1.5 border-t border-surface-border pt-3">
               <View className="flex-row items-center justify-between">
-                <Text className="text-sm font-semibold text-white">Version {release.version}</Text>
+                <Text className="text-sm font-semibold text-foreground">Version {release.version}</Text>
                 <Text className="text-xs text-text-secondary">{release.date}</Text>
               </View>
               {release.highlights.map((highlight) => (

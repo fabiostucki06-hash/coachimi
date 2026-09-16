@@ -54,7 +54,7 @@ export function GramSlider({ value, min = 0, max, step = 5, onChange }: GramSlid
 
   return (
     <View ref={trackRef} onLayout={measureTrack} className="h-8 w-full justify-center" {...panResponder.panHandlers}>
-      <View className="h-1.5 w-full rounded-full bg-white/10">
+      <View className="h-1.5 w-full rounded-full bg-overlay/10">
         <View className="h-1.5 rounded-full bg-primary" style={{ width: `${pct}%` }} />
       </View>
       <View className="absolute h-5 w-5 -ml-2.5 rounded-full bg-primary shadow-md shadow-primary/40" style={{ left: `${pct}%` }} />

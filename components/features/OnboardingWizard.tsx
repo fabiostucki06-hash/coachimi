@@ -172,12 +172,12 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
             <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-primary shadow-lg shadow-primary/30">
               <Sparkles color="#ffffff" size={32} />
             </View>
-            <Text className="text-lg font-bold tracking-tight text-white">Coach imi</Text>
+            <Text className="text-lg font-bold tracking-tight text-foreground">Coach imi</Text>
             <View className="flex-row gap-2">
               {STEPS.map((s, index) => (
                 <View
                   key={s}
-                  className={`h-1.5 w-8 rounded-full ${index <= stepIndex ? 'bg-primary' : 'bg-white/10'}`}
+                  className={`h-1.5 w-8 rounded-full ${index <= stepIndex ? 'bg-primary' : 'bg-overlay/10'}`}
                 />
               ))}
             </View>
@@ -185,7 +185,7 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
 
           <Card className="gap-4">
             <View className="items-center gap-1">
-              <Text className="text-2xl font-bold tracking-tight text-white">{STEP_TITLES[step].title}</Text>
+              <Text className="text-2xl font-bold tracking-tight text-foreground">{STEP_TITLES[step].title}</Text>
               <Text className="text-center text-sm text-text-secondary">{STEP_TITLES[step].subtitle}</Text>
             </View>
 
@@ -246,7 +246,7 @@ export function OnboardingWizard({ initialName, onFinish }: OnboardingWizardProp
                 {preview && (
                   <View className="gap-1 rounded-2xl border border-primary/30 bg-primary/5 p-3">
                     <Text className="text-xs font-semibold text-primary">Dein voraussichtliches Tagesziel</Text>
-                    <Text className="text-sm text-white">
+                    <Text className="text-sm text-foreground">
                       {preview.calories} kcal · {preview.macros.protein}g Protein · {preview.macros.carbs}g Carbs · {preview.macros.fat}g Fett
                     </Text>
                   </View>

@@ -26,7 +26,7 @@ export function FriendActivityCard({ profile, activity }: { profile: FriendProfi
       <UserAvatar name={name} avatarUrl={activity?.avatarUrl} frameId={activity?.activeBorder ?? 'none'} size={44} />
       <View className="flex-1 gap-1">
         <Text className="text-xs font-semibold text-text-secondary">{formatFriendLabel(profile)}</Text>
-        <Text className="text-sm text-white">{sentence}</Text>
+        <Text className="text-sm text-foreground">{sentence}</Text>
         {activity && (activity.calorieGoal > 0 || activity.proteinGoalG > 0) ? (
           <View className="flex-row items-center gap-3">
             <Text className="text-xs text-text-secondary">

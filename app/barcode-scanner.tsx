@@ -73,11 +73,11 @@ export default function BarcodeScannerScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
-        <Text className="text-lg font-bold tracking-tight text-white">Barcode scannen</Text>
+        <Text className="text-lg font-bold tracking-tight text-foreground">Barcode scannen</Text>
         <View className="flex-row items-center gap-2">
           {permission?.granted && (
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80"
+              className="h-9 w-9 items-center justify-center rounded-full border border-overlay/20 bg-overlay/10 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80"
               onPress={() => setTorchOn((prev) => !prev)}
               accessibilityRole="button"
               accessibilityLabel="Taschenlampe umschalten"
@@ -86,7 +86,7 @@ export default function BarcodeScannerScreen() {
             </Pressable>
           )}
           <Pressable
-            className="h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80"
+            className="h-9 w-9 items-center justify-center rounded-full border border-overlay/20 bg-overlay/10 backdrop-blur-md transition-[transform,opacity] duration-150 ease-in-out active:scale-95 active:opacity-80"
             onPress={() => router.back()}
           >
             <X color="#ffffff" size={18} />
@@ -99,13 +99,13 @@ export default function BarcodeScannerScreen() {
           <ActivityIndicator color="#6366F1" />
         ) : !permission.granted ? (
           <View className="items-center gap-4">
-            <Text className="text-center text-sm text-white/80">
+            <Text className="text-center text-sm text-foreground/80">
               Kamera-Zugriff wird benötigt, um Barcodes zu scannen.
             </Text>
             <Button label="Zugriff erlauben" onPress={requestPermission} />
           </View>
         ) : (
-          <View className="aspect-square w-full overflow-hidden rounded-[28px] border border-white/10">
+          <View className="aspect-square w-full overflow-hidden rounded-[28px] border border-overlay/10">
             <CameraView
               className="flex-1"
               facing="back"
@@ -150,10 +150,10 @@ export default function BarcodeScannerScreen() {
       {notFound && (
         <>
           <Pressable className="absolute inset-0 bg-black/60" onPress={handleRetry} />
-          <View className="gap-4 rounded-t-[28px] border-t border-white/10 bg-surface px-6 pb-10 pt-6">
+          <View className="gap-4 rounded-t-[28px] border-t border-overlay/10 bg-surface px-6 pb-10 pt-6">
             <View className="items-center gap-1">
-              <Text className="text-base font-semibold text-white">Produkt nicht gefunden</Text>
-              <Text className="text-center text-sm text-white/60">
+              <Text className="text-base font-semibold text-foreground">Produkt nicht gefunden</Text>
+              <Text className="text-center text-sm text-foreground/60">
                 Möchtest du es manuell anlegen?
               </Text>
             </View>

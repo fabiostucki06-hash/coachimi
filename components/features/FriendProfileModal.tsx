@@ -42,7 +42,7 @@ function FriendMealCard({ mealType, entries }: { mealType: MealType; entries: Me
           <Icon color={ACCENT} size={18} />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-semibold tracking-tight text-white">{label}</Text>
+          <Text className="text-sm font-semibold tracking-tight text-foreground">{label}</Text>
           <Text className="text-xs text-text-secondary" numberOfLines={1}>
             {entries.length > 0 ? `${Math.round(kcal)} kcal · ${Math.round(protein)}g P` : 'Noch keine Einträge'}
           </Text>
@@ -54,7 +54,7 @@ function FriendMealCard({ mealType, entries }: { mealType: MealType; entries: Me
           {entries.map((entry) => (
             <View key={entry.id} className="flex-row items-center justify-between gap-2">
               <View className="flex-1">
-                <Text className="text-sm text-white" numberOfLines={1}>
+                <Text className="text-sm text-foreground" numberOfLines={1}>
                   {entry.foodItem.name}
                 </Text>
                 <Text className="text-xs text-text-secondary">
@@ -169,7 +169,7 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
       <Pressable className="flex-1 justify-end bg-surface/50" onPress={onClose}>
         <Pressable className="max-h-[90%] gap-5 rounded-t-[32px] bg-background px-6 pb-8 pt-5" onPress={(e) => e.stopPropagation()}>
           <View className="items-center">
-            <View className="h-1.5 w-10 rounded-full bg-white/20" />
+            <View className="h-1.5 w-10 rounded-full bg-overlay/20" />
           </View>
 
           <View className="flex-row items-start justify-between">
@@ -177,7 +177,7 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
               <Text className="text-xs font-semibold uppercase tracking-wide text-primary" numberOfLines={1}>
                 {friendLabel}
               </Text>
-              <Text className="text-2xl font-bold tracking-tight text-white">Tagebuch</Text>
+              <Text className="text-2xl font-bold tracking-tight text-foreground">Tagebuch</Text>
               <View className="mt-2 flex-row items-center gap-1.5 self-start rounded-full bg-primary/10 px-3 py-1">
                 <Lock color={ACCENT} size={12} />
                 <Text className="text-xs font-semibold text-primary" numberOfLines={1}>
@@ -186,7 +186,7 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
               </View>
             </View>
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-full bg-white/10 active:opacity-80"
+              className="h-9 w-9 items-center justify-center rounded-full bg-overlay/10 active:opacity-80"
               onPress={onClose}
               accessibilityLabel="Schliessen"
             >
@@ -203,16 +203,16 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
               <View className="flex-row items-center justify-between">
                 <Pressable
                   accessibilityLabel="Vorheriger Tag"
-                  className="h-9 w-9 items-center justify-center rounded-full active:bg-white/5"
+                  className="h-9 w-9 items-center justify-center rounded-full active:bg-overlay/5"
                   onPress={() => setDateKey((key) => addDays(key, -1))}
                 >
                   <ChevronLeft color="#A1A1AA" size={18} />
                 </Pressable>
-                <Text className="text-sm font-semibold text-white">{dateLabel}</Text>
+                <Text className="text-sm font-semibold text-foreground">{dateLabel}</Text>
                 <Pressable
                   accessibilityLabel="Nächster Tag"
                   disabled={isToday}
-                  className={`h-9 w-9 items-center justify-center rounded-full active:bg-white/5 ${isToday ? 'opacity-30' : ''}`}
+                  className={`h-9 w-9 items-center justify-center rounded-full active:bg-overlay/5 ${isToday ? 'opacity-30' : ''}`}
                   onPress={() => setDateKey((key) => addDays(key, 1))}
                 >
                   <ChevronRight color="#A1A1AA" size={18} />
@@ -229,7 +229,7 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
                     <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
                       {isOverLimit ? 'Über Ziel' : 'Verbleibend'}
                     </Text>
-                    <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-white'}`}>
+                    <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-foreground'}`}>
                       {isOverLimit ? `+${surplusCalories}` : remainingCalories}
                     </Text>
                     <Text className="text-xs text-text-secondary">von {calorieGoal} kcal</Text>
