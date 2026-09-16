@@ -1,10 +1,19 @@
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 
-import { todayKey } from '@/store/diaryStore';
+import { CYCLE_TYPE_META, getActiveCycle, getDayComplianceStatus, getEffectiveDailyTargets, type DayComplianceStatus } from '@/services/cycleEngine';
+import { useCycleStore } from '@/store/cycleStore';
+import { todayKey, useDiaryStore } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
+import { useUserStore } from '@/store/userStore';
 import { addDays, buildMonthGrid, monthYearOf, WEEKDAY_LABELS } from '@/utils/calendarDates';
+
+const COMPLIANCE_DOT_COLOR: Record<Exclude<DayComplianceStatus, 'none'>, string> = {
+  met: '#22c55e',
+  missed: '#ef4444',
+  exempt: '#A1A1AA',
+};
 
 const ACCENT = '#6366F1';
 
@@ -106,6 +115,37 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
     year: 'numeric',
   });
 
+  const cycles = useCycleStore((state) => state.cycles);
+  const entriesByDate = useDiaryStore((state) => state.entriesByDate);
+  const user = useUserStore((state) => state.user);
+
+  // Per-cell cycle range color + past-day compliance dot for the currently viewed
+  // month grid - recomputed only when the grid's own inputs actually change, not on
+  // every keystroke/selection re-render of this always-expensive-looking calendar.
+  const cellInfoByDate = useMemo(() => {
+    const today = todayKey();
+    const info = new Map<string, { rangeColor: string | null; compliance: DayComplianceStatus }>();
+    for (const cell of buildMonthGrid(viewedMonth.year, viewedMonth.month)) {
+      const activeCycle = getActiveCycle(cycles, cell.key);
+      const rangeColor = activeCycle ? CYCLE_TYPE_META[activeCycle.type].color : null;
+
+      let compliance: DayComplianceStatus = 'none';
+      if (cell.key < today) {
+        const entries = entriesByDate[cell.key] ?? [];
+        const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
+        const targets = getEffectiveDailyTargets(user, cycles, cell.key);
+        compliance = getDayComplianceStatus({
+          totalCalories,
+          hasEntries: entries.length > 0,
+          targetsSuppressed: targets.targetsSuppressed,
+          calorieGoal: targets.calorieGoal,
+        });
+      }
+      info.set(cell.key, { rangeColor, compliance });
+    }
+    return info;
+  }, [viewedMonth, cycles, entriesByDate, user]);
+
   return (
     <View
       ref={anchorRef}
@@ -206,11 +246,13 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
             {buildMonthGrid(viewedMonth.year, viewedMonth.month).map((cell) => {
               const isSelected = cell.key === selectedDate;
               const isCellToday = cell.key === todayKey();
+              const { rangeColor, compliance } = cellInfoByDate.get(cell.key) ?? { rangeColor: null, compliance: 'none' as DayComplianceStatus };
               return (
                 <Pressable
                   key={cell.key}
                   className="w-[14.28%] items-center py-1"
                   onPress={() => selectDate(cell.key)}
+                  style={rangeColor ? { backgroundColor: `${rangeColor}22` } : undefined}
                 >
                   <View
                     className={`h-8 w-8 items-center justify-center rounded-full ${
@@ -230,6 +272,11 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
                     >
                       {cell.day}
                     </Text>
+                  </View>
+                  <View className="h-1.5 items-center justify-center">
+                    {compliance !== 'none' && (
+                      <View className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COMPLIANCE_DOT_COLOR[compliance] }} />
+                    )}
                   </View>
                 </Pressable>
               );

@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
-import { Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
+import { CalendarRange, Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CloudSyncCard } from '@/components/features/CloudSyncCard';
+import { CycleManagerModal } from '@/components/features/CycleManagerModal';
 import { HealthAdvisor } from '@/components/features/HealthAdvisor';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
 import { PatchNotes } from '@/components/features/PatchNotes';
@@ -17,8 +18,11 @@ import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
+import { CYCLE_TYPE_META } from '@/services/cycleEngine';
 import { getDietTargetSummary, PROTEIN_FLOOR_G_PER_KG } from '@/services/dietEngine';
 import { AvatarUploadError, pickAndUploadAvatar } from '@/services/profile';
+import { useCycleStore } from '@/store/cycleStore';
+import { todayKey } from '@/store/diaryStore';
 import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
@@ -177,6 +181,9 @@ export default function ProfilScreen() {
   const friendProfile = useProfileStore((state) => state.profile);
   const showToast = useToastStore((state) => state.show);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const cycles = useCycleStore((state) => state.cycles);
+  const [showCycleManager, setShowCycleManager] = useState(false);
+  const activeCycle = cycles.find((cycle) => cycle.startDate <= todayKey() && todayKey() <= cycle.endDate);
 
   async function handleSignOut() {
     await signOut();
@@ -389,6 +396,28 @@ export default function ProfilScreen() {
           {dietTargetSummary && <Text className="text-xs text-text-secondary">{dietTargetSummary}</Text>}
         </Card>
 
+        <Card className="gap-3">
+          <View className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-white/5">
+              <CalendarRange color="#A1A1AA" size={18} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-text-secondary">Diät-Zyklen</Text>
+              {activeCycle ? (
+                <Text className="text-xs" style={{ color: CYCLE_TYPE_META[activeCycle.type].color }}>
+                  Aktiv: {activeCycle.name} (bis {formatDateShort(activeCycle.endDate)})
+                </Text>
+              ) : (
+                <Text className="text-xs text-text-secondary">Kein aktiver Zyklus</Text>
+              )}
+            </View>
+          </View>
+          <Text className="text-xs text-text-secondary">
+            Plane feste Phasen wie Keto oder eine Cheat-/Refeed-Periode - Tagesziele werden dafür automatisch angepasst oder ausgesetzt.
+          </Text>
+          <Button label="Zyklen verwalten" variant="secondary" icon={<CalendarRange color="#6366F1" size={18} />} onPress={() => setShowCycleManager(true)} />
+        </Card>
+
         <Card className="gap-4">
           <Text className="text-sm font-semibold text-text-secondary">Ziel wählen</Text>
           <ChipGroup options={GOAL_OPTIONS} selected={goal} onSelect={setGoal} />
@@ -497,6 +526,8 @@ export default function ProfilScreen() {
           </Pressable>
         )}
       </ScrollView>
+
+      <CycleManagerModal visible={showCycleManager} onClose={() => setShowCycleManager(false)} />
     </SafeAreaView>
   );
 }

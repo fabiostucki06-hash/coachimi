@@ -1,9 +1,11 @@
-import { X } from 'lucide-react-native';
+import { Moon, X } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { MEAL_TYPES, MEAL_TYPE_META } from '@/components/features/mealMeta';
 import { NUTRIENT_META } from '@/components/features/nutrientMeta';
+import { CYCLE_TYPE_META, getEffectiveDailyTargets } from '@/services/cycleEngine';
+import { useCycleStore } from '@/store/cycleStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useUserStore } from '@/store/userStore';
 import type { MealEntry, MealType, NutrientKey } from '@/types';
@@ -110,19 +112,25 @@ interface DayDetailModalProps {
 export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
   const entries = useDiaryStore((state) => (date ? state.entriesByDate[date] ?? EMPTY_ENTRIES : EMPTY_ENTRIES));
   const user = useUserStore((state) => state.user);
+  const cycles = useCycleStore((state) => state.cycles);
 
-  const { entriesByMealType, totalCalories, totalMacros } = useMemo(() => {
+  const { entriesByMealType, totalCalories, totalMacros, cycle, targetsSuppressed, calorieGoal, macroGoal } = useMemo(() => {
     const grouped: Record<MealType, MealEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [], drinks: [] };
     for (const entry of entries) {
       grouped[entry.mealType].push(entry);
     }
     const totals = sumMeal(entries);
+    const targets = getEffectiveDailyTargets(user, cycles, date ?? '');
     return {
       entriesByMealType: grouped,
       totalCalories: totals.kcal,
       totalMacros: { protein: totals.protein, carbs: totals.carbs, fat: totals.fat },
+      cycle: targets.cycle,
+      targetsSuppressed: targets.targetsSuppressed,
+      calorieGoal: targets.calorieGoal,
+      macroGoal: targets.macroGoal,
     };
-  }, [entries]);
+  }, [entries, user, cycles, date]);
 
   const dateLabel = date
     ? new Date(`${date}T00:00:00Z`).toLocaleDateString('de-DE', {
@@ -159,24 +167,47 @@ export function DayDetailModal({ date, onClose }: DayDetailModalProps) {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="gap-5 pb-4">
             <View className="gap-4 rounded-[24px] border border-surface-border bg-surface p-4  ">
-              <View className="flex-row items-baseline justify-between">
-                <Text className="text-sm font-semibold text-text-secondary">Kalorien</Text>
-                <Text className="text-base font-bold text-white">
-                  {Math.round(totalCalories)} <Text className="text-xs font-normal text-text-secondary">/ {user.dailyCalorieGoal} kcal</Text>
-                </Text>
-              </View>
-              <View className="h-2 w-full rounded-full bg-white/10">
-                <View
-                  className="h-2 rounded-full bg-primary"
-                  style={{ width: `${user.dailyCalorieGoal > 0 ? Math.min(Math.round((totalCalories / user.dailyCalorieGoal) * 100), 100) : 0}%` }}
-                />
-              </View>
+              {targetsSuppressed ? (
+                <View className="items-center gap-2 py-2">
+                  <View
+                    className="flex-row items-center gap-2 rounded-full px-4 py-2"
+                    style={{ backgroundColor: `${CYCLE_TYPE_META[cycle?.type ?? 'cheat'].color}26` }}
+                  >
+                    <Moon color={CYCLE_TYPE_META[cycle?.type ?? 'cheat'].color} size={16} />
+                    <Text className="text-sm font-bold" style={{ color: CYCLE_TYPE_META[cycle?.type ?? 'cheat'].color }}>
+                      Cheat / Break Period {cycle ? `· ${cycle.name}` : ''}
+                    </Text>
+                  </View>
+                  <Text className="text-base font-bold text-white">{Math.round(totalCalories)} kcal gegessen</Text>
+                  <Text className="text-xs text-text-secondary">Tagesziel für diesen Zeitraum ausgesetzt</Text>
+                </View>
+              ) : (
+                <>
+                  <View className="flex-row items-baseline justify-between">
+                    <Text className="text-sm font-semibold text-text-secondary">Kalorien</Text>
+                    <Text className="text-base font-bold text-white">
+                      {Math.round(totalCalories)} <Text className="text-xs font-normal text-text-secondary">/ {calorieGoal} kcal</Text>
+                    </Text>
+                  </View>
+                  <View className="h-2 w-full rounded-full bg-white/10">
+                    <View
+                      className="h-2 rounded-full bg-primary"
+                      style={{ width: `${calorieGoal > 0 ? Math.min(Math.round((totalCalories / calorieGoal) * 100), 100) : 0}%` }}
+                    />
+                  </View>
 
-              <View className="flex-row gap-3 border-t border-surface-border pt-4 ">
-                {CORE_MACROS.map((key) => (
-                  <MacroGoalRow key={key} nutrientKey={key} amount={totalMacros[key as keyof typeof totalMacros]} goal={user.dailyMacroGoal[key as keyof typeof user.dailyMacroGoal]} />
-                ))}
-              </View>
+                  <View className="flex-row gap-3 border-t border-surface-border pt-4 ">
+                    {CORE_MACROS.map((key) => (
+                      <MacroGoalRow key={key} nutrientKey={key} amount={totalMacros[key as keyof typeof totalMacros]} goal={macroGoal[key as keyof typeof macroGoal]} />
+                    ))}
+                  </View>
+                  {cycle && (
+                    <Text className="text-[11px]" style={{ color: CYCLE_TYPE_META[cycle.type].color }}>
+                      {CYCLE_TYPE_META[cycle.type].label}: {cycle.name}
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
 
             <View className="gap-3">

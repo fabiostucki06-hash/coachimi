@@ -109,6 +109,26 @@ export interface WeightEntry {
   weightKg: number;
 }
 
+// --- Diet Cycles ---
+
+/** 'strict' = a focused diet phase (e.g. Keto), 'cheat'/'maintenance' = a break where daily targets are typically suppressed, 'custom' = anything else. Drives both the calendar's range color (see services/cycleEngine.ts's CYCLE_TYPE_META) and the default targetDisabled suggestion in the cycle form. */
+export type DietCycleType = 'strict' | 'cheat' | 'maintenance' | 'custom';
+
+export interface DietCycle {
+  /** Client-generated UUID (see store/cycleStore.ts's makeCycleId) - stays identical between the local cache and the `diet_cycles` Supabase row so a cycle created offline never has to be re-keyed once it syncs. */
+  id: string;
+  name: string;
+  type: DietCycleType;
+  /** Date key (YYYY-MM-DD), inclusive. */
+  startDate: string;
+  /** Date key (YYYY-MM-DD), inclusive. */
+  endDate: string;
+  /** true suppresses daily target goals/warnings for every date inside this cycle (e.g. a Cheat/Refeed period) - see services/cycleEngine.ts's getEffectiveDailyTargets. */
+  targetDisabled: boolean;
+  /** Partial macro overrides (e.g. { carbs: 30 } for a Keto phase) merged over the user's normal dailyMacroGoal - null/undefined means "use the normal goal". Ignored when targetDisabled is true. */
+  targetOverrides?: Partial<Macros> | null;
+}
+
 // --- Training ---
 
 /** One exercise slot inside a reusable workout template - a rep RANGE (not a fixed count) is the point of double progression: stay in range while adding reps, then jump weight once every set hits the top. */

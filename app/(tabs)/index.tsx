@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Camera, Plus, Sparkles } from 'lucide-react-native';
+import { Camera, Moon, Plus, Sparkles } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +12,9 @@ import { ExtraNutrientsSection, MacroBadge } from '@/components/features/Nutrien
 import { NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { Header } from '@/components/Header';
 import { ProgressRing } from '@/components/ui/ProgressRing';
+import { CYCLE_TYPE_META, getEffectiveDailyTargets } from '@/services/cycleEngine';
 import { getDietTargetSummary, getMicronutrientGoalsForDiet } from '@/services/dietEngine';
+import { useCycleStore } from '@/store/cycleStore';
 import { useDiaryStore } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
 import { useUiStore } from '@/store/uiStore';
@@ -87,6 +89,7 @@ export default function DiaryScreen() {
   const date = useUiStore((state) => state.selectedDate);
   const entries = useDiaryStore((state) => state.entriesByDate[date] ?? EMPTY_ENTRIES);
   const user = useUserStore((state) => state.user);
+  const cycles = useCycleStore((state) => state.cycles);
 
   const [, forceRelativeTimeRefresh] = useState(0);
   useEffect(() => {
@@ -101,35 +104,65 @@ export default function DiaryScreen() {
   // every render (e.g. while the sync-status indicator ticks) would repeat that work
   // without `entries` or `user` actually having changed, which is where scroll-time
   // jank on this always-mounted screen tends to come from.
-  const { entriesByMealType, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, isOverLimit, surplusCalories, caloriePct, remainingMacros } = useMemo(() => {
+  const {
+    entriesByMealType,
+    totalCalories,
+    nutrientAmounts,
+    nutrientGoals,
+    secondaryNutrients,
+    remainingCalories,
+    isOverLimit,
+    surplusCalories,
+    caloriePct,
+    remainingMacros,
+    calorieGoal,
+    activeCycle,
+    targetsSuppressed,
+  } = useMemo(() => {
     const grouped: Record<MealType, MealEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [], drinks: [] };
     for (const entry of entries) {
       grouped[entry.mealType].push(entry);
     }
 
+    const { cycle, targetsSuppressed, calorieGoal, macroGoal } = getEffectiveDailyTargets(user, cycles, date);
+
     const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
     const nutrientAmounts = sumEntryNutrients(entries);
     const totalMacros: Macros = { carbs: nutrientAmounts.carbs, protein: nutrientAmounts.protein, fat: nutrientAmounts.fat };
     const nutrientGoals: Record<NutrientKey, number> = {
-      ...user.dailyMacroGoal,
+      ...macroGoal,
       ...getMicronutrientGoalsForDiet(user.dietType ?? 'balanced', user.gender),
     };
     const secondaryNutrients = NUTRIENT_ORDER.filter(
       (key) => user.visibleNutrients[key] && !CORE_MACROS.includes(key),
     );
 
-    const remainingCalories = Math.round(Math.max(user.dailyCalorieGoal - totalCalories, 0));
-    const isOverLimit = user.dailyCalorieGoal > 0 && totalCalories > user.dailyCalorieGoal;
-    const surplusCalories = Math.round(Math.max(totalCalories - user.dailyCalorieGoal, 0));
-    const caloriePct = user.dailyCalorieGoal > 0 ? totalCalories / user.dailyCalorieGoal : 0;
+    const remainingCalories = Math.round(Math.max(calorieGoal - totalCalories, 0));
+    const isOverLimit = calorieGoal > 0 && totalCalories > calorieGoal;
+    const surplusCalories = Math.round(Math.max(totalCalories - calorieGoal, 0));
+    const caloriePct = calorieGoal > 0 ? totalCalories / calorieGoal : 0;
     const remainingMacros: Macros = {
-      carbs: Math.max(user.dailyMacroGoal.carbs - totalMacros.carbs, 0),
-      protein: Math.max(user.dailyMacroGoal.protein - totalMacros.protein, 0),
-      fat: Math.max(user.dailyMacroGoal.fat - totalMacros.fat, 0),
+      carbs: Math.max(macroGoal.carbs - totalMacros.carbs, 0),
+      protein: Math.max(macroGoal.protein - totalMacros.protein, 0),
+      fat: Math.max(macroGoal.fat - totalMacros.fat, 0),
     };
 
-    return { entriesByMealType: grouped, totalCalories, nutrientAmounts, nutrientGoals, secondaryNutrients, remainingCalories, isOverLimit, surplusCalories, caloriePct, remainingMacros };
-  }, [entries, user]);
+    return {
+      entriesByMealType: grouped,
+      totalCalories,
+      nutrientAmounts,
+      nutrientGoals,
+      secondaryNutrients,
+      remainingCalories,
+      isOverLimit,
+      surplusCalories,
+      caloriePct,
+      remainingMacros,
+      calorieGoal,
+      activeCycle: cycle,
+      targetsSuppressed,
+    };
+  }, [entries, user, cycles, date]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -139,47 +172,74 @@ export default function DiaryScreen() {
         <View className="gap-6 lg:flex-row lg:items-start">
           <View className="gap-6 lg:w-[380px] lg:shrink-0">
             <View className="items-center gap-5 rounded-[28px] border border-surface-border bg-surface p-6 shadow-2xl shadow-primary/10 backdrop-blur-xl">
-              <View className="items-center gap-1">
-                <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={isOverLimit ? OVER_LIMIT_ACCENT : ACCENT}>
-                  <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                    {isOverLimit ? 'Über Ziel' : 'Verbleibend'}
-                  </Text>
-                  <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-white'}`}>
-                    {isOverLimit ? `+${surplusCalories}` : remainingCalories}
-                  </Text>
-                  <Text className="text-xs text-text-secondary">von {user.dailyCalorieGoal} kcal</Text>
-                </ProgressRing>
-                {isOverLimit ? (
-                  <View className="flex-row items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1">
-                    <Text className="text-sm font-semibold text-amber-500">
-                      +{surplusCalories} kcal über Limit
+              {targetsSuppressed ? (
+                <View className="items-center gap-3 py-4">
+                  <View
+                    className="flex-row items-center gap-2 rounded-full px-4 py-2"
+                    style={{ backgroundColor: `${CYCLE_TYPE_META[activeCycle?.type ?? 'cheat'].color}26` }}
+                  >
+                    <Moon color={CYCLE_TYPE_META[activeCycle?.type ?? 'cheat'].color} size={16} />
+                    <Text className="text-sm font-bold" style={{ color: CYCLE_TYPE_META[activeCycle?.type ?? 'cheat'].color }}>
+                      Cheat / Break Period
                     </Text>
                   </View>
-                ) : (
-                  <Text className="text-base font-semibold text-primary">
-                    {Math.round(totalCalories)} kcal gegessen
-                  </Text>
-                )}
-              </View>
+                  <Text className="text-xs text-text-secondary">{activeCycle?.name}</Text>
+                  <Text className="text-3xl font-bold tracking-tight text-white">{Math.round(totalCalories)} kcal</Text>
+                  <Text className="text-xs text-text-secondary">Tagesziel für diesen Zeitraum ausgesetzt</Text>
+                </View>
+              ) : (
+                <>
+                  <View className="items-center gap-1">
+                    <ProgressRing size={RING_SIZE} strokeWidth={RING_STROKE} progress={caloriePct} color={isOverLimit ? OVER_LIMIT_ACCENT : ACCENT}>
+                      <Text className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                        {isOverLimit ? 'Über Ziel' : 'Verbleibend'}
+                      </Text>
+                      <Text className={`text-3xl font-bold tracking-tight ${isOverLimit ? 'text-amber-500' : 'text-white'}`}>
+                        {isOverLimit ? `+${surplusCalories}` : remainingCalories}
+                      </Text>
+                      <Text className="text-xs text-text-secondary">von {calorieGoal} kcal</Text>
+                    </ProgressRing>
+                    {isOverLimit ? (
+                      <View className="flex-row items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1">
+                        <Text className="text-sm font-semibold text-amber-500">
+                          +{surplusCalories} kcal über Limit
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text className="text-base font-semibold text-primary">
+                        {Math.round(totalCalories)} kcal gegessen
+                      </Text>
+                    )}
+                  </View>
 
-              <View className="w-full flex-row gap-3 border-t border-surface-border pt-5">
-                {CORE_MACROS.map((key) => (
-                  <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
-                ))}
-              </View>
-              {dietTargetSummary && <Text className="text-[11px] text-text-secondary">{dietTargetSummary}</Text>}
+                  <View className="w-full flex-row gap-3 border-t border-surface-border pt-5">
+                    {CORE_MACROS.map((key) => (
+                      <MacroBadge key={key} nutrientKey={key} amount={nutrientAmounts[key]} goal={nutrientGoals[key]} />
+                    ))}
+                  </View>
+                  {activeCycle ? (
+                    <Text className="text-[11px]" style={{ color: CYCLE_TYPE_META[activeCycle.type].color }}>
+                      {CYCLE_TYPE_META[activeCycle.type].label}: {activeCycle.name}
+                    </Text>
+                  ) : (
+                    dietTargetSummary && <Text className="text-[11px] text-text-secondary">{dietTargetSummary}</Text>
+                  )}
 
-              <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
+                  <ExtraNutrientsSection nutrientKeys={secondaryNutrients} amounts={nutrientAmounts} goals={nutrientGoals} />
+                </>
+              )}
             </View>
 
-            <View className="gap-3 rounded-[28px]">
-              <Text className="px-1 text-sm font-semibold text-text-secondary">Für dich</Text>
-              <AiRecommendationCard
-                remainingCalories={remainingCalories}
-                remainingMacros={remainingMacros}
-                visibleNutrients={user.visibleNutrients}
-              />
-            </View>
+            {!targetsSuppressed && (
+              <View className="gap-3 rounded-[28px]">
+                <Text className="px-1 text-sm font-semibold text-text-secondary">Für dich</Text>
+                <AiRecommendationCard
+                  remainingCalories={remainingCalories}
+                  remainingMacros={remainingMacros}
+                  visibleNutrients={user.visibleNutrients}
+                />
+              </View>
+            )}
           </View>
 
           <View className="flex-1 gap-3">
