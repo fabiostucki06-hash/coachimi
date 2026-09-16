@@ -405,34 +405,36 @@ export default function AddFoodScreen() {
         }
         renderItem={({ item }) => (
           <Pressable
-            className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3 shadow-sm shadow-black/20 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80  "
+            className="flex-row items-start justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3 shadow-sm shadow-black/20 backdrop-blur-xl transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80  "
             onPress={() => handleSelect(item)}
           >
-            <View className="flex-1 pr-3">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-sm font-semibold text-white" numberOfLines={1}>
-                  {item.name}
-                </Text>
-                {item.source && SOURCE_BADGES[item.source] && (
-                  <View className="rounded-full bg-primary/10 px-2 py-0.5">
-                    <Text className="text-[10px] font-medium text-primary">
-                      {SOURCE_BADGES[item.source]}
-                    </Text>
-                  </View>
-                )}
-                {getDietCompliance(item, dietType) === 'priority' && (
-                  <View className="rounded-full bg-emerald-500/10 px-2 py-0.5">
-                    <Text className="text-[10px] font-medium text-emerald-400">{DIET_PRIORITY_BADGE}</Text>
-                  </View>
-                )}
-              </View>
+            <View className="flex-1 min-w-0 gap-1 pr-3">
+              <Text className="text-sm font-semibold text-white" numberOfLines={2}>
+                {item.name}
+              </Text>
+              {((item.source && SOURCE_BADGES[item.source]) || getDietCompliance(item, dietType) === 'priority') && (
+                <View className="flex-row flex-wrap items-center gap-2">
+                  {item.source && SOURCE_BADGES[item.source] && (
+                    <View className="rounded-full bg-primary/10 px-2 py-0.5">
+                      <Text className="text-[10px] font-medium text-primary">
+                        {SOURCE_BADGES[item.source]}
+                      </Text>
+                    </View>
+                  )}
+                  {getDietCompliance(item, dietType) === 'priority' && (
+                    <View className="rounded-full bg-emerald-500/10 px-2 py-0.5">
+                      <Text className="text-[10px] font-medium text-emerald-400">{DIET_PRIORITY_BADGE}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
               {item.brand && (
                 <Text className="text-xs text-text-secondary" numberOfLines={1}>
                   {item.brand}
                 </Text>
               )}
             </View>
-            <Text className="text-sm text-text-secondary">
+            <Text className="shrink-0 text-sm text-text-secondary" numberOfLines={1}>
               {item.caloriesPerServing} kcal / {item.servingSize}{item.servingUnit}
             </Text>
           </Pressable>
