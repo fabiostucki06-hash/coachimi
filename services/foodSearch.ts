@@ -82,9 +82,16 @@ function rowToFoodItem(row: FoodRow): FoodItem {
   };
 }
 
-/** Tier 1 - `ILIKE '%term%'` against the trigram-indexed `foods.name` column. Best-effort: any failure (offline, table not migrated yet) just falls through to Tier 2. */
+/**
+ * Tier 1 - the local `foods` table, our primary/source-of-truth database.
+ * Uses the `search_foods_fuzzy` RPC (pg_trgm similarity + ILIKE fallback, see
+ * supabase/migrations/0008_foods_fuzzy_search.sql) so a typo like "Koka Kola"
+ * still finds an existing "Coca-Cola" row instead of only exact substrings.
+ * Best-effort: any failure (offline, RPC not migrated yet) just falls through
+ * to Tier 2 (external APIs) rather than failing the whole search.
+ */
 async function searchLocal(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
-  const builder = supabase.from(FOODS_TABLE).select('*').ilike('name', `%${query}%`).limit(MAX_RESULTS);
+  const builder = supabase.rpc('search_foods_fuzzy', { search_query: query, match_limit: MAX_RESULTS });
   const { data, error } = await (signal ? builder.abortSignal(signal) : builder);
   if (error || !data) return [];
   return (data as FoodRow[]).map(rowToFoodItem);
@@ -387,6 +394,16 @@ async function searchUsdaTranslated(query: string, signal?: AbortSignal): Promis
  * migrated) must never block the user's own food log. Skips 'community' picks
  * (foodApi.ts's OFF cascade already caches those into `community_barcodes`
  * itself) and 'local' (already cached by definition).
+ *
+ * Purely additive, never destructive: the upsert's conflict target is the
+ * `(source, external_id)` unique index (see supabase/migrations/0006), and
+ * `item.source` here is always 'fatsecret' | 'usda' | 'off' - never 'local'.
+ * A hand-entered/seeded row (`source = 'local'`, `external_id = null`) can
+ * therefore never be the conflict target, so this can only ever insert a new
+ * row or refresh a previously auto-cached external one - it can never
+ * overwrite or delete an existing local/custom entry. (User-created custom
+ * foods aren't even in this table - they live in AsyncStorage, see
+ * store/customFoodStore.ts.)
  */
 export async function cacheFoodItem(item: FoodItem): Promise<void> {
   if (item.source !== 'fatsecret' && item.source !== 'usda' && item.source !== 'off') return;

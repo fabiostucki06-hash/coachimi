@@ -2,16 +2,18 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
-// Tier 1 (`foods` table) always comes back empty here, so every test exercises
-// escalation past it. `mockUpsert` lets tests assert exactly what
-// cacheFoodItem persists back into `foods`.
+// Tier 1 (`foods` table, via the search_foods_fuzzy RPC) always comes back
+// empty by default, so every test exercises escalation past it unless a
+// specific test overrides `mockRpc` for that call. `mockUpsert` lets tests
+// assert exactly what cacheFoodItem persists back into `foods`.
 const mockUpsert = jest.fn().mockResolvedValue({ error: null });
+const mockRpc = jest.fn().mockResolvedValue({ data: [], error: null });
 jest.mock('@/lib/supabase', () => ({
   supabase: {
     from: () => ({
-      select: () => ({ ilike: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }),
       upsert: mockUpsert,
     }),
+    rpc: (...args: unknown[]) => mockRpc(...args),
   },
 }));
 
@@ -55,12 +57,59 @@ function offItem(overrides: Partial<FoodItem> = {}): FoodItem {
   };
 }
 
+function localRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'local-1',
+    name: 'Coca-Cola',
+    brand: null,
+    calories_per_100g: 42,
+    carbs_per_100g: 10.6,
+    protein_per_100g: 0,
+    fat_per_100g: 0,
+    micronutrients: {},
+    source: 'local',
+    external_id: null,
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   mockSearchFood.mockReset();
   mockUpsert.mockClear();
+  mockRpc.mockReset().mockResolvedValue({ data: [], error: null });
 });
 
 describe('searchFoodHybrid', () => {
+  it('always queries the local `foods` table (our primary source of truth) via the search_foods_fuzzy RPC first', async () => {
+    mockSearchFood.mockResolvedValue([]);
+
+    await searchFoodHybrid('Koka Kola');
+
+    expect(mockRpc).toHaveBeenCalledWith('search_foods_fuzzy', { search_query: 'Koka Kola', match_limit: 20 });
+  });
+
+  it('never calls Open Food Facts when the local `foods` table alone already has enough hits', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: Array.from({ length: 5 }, (_, i) => localRow({ id: `local-${i}` })),
+      error: null,
+    });
+
+    const results = await searchFoodHybrid('Cola');
+
+    expect(mockSearchFood).not.toHaveBeenCalled();
+    expect(results.every((item) => item.source === 'local')).toBe(true);
+  });
+
+  it('keeps local `foods` rows ahead of external API results in the merged list, without dropping any of them', async () => {
+    mockRpc.mockResolvedValueOnce({ data: [localRow()], error: null });
+    mockSearchFood.mockResolvedValue([offItem({ id: 'off-1', name: 'Coca-Cola Zero' })]);
+
+    const results = await searchFoodHybrid('Cola');
+
+    expect(results.map((item) => item.id)).toEqual(['local-1', 'off-1']);
+    expect(results[0].source).toBe('local');
+  });
+
   it('escalates to Open Food Facts when the local `foods` cache has too few hits, surfacing brands like ESN', async () => {
     const esnResults = Array.from({ length: 5 }, (_, i) => offItem({ id: `400840012345${i}`, name: `ESN Designer Whey ${i}` }));
     mockSearchFood.mockResolvedValue(esnResults);
