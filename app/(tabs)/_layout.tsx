@@ -1,4 +1,4 @@
-import { BookOpen, ChartColumn, Dumbbell, User, Users } from 'lucide-react-native';
+import { BookOpen, CalendarSync, ChartColumn, Dumbbell, User, Users } from 'lucide-react-native';
 import { Link, Tabs, usePathname } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -15,6 +15,7 @@ type TabBarProps = Parameters<TabBarRenderer>[0];
 const SIDEBAR_LINKS = [
   { href: '/', label: 'Tagebuch', Icon: BookOpen },
   { href: '/training', label: 'Training', Icon: Dumbbell },
+  { href: '/cycles', label: 'Zyklen', Icon: CalendarSync },
   { href: '/statistik', label: 'Statistik', Icon: ChartColumn },
   { href: '/friends', label: 'Freunde', Icon: Users },
   { href: '/profil', label: 'Profil', Icon: User },
@@ -132,6 +133,13 @@ export default function TabsLayout() {
         options={{
           title: 'Training',
           tabBarIcon: ({ color, size }) => <Dumbbell color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="cycles"
+        options={{
+          title: 'Zyklen',
+          tabBarIcon: ({ color, size }) => <CalendarSync color={color} size={size} />,
         }}
       />
       <Tabs.Screen

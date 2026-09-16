@@ -118,12 +118,7 @@ function CycleRow({ cycle, onEdit, onDelete }: { cycle: DietCycle; onEdit: () =>
   );
 }
 
-interface CycleManagerModalProps {
-  visible: boolean;
-  onClose: () => void;
-}
-
-export function CycleManagerModal({ visible, onClose }: CycleManagerModalProps) {
+export function CycleManagerBody() {
   const cycles = useCycleStore((state) => state.cycles);
   const addCycle = useCycleStore((state) => state.addCycle);
   const updateCycle = useCycleStore((state) => state.updateCycle);
@@ -160,14 +155,106 @@ export function CycleManagerModal({ visible, onClose }: CycleManagerModalProps) 
     setShowForm(false);
   }
 
-  function handleClose() {
-    setShowForm(false);
-    onClose();
+  if (showForm) {
+    return (
+      <View className="gap-4">
+        <TextField label="Name" value={form.name} onChangeText={(text) => setForm((f) => ({ ...f, name: text }))} placeholder="z.B. Keto Phase" />
+
+        <View className="gap-1.5">
+          <Text className="text-xs font-medium tracking-tight text-text-secondary">Typ</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {CYCLE_TYPE_OPTIONS.map((option) => {
+              const isSelected = option.id === form.type;
+              const { color } = CYCLE_TYPE_META[option.id];
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => setForm((f) => ({ ...f, type: option.id }))}
+                  className={`flex-row items-center gap-1.5 rounded-full border px-4 py-2 active:opacity-80 ${
+                    isSelected ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
+                  }`}
+                >
+                  <View className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                  <Text className={`text-sm font-medium ${isSelected ? 'text-primary' : 'text-text-secondary'}`}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <DateField label="Start" value={form.startDate} onChange={(date) => setForm((f) => ({ ...f, startDate: date }))} />
+          </View>
+          <View className="flex-1">
+            <DateField label="Ende" value={form.endDate} onChange={(date) => setForm((f) => ({ ...f, endDate: date }))} />
+          </View>
+        </View>
+        {!isDateRangeValid && <Text className="text-xs text-red-500">Enddatum darf nicht vor dem Startdatum liegen.</Text>}
+
+        <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-white/5 px-5 py-3.5">
+          <View className="flex-1 pr-3">
+            <Text className="text-sm font-semibold text-white">Tagesziele aussetzen</Text>
+            <Text className="text-xs text-text-secondary">Für Cheat-/Break-Tage: keine Zielwarnung, stattdessen ein Badge.</Text>
+          </View>
+          <Switch
+            value={form.targetDisabled}
+            onValueChange={(value) => setForm((f) => ({ ...f, targetDisabled: value }))}
+            trackColor={{ false: '#52525B', true: '#6366F1' }}
+            thumbColor="#ffffff"
+          />
+        </View>
+
+        {!form.targetDisabled && (
+          <View className="gap-2">
+            <Text className="text-xs font-medium tracking-tight text-text-secondary">Makro-Override (optional, leer = normales Ziel)</Text>
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <TextField label="Carbs" keyboardType="decimal-pad" value={form.carbsOverride} onChangeText={(text) => setForm((f) => ({ ...f, carbsOverride: text }))} suffix="g" />
+              </View>
+              <View className="flex-1">
+                <TextField label="Protein" keyboardType="decimal-pad" value={form.proteinOverride} onChangeText={(text) => setForm((f) => ({ ...f, proteinOverride: text }))} suffix="g" />
+              </View>
+              <View className="flex-1">
+                <TextField label="Fett" keyboardType="decimal-pad" value={form.fatOverride} onChangeText={(text) => setForm((f) => ({ ...f, fatOverride: text }))} suffix="g" />
+              </View>
+            </View>
+          </View>
+        )}
+
+        <View className="flex-row gap-3 pt-1">
+          <Button label="Abbrechen" variant="secondary" onPress={() => setShowForm(false)} className="flex-1" />
+          <Button label={editingId ? 'Speichern' : 'Erstellen'} onPress={handleSave} disabled={!isFormValid} className="flex-1" />
+        </View>
+      </View>
+    );
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <Pressable className="flex-1 justify-end bg-surface/50" onPress={handleClose}>
+    <>
+      <Button label="Neuen Zyklus anlegen" icon={<Plus color="#ffffff" size={18} />} onPress={openCreateForm} />
+      {sortedCycles.length === 0 ? (
+        <Text className="py-6 text-center text-sm text-text-secondary">Noch keine Zyklen geplant.</Text>
+      ) : (
+        <View className="gap-3">
+          {sortedCycles.map((cycle) => (
+            <CycleRow key={cycle.id} cycle={cycle} onEdit={() => openEditForm(cycle)} onDelete={() => removeCycle(cycle.id)} />
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
+interface CycleManagerModalProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
+export function CycleManagerModal({ visible, onClose }: CycleManagerModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable className="flex-1 justify-end bg-surface/50" onPress={onClose}>
         <Pressable className="max-h-[88%] gap-5 rounded-t-[32px] bg-background px-6 pb-8 pt-5" onPress={(e) => e.stopPropagation()}>
           <View className="items-center">
             <View className="h-1.5 w-10 rounded-full bg-white/20" />
@@ -182,7 +269,7 @@ export function CycleManagerModal({ visible, onClose }: CycleManagerModalProps) 
             </View>
             <Pressable
               className="h-9 w-9 items-center justify-center rounded-full bg-white/10 active:opacity-80"
-              onPress={handleClose}
+              onPress={onClose}
               accessibilityLabel="Schliessen"
             >
               <X color="#A1A1AA" size={18} />
@@ -190,91 +277,7 @@ export function CycleManagerModal({ visible, onClose }: CycleManagerModalProps) 
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="gap-5 pb-4">
-            {showForm ? (
-              <View className="gap-4">
-                <TextField label="Name" value={form.name} onChangeText={(text) => setForm((f) => ({ ...f, name: text }))} placeholder="z.B. Keto Phase" />
-
-                <View className="gap-1.5">
-                  <Text className="text-xs font-medium tracking-tight text-text-secondary">Typ</Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {CYCLE_TYPE_OPTIONS.map((option) => {
-                      const isSelected = option.id === form.type;
-                      const { color } = CYCLE_TYPE_META[option.id];
-                      return (
-                        <Pressable
-                          key={option.id}
-                          onPress={() => setForm((f) => ({ ...f, type: option.id }))}
-                          className={`flex-row items-center gap-1.5 rounded-full border px-4 py-2 active:opacity-80 ${
-                            isSelected ? 'border-primary/60 bg-primary/10' : 'border-surface-border bg-white/5'
-                          }`}
-                        >
-                          <View className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                          <Text className={`text-sm font-medium ${isSelected ? 'text-primary' : 'text-text-secondary'}`}>{option.label}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <DateField label="Start" value={form.startDate} onChange={(date) => setForm((f) => ({ ...f, startDate: date }))} />
-                  </View>
-                  <View className="flex-1">
-                    <DateField label="Ende" value={form.endDate} onChange={(date) => setForm((f) => ({ ...f, endDate: date }))} />
-                  </View>
-                </View>
-                {!isDateRangeValid && <Text className="text-xs text-red-500">Enddatum darf nicht vor dem Startdatum liegen.</Text>}
-
-                <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-white/5 px-5 py-3.5">
-                  <View className="flex-1 pr-3">
-                    <Text className="text-sm font-semibold text-white">Tagesziele aussetzen</Text>
-                    <Text className="text-xs text-text-secondary">Für Cheat-/Break-Tage: keine Zielwarnung, stattdessen ein Badge.</Text>
-                  </View>
-                  <Switch
-                    value={form.targetDisabled}
-                    onValueChange={(value) => setForm((f) => ({ ...f, targetDisabled: value }))}
-                    trackColor={{ false: '#52525B', true: '#6366F1' }}
-                    thumbColor="#ffffff"
-                  />
-                </View>
-
-                {!form.targetDisabled && (
-                  <View className="gap-2">
-                    <Text className="text-xs font-medium tracking-tight text-text-secondary">Makro-Override (optional, leer = normales Ziel)</Text>
-                    <View className="flex-row gap-3">
-                      <View className="flex-1">
-                        <TextField label="Carbs" keyboardType="decimal-pad" value={form.carbsOverride} onChangeText={(text) => setForm((f) => ({ ...f, carbsOverride: text }))} suffix="g" />
-                      </View>
-                      <View className="flex-1">
-                        <TextField label="Protein" keyboardType="decimal-pad" value={form.proteinOverride} onChangeText={(text) => setForm((f) => ({ ...f, proteinOverride: text }))} suffix="g" />
-                      </View>
-                      <View className="flex-1">
-                        <TextField label="Fett" keyboardType="decimal-pad" value={form.fatOverride} onChangeText={(text) => setForm((f) => ({ ...f, fatOverride: text }))} suffix="g" />
-                      </View>
-                    </View>
-                  </View>
-                )}
-
-                <View className="flex-row gap-3 pt-1">
-                  <Button label="Abbrechen" variant="secondary" onPress={() => setShowForm(false)} className="flex-1" />
-                  <Button label={editingId ? 'Speichern' : 'Erstellen'} onPress={handleSave} disabled={!isFormValid} className="flex-1" />
-                </View>
-              </View>
-            ) : (
-              <>
-                <Button label="Neuen Zyklus anlegen" icon={<Plus color="#ffffff" size={18} />} onPress={openCreateForm} />
-                {sortedCycles.length === 0 ? (
-                  <Text className="py-6 text-center text-sm text-text-secondary">Noch keine Zyklen geplant.</Text>
-                ) : (
-                  <View className="gap-3">
-                    {sortedCycles.map((cycle) => (
-                      <CycleRow key={cycle.id} cycle={cycle} onEdit={() => openEditForm(cycle)} onDelete={() => removeCycle(cycle.id)} />
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
+            <CycleManagerBody />
           </ScrollView>
         </Pressable>
       </Pressable>
