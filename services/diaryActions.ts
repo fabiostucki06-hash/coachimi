@@ -1,4 +1,4 @@
-import { buildSnapshot, pushSnapshotData } from '@/services/cloudSync';
+import { buildSnapshot, isBaselineMissingError, pushSnapshotData, recordLocalChange } from '@/services/cloudSync';
 import { isNetworkError, useOfflineQueueStore } from '@/services/offlineQueue';
 import { makeEntryId, useDiaryStore, type MealEntryUpdate } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
@@ -54,6 +54,23 @@ async function pushThenCommit(date: string, nextEntriesForDate: MealEntry[], use
   try {
     updatedAt = await pushSnapshotData(userId, snapshot);
   } catch (err) {
+    if (isBaselineMissingError(err)) {
+      // Signed in, but this session never managed to read the remote row (expired
+      // JWT / flaky connection at launch), so pushing would risk overwriting it.
+      // Keep the meal locally, and kick the catch-up pull - once it succeeds,
+      // syncStore merges the remote diary in and pushes the combined result.
+      useOfflineQueueStore.getState().markPending(date);
+      withSyncSuppressed(() => {
+        useDiaryStore.setState({ entriesByDate: nextEntriesByDate });
+      });
+      // The suppressed commit above skips the change-watcher, so record the edit
+      // explicitly: it's what stops the catch-up pull from treating this device's
+      // state as older than the remote row and overwriting the meal just logged.
+      await recordLocalChange();
+      useSyncStore.setState({ status: 'error', error: 'Cloud-Daten werden geladen – wird synchronisiert, sobald möglich.' });
+      useSyncStore.getState().reconnect();
+      return;
+    }
     if (isNetworkError(err)) {
       // Offline: commit the mutation locally right away (optimistic UI -
       // makeEntryId() below already hands out a permanent client-side id, so

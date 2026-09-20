@@ -9,6 +9,7 @@ const mockUpsert = jest.fn().mockResolvedValue({ error: null });
 // balance is backend-driven (supabase/migrations/0004_backend_coins.sql), no
 // longer part of the user_data JSONB snapshot these tests otherwise mock.
 const mockRpc = jest.fn().mockResolvedValue({ data: 0, error: null });
+const mockRefreshSession = jest.fn().mockResolvedValue({ error: null });
 
 jest.mock('@/lib/supabase', () => ({
   supabase: {
@@ -16,9 +17,12 @@ jest.mock('@/lib/supabase', () => ({
       onAuthStateChange: (cb: (event: string, session: unknown) => void) => {
         authCallback = cb;
       },
+      refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
     },
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: mockMaybeSingle }) }),
+    // The table name is forwarded so a test can answer user_data reads
+    // differently from the profiles.coins read that fires alongside them.
+    from: (table: string) => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => mockMaybeSingle(table) }) }),
       upsert: mockUpsert,
     }),
     // Wrapped (not `rpc: mockRpc` directly): this property sits on the
@@ -220,4 +224,101 @@ it('does not wipe local training data when a pulled remote snapshot predates the
   await flush();
 
   expect(useTrainingStore.getState().sessionsByDate['2026-01-02']).toHaveLength(1);
+});
+
+// Regression for the "last days of diary vanished" incident: on a cold start the
+// persisted JWT was already expired, the first user_data read came back 401, and
+// the device then pushed its own stale snapshot over the remote row a second
+// later (edge logs: GET 401 -> POST 200 within ~1s of a token refresh).
+describe('remote baseline safety', () => {
+  const userDataRow = (dailyCalorieGoal: number, updatedAt: string) => remoteRowAt(dailyCalorieGoal, updatedAt);
+
+  function answerTables(userData: () => unknown) {
+    mockMaybeSingle.mockReset();
+    mockMaybeSingle.mockImplementation((table: string) =>
+      Promise.resolve(table === 'user_data' ? userData() : { data: null, error: null }),
+    );
+  }
+
+  it('refreshes the session and retries the pull once when the first read is rejected with 401', async () => {
+    mockRefreshSession.mockClear();
+    const newerTimestamp = new Date(Date.now() + 60_000).toISOString();
+    let calls = 0;
+    answerTables(() =>
+      ++calls === 1
+        ? { data: null, error: { message: 'JWT expired', code: 'PGRST301' }, status: 401 }
+        : { data: userDataRow(2000, newerTimestamp), error: null },
+    );
+
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u-jwt' }, access_token: 'tok-jwt' });
+    await flush();
+    await flush();
+    await flush();
+
+    expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+    expect(useUserStore.getState().user.dailyCalorieGoal).toBe(2000);
+    expect(useSyncStore.getState().status).toBe('synced');
+  });
+
+  it('never pushes local state while the initial pull keeps failing, then merges once it succeeds', async () => {
+    mockUpsert.mockClear();
+    let pullFails = true;
+    const oldTimestamp = new Date(Date.now() - 60_000).toISOString();
+    answerTables(() =>
+      pullFails ? { data: null, error: { message: 'boom', code: 'XX000' }, status: 500 } : { data: userDataRow(1800, oldTimestamp), error: null },
+    );
+
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u-nobaseline' }, access_token: 'tok-nobaseline' });
+    await flush();
+    await flush();
+    await flush();
+    expect(useSyncStore.getState().status).toBe('error');
+
+    // A local edit while there is no baseline: recorded, but nothing may be pushed.
+    useUserStore.getState().updateGoals({ dailyCalorieGoal: 2600, dailyMacroGoal: { carbs: 300, protein: 190, fat: 85 } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await useSyncStore.getState().syncNow();
+    expect(mockUpsert).not.toHaveBeenCalled();
+
+    // Connectivity/auth recovers: the catch-up pull succeeds, the edit survives
+    // (remote row is older), and only then is the merged state pushed.
+    pullFails = false;
+    useSyncStore.getState().reconnect();
+    await flush();
+    await flush();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await flush();
+
+    expect(useUserStore.getState().user.dailyCalorieGoal).toBe(2600);
+    expect(mockUpsert).toHaveBeenCalled();
+    expect(mockUpsert.mock.calls[mockUpsert.mock.calls.length - 1][0].data.user.dailyCalorieGoal).toBe(2600);
+  });
+
+  it('keeps diary days that only exist remotely when local edits are pending', async () => {
+    const remoteEntry = {
+      id: 'remote-1',
+      foodItem: { id: 'f1', name: 'Reis' },
+      mealType: 'lunch',
+      servings: 1,
+      loggedAt: '2026-09-18T10:00:00.000Z',
+    };
+    const oldTimestamp = new Date(Date.now() - 60_000).toISOString();
+    answerTables(() => ({
+      data: { data: { ...userDataRow(1800, oldTimestamp).data, entriesByDate: { '2026-09-18': [remoteEntry] } }, updated_at: oldTimestamp },
+      error: null,
+    }));
+    // Force the "local edit newer than remote" branch, i.e. remote is not applied wholesale.
+    await AsyncStorage.setItem('coach-imi-last-local-change', new Date().toISOString());
+
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u-merge' }, access_token: 'tok-merge' });
+    await flush();
+    await flush();
+    await flush();
+
+    const { useDiaryStore } = jest.requireActual('@/store/diaryStore');
+    expect(useDiaryStore.getState().entriesByDate['2026-09-18']).toHaveLength(1);
+  });
 });

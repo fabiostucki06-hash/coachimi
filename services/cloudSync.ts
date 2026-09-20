@@ -71,6 +71,67 @@ export function shouldApplyRemote(remoteUpdatedAt: string | null | undefined, lo
   return new Date(remoteUpdatedAt).getTime() > new Date(localChangedAt).getTime();
 }
 
+// Which user's remote row this session has successfully READ at least once.
+// Every push replaces the whole JSONB snapshot, so pushing from a device that
+// never managed to read the remote row first (pull failed with an expired JWT
+// on cold start, offline, ...) can overwrite days of diary entries logged on
+// another device with this device's stale copy. pushSnapshotData refuses to
+// write until a pull has succeeded - see store/syncStore.ts's establishBaseline.
+let baselineUserId: string | null = null;
+
+export function markRemoteBaselineLoaded(userId: string): void {
+  baselineUserId = userId;
+}
+
+export function clearRemoteBaseline(): void {
+  baselineUserId = null;
+}
+
+export function hasRemoteBaseline(userId: string): boolean {
+  return baselineUserId === userId;
+}
+
+const BASELINE_MISSING_CODE = 'REMOTE_BASELINE_MISSING';
+
+export function isBaselineMissingError(err: unknown): boolean {
+  return !!err && typeof err === 'object' && (err as { code?: string }).code === BASELINE_MISSING_CODE;
+}
+
+// supabase-js surfaces an expired/invalid access token as HTTP 401 (PostgREST
+// PGRST301 / "JWT expired") on the response, not as a thrown exception.
+function isAuthFailure(result: { status?: number; error: { code?: string; message?: string } | null }): boolean {
+  if (!result.error) return false;
+  return result.status === 401 || result.error.code === 'PGRST301' || /jwt (expired|invalid)|invalid jwt/i.test(result.error.message ?? '');
+}
+
+// Adds entries the remote copy has and the local copy lacks, never removing or
+// replacing a local entry. Used only when a pulled snapshot can't simply be
+// applied because this device has unsynced local edits: the old behavior kept
+// the local diary as-is and then pushed it, silently discarding every day
+// another device had logged in the meantime. Worst case here is a locally
+// deleted entry reappearing (cheap to delete again) instead of a logged meal
+// vanishing for good.
+export function mergeRemoteDiary(
+  local: Record<string, MealEntry[]>,
+  remote: Record<string, MealEntry[]> | undefined,
+): Record<string, MealEntry[]> {
+  if (!remote) return local;
+  const merged: Record<string, MealEntry[]> = { ...local };
+  for (const [date, remoteEntries] of Object.entries(remote)) {
+    const localEntries = local[date];
+    if (!localEntries) {
+      merged[date] = remoteEntries;
+      continue;
+    }
+    const localIds = new Set(localEntries.map((entry) => entry.id));
+    const missing = remoteEntries.filter((entry) => !localIds.has(entry.id));
+    if (missing.length > 0) {
+      merged[date] = [...localEntries, ...missing].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+    }
+  }
+  return merged;
+}
+
 // Reward fields synced across devices - gamification state (Streaks, Ränge,
 // Schutzschilde). All optional: absent in snapshots pushed before this
 // gamification feature existed - callers must fall back to the local default.
@@ -209,6 +270,11 @@ let lastPushedUpdatedAt: string | null = null;
 // flow (services/diaryActions.ts), which must push the *prospective* next
 // state to Supabase before it's allowed to touch local state at all.
 export async function pushSnapshotData(userId: string, snapshot: CloudSnapshot): Promise<string> {
+  if (!hasRemoteBaseline(userId)) {
+    throw Object.assign(new Error('Cloud-Daten wurden noch nicht geladen - Speichern übersprungen, um nichts zu überschreiben.'), {
+      code: BASELINE_MISSING_CODE,
+    });
+  }
   const updatedAt = new Date().toISOString();
   const { error } = await withTimeout(
     // Explicit onConflict: without it, upsert() resolves conflicts against
@@ -239,10 +305,21 @@ export interface RemoteSnapshot {
 }
 
 export async function pullSnapshot(userId: string): Promise<RemoteSnapshot | null> {
-  const { data, error } = await withTimeout(
-    supabase.from('user_data').select('data, updated_at').eq('user_id', userId).maybeSingle(),
-    'Sync-Pull',
-  );
+  const selectRow = () =>
+    withTimeout(supabase.from('user_data').select('data, updated_at').eq('user_id', userId).maybeSingle(), 'Sync-Pull');
+
+  let result = await selectRow();
+  // Cold start / wake from background: the persisted access token can already be
+  // expired when this first request goes out (INITIAL_SESSION fires before the
+  // background refresh lands). Refresh explicitly and retry once instead of
+  // giving up - a failed first pull used to leave this device without a
+  // baseline while its local (stale) state got pushed over the remote row.
+  if (isAuthFailure(result)) {
+    const { error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError) result = await selectRow();
+  }
+
+  const { data, error } = result;
   if (error) {
     console.error('[Sync] Error:', error);
     throw error;

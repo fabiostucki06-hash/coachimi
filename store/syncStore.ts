@@ -5,7 +5,11 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import {
   applySnapshot,
+  clearRemoteBaseline,
   getLocalChangeTimestamp,
+  hasRemoteBaseline,
+  markRemoteBaselineLoaded,
+  mergeRemoteDiary,
   pullSnapshot,
   pushSnapshot,
   recordLocalChange,
@@ -36,6 +40,8 @@ interface SyncState {
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
   pullNow: () => Promise<void>;
+  /** Retries the pull/push catch-up for the current session - see reconnectSync. */
+  reconnect: () => void;
 }
 
 let hasInitialized = false;
@@ -43,6 +49,39 @@ let applyingRemote = false;
 let autoSyncTimer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribers: (() => void)[] = [];
 let lastHandledAccessToken: string | null = null;
+let watchersUserId: string | null = null;
+let baselineInFlight: Promise<boolean> | null = null;
+
+const HYDRATION_TIMEOUT_MS = 3000;
+
+interface PersistedStore {
+  persist: { hasHydrated: () => boolean; onFinishHydration: (listener: () => void) => () => void };
+}
+
+// The local stores rehydrate from AsyncStorage/localStorage asynchronously.
+// Comparing a remote row against a store that hasn't hydrated yet would treat
+// the empty defaults as "local state" - so session restore waits for hydration
+// (bounded, so a broken storage backend can't wedge sign-in) before it pulls.
+function waitForHydration(store: PersistedStore): Promise<void> {
+  if (store.persist.hasHydrated()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      unsubscribe();
+      resolve();
+    }, HYDRATION_TIMEOUT_MS);
+    const unsubscribe = store.persist.onFinishHydration(() => {
+      clearTimeout(timer);
+      unsubscribe();
+      resolve();
+    });
+  });
+}
+
+function waitForStoresHydrated(): Promise<unknown> {
+  return Promise.all(
+    [useUserStore, useDiaryStore, useCustomFoodStore, useRewardStore, useTrainingStore].map((store) => waitForHydration(store)),
+  );
+}
 
 export function describeSyncError(err: unknown): string {
   console.error('[Sync] Error:', err);
@@ -82,8 +121,14 @@ function handleLocalStoreChange() {
   // "local edit" — otherwise the very next reload would treat the remote
   // data we just pulled as stale and refuse to apply it again.
   if (applyingRemote) return;
+  // Always recorded, even before this session has a remote baseline: an edit
+  // made while the initial pull is still failing/retrying must not later be
+  // mistaken for "older than the remote row" and overwritten by it.
   recordLocalChange();
-  scheduleAutoSync();
+  // Pushing, however, waits for the baseline - see cloudSync.ts's hasRemoteBaseline.
+  // The catch-up pull schedules the push itself once it has merged.
+  const session = useSyncStore.getState().session;
+  if (session && hasRemoteBaseline(session.user.id)) scheduleAutoSync();
 }
 
 // Commits a local store mutation that has ALREADY been pushed to Supabase
@@ -102,6 +147,7 @@ export function withSyncSuppressed(mutate: () => void): void {
 
 function startAutoSyncWatchers(session: Session) {
   stopAutoSyncWatchers();
+  watchersUserId = session.user.id;
   unsubscribers = [
     useUserStore.subscribe(handleLocalStoreChange),
     useDiaryStore.subscribe(handleLocalStoreChange),
@@ -124,6 +170,7 @@ function startAutoSyncWatchers(session: Session) {
 function stopAutoSyncWatchers() {
   unsubscribers.forEach((unsub) => unsub());
   unsubscribers = [];
+  watchersUserId = null;
   if (autoSyncTimer) {
     clearTimeout(autoSyncTimer);
     autoSyncTimer = null;
@@ -135,7 +182,9 @@ function stopAutoSyncWatchers() {
 // change lands from another device while this one is open), and the
 // app-foreground refresh (this device was backgrounded/asleep and missed
 // the realtime event entirely).
-async function pullAndApply(session: Session): Promise<void> {
+// Resolves true when the remote row was read successfully (whether or not it was
+// applied) - i.e. this device now has a trustworthy baseline to push against.
+async function pullAndApply(session: Session): Promise<boolean> {
   try {
     // Coins are backend-driven (profiles.coins via store/coinsStore.ts), not
     // part of the pulled JSONB snapshot below - refetched here too so every
@@ -152,14 +201,28 @@ async function pullAndApply(session: Session): Promise<void> {
     console.log('[Sync] Remote payload fetched:', remote);
     const localChangedAt = await getLocalChangeTimestamp();
     const shouldApply = remote != null && shouldApplyRemote(remote.updatedAt, localChangedAt);
-    if (shouldApply) {
+    // Only now - the remote row was read successfully - may pushes go out.
+    markRemoteBaselineLoaded(session.user.id);
+    if (remote && shouldApply) {
       applyingRemote = true;
       applySnapshot(remote.snapshot);
       applyingRemote = false;
+    } else if (remote) {
+      // The remote row is older than an unsynced local edit, so it can't just be
+      // applied - but the next push replaces the whole row, so any diary entry
+      // it holds that this device lacks (logged on another device) would be
+      // destroyed. Fold those in additively, then push the merged result.
+      const local = useDiaryStore.getState().entriesByDate;
+      const merged = mergeRemoteDiary(local, remote.snapshot.entriesByDate);
+      if (merged !== local) {
+        applyingRemote = true;
+        useDiaryStore.setState({ entriesByDate: merged });
+        applyingRemote = false;
+      }
+      scheduleAutoSync();
     }
-    // No remote row yet, or the remote row is older than an unsynced local
-    // edit: leave local STATE untouched rather than overwrite it with stale
-    // or placeholder data — see shouldApplyRemote. lastSyncedAt still
+    // No remote row yet: leave local STATE untouched rather than overwrite it
+    // with placeholder data — see shouldApplyRemote. lastSyncedAt still
     // updates either way: it means "sync last successfully checked in",
     // not "local data last changed", so a no-op check still counts.
     useSyncStore.setState({
@@ -168,10 +231,34 @@ async function pullAndApply(session: Session): Promise<void> {
       remoteUpdatedAt: remote?.updatedAt ?? useSyncStore.getState().remoteUpdatedAt,
       error: null,
     });
+    return true;
   } catch (err) {
     applyingRemote = false;
     useSyncStore.setState({ status: 'error', error: describeSyncError(err) });
+    return false;
   }
+}
+
+// Hard sync for load / session restore / token refresh: wait for the local
+// stores to hydrate (so the comparison is against real local state, and a late
+// rehydration can't masquerade as a user edit), arm the change watchers, then
+// read the remote row. Watchers only RECORD edits until that read succeeds -
+// nothing pushes this device's possibly stale state before it has been
+// compared against the remote row - and the next reconnect / token-refresh /
+// focus event retries here if it failed. De-duplicated so overlapping
+// triggers (INITIAL_SESSION + TOKEN_REFRESHED + focus) share one in-flight pull.
+function establishBaseline(session: Session): Promise<boolean> {
+  if (baselineInFlight) return baselineInFlight;
+  baselineInFlight = (async () => {
+    try {
+      await waitForStoresHydrated();
+      if (watchersUserId !== session.user.id) startAutoSyncWatchers(session);
+      return await pullAndApply(session);
+    } finally {
+      baselineInFlight = null;
+    }
+  })();
+  return baselineInFlight;
 }
 
 // Reconnect handler for foreground/focus/online events. A prior push may have
@@ -180,7 +267,12 @@ async function pullAndApply(session: Session): Promise<void> {
 // that push first. Otherwise this is just catching up on changes that may
 // have landed on another device while this one was away, so pull instead.
 function reconnectSync(session: Session) {
-  if (useSyncStore.getState().status === 'error') {
+  // No baseline yet (initial pull failed, e.g. expired JWT / offline at launch):
+  // pulling is the only safe move - pushing would overwrite the remote row
+  // with data this device never compared against it.
+  if (!hasRemoteBaseline(session.user.id)) {
+    void establishBaseline(session);
+  } else if (useSyncStore.getState().status === 'error') {
     useSyncStore.getState().syncNow();
   } else {
     pullAndApply(session);
@@ -191,15 +283,12 @@ async function afterSessionEstablished(session: Session) {
   if (session.access_token === lastHandledAccessToken) return;
   lastHandledAccessToken = session.access_token;
 
-  // Pull-then-subscribe, never the other way round: the local stores' persist
-  // middleware rehydrates from AsyncStorage asynchronously, on its own timer,
-  // independent of this function. If the change-watchers below were armed
-  // first, a rehydration landing while the remote fetch was still in flight
-  // would fire handleLocalStoreChange and auto-push that (possibly stale,
-  // pre-this-session) hydrated state to Supabase before it was ever compared
-  // against the remote row - i.e. exactly the "device overwrites remote with
-  // stale local state on load" bug. Subscribing only after the initial
-  // fetch-and-compare has finished closes that window entirely.
+  // The local stores' persist middleware rehydrates from AsyncStorage
+  // asynchronously, on its own timer. establishBaseline waits for that before
+  // arming the change-watchers, and no push can go out until a pull has
+  // succeeded (cloudSync.ts's hasRemoteBaseline) - together that closes the
+  // "device overwrites remote with stale local state on load" bug, including
+  // when the very first pull fails (e.g. expired JWT).
   // Best-effort, same reasoning as the realtime-subscribe guard below: a
   // profile row is only needed for the friends feature, so a failure here
   // (e.g. RLS not yet applied on an older Supabase project) must never block
@@ -213,8 +302,7 @@ async function afterSessionEstablished(session: Session) {
       .catch((err) => console.error('[friends] ensureProfile failed', err));
   }
 
-  await pullAndApply(session);
-  startAutoSyncWatchers(session);
+  await establishBaseline(session);
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
@@ -238,9 +326,16 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           set({ status: 'syncing', error: null });
           afterSessionEstablished(session);
+        } else if (event === 'TOKEN_REFRESHED' && !hasRemoteBaseline(session.user.id)) {
+          // A refresh normally must not touch local state - but if the initial
+          // pull failed (typically because the JWT had expired), the fresh
+          // token is exactly what makes a retry succeed, so do it now instead
+          // of leaving this device without a baseline until the next focus.
+          void establishBaseline(session);
         }
       } else {
         stopAutoSyncWatchers();
+        clearRemoteBaseline();
         set({ status: 'offline', lastSyncedAt: null, remoteUpdatedAt: null, error: null });
         useProfileStore.getState().setProfile(null);
         useCoinsStore.getState().reset();
@@ -310,6 +405,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
 
   signOut: async () => {
     stopAutoSyncWatchers();
+    clearRemoteBaseline();
     await supabase.auth.signOut();
     set({ status: 'offline', lastSyncedAt: null, remoteUpdatedAt: null, error: null });
     useCoinsStore.getState().reset();
@@ -318,6 +414,13 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   syncNow: async () => {
     const { session } = get();
     if (!session) return;
+    // Never push before this session has read the remote row - see cloudSync.ts's
+    // hasRemoteBaseline. Catch up first; establishBaseline itself schedules the
+    // follow-up push if local edits turn out to be pending.
+    if (!hasRemoteBaseline(session.user.id)) {
+      await establishBaseline(session);
+      return;
+    }
     set({ status: 'syncing', error: null });
     try {
       const updatedAt = await pushSnapshot(session.user.id);
@@ -338,6 +441,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       void useCoinsStore.getState().fetchCoins(session.user.id);
       const remote = await pullSnapshot(session.user.id);
       console.log('[Sync] Remote payload fetched:', remote);
+      markRemoteBaselineLoaded(session.user.id);
       if (remote) {
         applyingRemote = true;
         applySnapshot(remote.snapshot);
@@ -353,5 +457,10 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       applyingRemote = false;
       set({ status: 'error', error: describeSyncError(err) });
     }
+  },
+
+  reconnect: () => {
+    const { session } = get();
+    if (session) reconnectSync(session);
   },
 }));

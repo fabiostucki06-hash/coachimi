@@ -21,8 +21,14 @@
 // detectable. `activate` below then deletes every cache key that isn't the
 // current CACHE_NAME, so the old shell cache never lingers.
 
-const CACHE_NAME = 'coach-imi-shell-v2';
+const CACHE_NAME = 'coach-imi-shell-v3';
 const SHELL_URLS = ['/', '/manifest.json'];
+
+// User data (diary, profile, diet cycles) lives in Supabase, a cross-origin host
+// this worker never intercepts (see the origin check in the fetch handler). These
+// prefixes are a second line of defense in case the app is ever fronted by a
+// same-origin proxy/API route: such responses must always hit the network.
+const NEVER_CACHE_PREFIXES = ['/api/', '/rest/', '/auth/', '/realtime/', '/storage/', '/functions/'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -53,6 +59,7 @@ self.addEventListener('fetch', (event) => {
   // deploy - never intercept it, or a stale worker could mask that check
   // from itself and nobody would ever get prompted to reload.
   if (path === '/build-version.json') return;
+  if (NEVER_CACHE_PREFIXES.some((prefix) => path.startsWith(prefix))) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(
@@ -74,7 +81,10 @@ self.addEventListener('fetch', (event) => {
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
-        if (response.ok) {
+        // Honor the server's own "don't store this" - only successful, cacheable
+        // static responses go into the shell cache.
+        const cacheControl = response.headers.get('Cache-Control') ?? '';
+        if (response.ok && !/no-store|no-cache|private/i.test(cacheControl)) {
           const copy = response.clone();
           caches
             .open(CACHE_NAME)
