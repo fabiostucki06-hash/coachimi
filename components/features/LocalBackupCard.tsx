@@ -4,11 +4,14 @@ import { Platform, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useIsOwner } from '@/hooks/useIsOwner';
 import { importDiaryEntriesAndSync } from '@/services/diaryActions';
 import { BackupError, createDiaryBackupJson, parseDiaryBackup } from '@/services/localBackup';
 import { getLocalDateKey } from '@/utils/calendarDates';
 import { downloadTextFile, pickTextFile } from '@/utils/fileTransfer';
+import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
+import { isOwnerEmail } from '@/utils/ownerAccess';
 
 type BusyAction = 'export' | 'import';
 
@@ -16,17 +19,24 @@ function toast(message: string, variant: 'success' | 'error') {
   useToastStore.getState().show(message, variant);
 }
 
-/** Export/import of the diary as a JSON file - a manual safety net independent of cloud sync. Web (PWA) only: it relies on browser download/file-picker APIs. */
+function isSignedInAsOwner(): boolean {
+  return isOwnerEmail(useSyncStore.getState().session?.user.email);
+}
+
+/** Owner-only export/import of the diary as a JSON file - a manual safety net independent of cloud sync. Web (PWA) only: it relies on browser download/file-picker APIs. */
 export function LocalBackupCard() {
+  const isOwner = useIsOwner();
   const [busy, setBusy] = useState<BusyAction | null>(null);
 
-  if (Platform.OS !== 'web') return null;
+  if (Platform.OS !== 'web' || !isOwner) return null;
 
   async function handleExport() {
+    // Re-checked at action time so a stale render can never run this for a non-owner session.
+    if (!isSignedInAsOwner()) return;
     setBusy('export');
     try {
       const json = await createDiaryBackupJson();
-      downloadTextFile(`coach-imi-diary-backup-${getLocalDateKey()}.json`, json);
+      downloadTextFile(`coach-imi-backup-${getLocalDateKey()}.json`, json);
       toast('Backup exportiert.', 'success');
     } catch (err) {
       console.error('[backup] export failed', err);
@@ -37,6 +47,7 @@ export function LocalBackupCard() {
   }
 
   async function handleImport() {
+    if (!isSignedInAsOwner()) return;
     setBusy('import');
     try {
       const text = await pickTextFile();
