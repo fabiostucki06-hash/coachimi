@@ -327,39 +327,6 @@ export default function AddFoodScreen() {
           <Plus color="#6366F1" size={16} />
           <Text className="text-sm font-medium text-primary">Eigenes Lebensmittel erstellen</Text>
         </Pressable>
-
-        {showCustomForm && (
-          <Card className="gap-4">
-            <TextField label="Name" value={customName} onChangeText={setCustomName} placeholder="z. B. Omas Kuchen" autoFocus={!prefillBarcode} />
-            <TextField label="Marke (optional)" value={customBrand} onChangeText={setCustomBrand} placeholder="z. B. Bio-Hof Müller" />
-            <TextField
-              label="Barcode (optional)"
-              value={customBarcode}
-              onChangeText={setCustomBarcode}
-              placeholder="z. B. 4008400123456"
-              keyboardType="number-pad"
-            />
-            <Text className="text-xs font-medium text-text-secondary">Nährwerte pro 100g</Text>
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <TextField label="Kcal" keyboardType="decimal-pad" value={customKcal} onChangeText={setCustomKcal} />
-              </View>
-              <View className="flex-1">
-                <TextField label="Carbs" keyboardType="decimal-pad" value={customCarbs} onChangeText={setCustomCarbs} suffix="g" />
-              </View>
-            </View>
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <TextField label="Protein" keyboardType="decimal-pad" value={customProtein} onChangeText={setCustomProtein} suffix="g" />
-              </View>
-              <View className="flex-1">
-                <TextField label="Fett" keyboardType="decimal-pad" value={customFat} onChangeText={setCustomFat} suffix="g" />
-              </View>
-            </View>
-            <TextField label="Ballaststoffe (optional)" keyboardType="decimal-pad" value={customFiber} onChangeText={setCustomFiber} suffix="g" />
-            <Button label="Weiter" onPress={handleCustomFoodContinue} disabled={!customName.trim()} />
-          </Card>
-        )}
       </View>
 
       {notice && (
@@ -375,9 +342,47 @@ export default function AddFoodScreen() {
         contentContainerClassName="gap-2 pb-12"
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
-          !isSearching && recentFoods.length > 0 ? (
-            <Text className="pb-2 text-xs font-medium text-text-secondary">Zuletzt verwendet</Text>
-          ) : null
+          <>
+            {showCustomForm && (
+              // Part of the FlatList's own scrollable content (not the fixed section
+              // above) - this form has enough fields to exceed the screen with the
+              // keyboard open, and living outside any scroll container used to leave
+              // it completely unscrollable while typing.
+              <Card className="mb-4 gap-4">
+                <TextField label="Name" value={customName} onChangeText={setCustomName} placeholder="z. B. Omas Kuchen" autoFocus={!prefillBarcode} />
+                <TextField label="Marke (optional)" value={customBrand} onChangeText={setCustomBrand} placeholder="z. B. Bio-Hof Müller" />
+                <TextField
+                  label="Barcode (optional)"
+                  value={customBarcode}
+                  onChangeText={setCustomBarcode}
+                  placeholder="z. B. 4008400123456"
+                  keyboardType="number-pad"
+                />
+                <Text className="text-xs font-medium text-text-secondary">Nährwerte pro 100g</Text>
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
+                    <TextField label="Kcal" keyboardType="decimal-pad" value={customKcal} onChangeText={setCustomKcal} />
+                  </View>
+                  <View className="flex-1">
+                    <TextField label="Carbs" keyboardType="decimal-pad" value={customCarbs} onChangeText={setCustomCarbs} suffix="g" />
+                  </View>
+                </View>
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
+                    <TextField label="Protein" keyboardType="decimal-pad" value={customProtein} onChangeText={setCustomProtein} suffix="g" />
+                  </View>
+                  <View className="flex-1">
+                    <TextField label="Fett" keyboardType="decimal-pad" value={customFat} onChangeText={setCustomFat} suffix="g" />
+                  </View>
+                </View>
+                <TextField label="Ballaststoffe (optional)" keyboardType="decimal-pad" value={customFiber} onChangeText={setCustomFiber} suffix="g" />
+                <Button label="Weiter" onPress={handleCustomFoodContinue} disabled={!customName.trim()} />
+              </Card>
+            )}
+            {!isSearching && recentFoods.length > 0 && (
+              <Text className="pb-2 text-xs font-medium text-text-secondary">Zuletzt verwendet</Text>
+            )}
+          </>
         }
         ListEmptyComponent={
           showSkeletons ? (
