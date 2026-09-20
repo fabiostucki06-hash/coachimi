@@ -131,7 +131,7 @@ export default function DiaryScreen() {
     const totalMacros: Macros = { carbs: nutrientAmounts.carbs, protein: nutrientAmounts.protein, fat: nutrientAmounts.fat };
     const nutrientGoals: Record<NutrientKey, number> = {
       ...macroGoal,
-      ...getMicronutrientGoalsForDiet(user.dietType ?? 'balanced', user.gender),
+      ...getMicronutrientGoalsForDiet(user.dietType ?? 'balanced', user.gender, user.micronutrientGoalOverrides),
     };
     const secondaryNutrients = NUTRIENT_ORDER.filter(
       (key) => user.visibleNutrients[key] && !CORE_MACROS.includes(key),

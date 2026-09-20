@@ -138,7 +138,7 @@ export function FriendProfileModal({ friend, onClose }: FriendProfileModalProps)
     const nutrientAmounts = sumEntryNutrients(entries);
     const nutrientGoals: Record<NutrientKey, number> = {
       ...(friendUser?.dailyMacroGoal ?? { carbs: 0, protein: 0, fat: 0 }),
-      ...getMicronutrientGoalsForDiet(friendUser?.dietType ?? 'balanced', friendUser?.gender),
+      ...getMicronutrientGoalsForDiet(friendUser?.dietType ?? 'balanced', friendUser?.gender, friendUser?.micronutrientGoalOverrides),
     };
     const visibleNutrients = friendUser?.visibleNutrients;
     const secondaryNutrients = visibleNutrients

@@ -48,6 +48,7 @@ export function OledWidgetView() {
   const dailyCalorieGoal = useUserStore((state) => state.user.dailyCalorieGoal);
   const dietType = useUserStore((state) => state.user.dietType) ?? 'balanced';
   const gender = useUserStore((state) => state.user.gender);
+  const micronutrientGoalOverrides = useUserStore((state) => state.user.micronutrientGoalOverrides);
 
   // Cross-tab freshness: when the widget is opened as its own standalone PWA
   // window (the normal way a home-screen shortcut launches), it has no other
@@ -70,7 +71,7 @@ export function OledWidgetView() {
   const { remainingCalories, isOverLimit, surplusCalories, iron, sugar, ironGoal, sugarGoal } = useMemo(() => {
     const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
     const nutrients = sumEntryNutrients(entries);
-    const goals = getMicronutrientGoalsForDiet(dietType, gender);
+    const goals = getMicronutrientGoalsForDiet(dietType, gender, micronutrientGoalOverrides);
     return {
       remainingCalories: Math.round(Math.max(dailyCalorieGoal - totalCalories, 0)),
       isOverLimit: dailyCalorieGoal > 0 && totalCalories > dailyCalorieGoal,
@@ -80,7 +81,7 @@ export function OledWidgetView() {
       ironGoal: goals.iron,
       sugarGoal: goals.sugar,
     };
-  }, [entries, dailyCalorieGoal, dietType, gender]);
+  }, [entries, dailyCalorieGoal, dietType, gender, micronutrientGoalOverrides]);
 
   return (
     <SafeAreaView className="flex-1 bg-black">

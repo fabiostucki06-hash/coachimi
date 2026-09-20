@@ -67,6 +67,8 @@ export interface User {
   /** Public Supabase Storage URL for the user's uploaded profile photo (see services/profile.ts) - undefined falls back to the initials avatar (see components/features/UserAvatar.tsx). */
   avatarUrl?: string;
   visibleNutrients: NutrientVisibility;
+  /** Per-nutrient daily target overrides for fiber/sugar/vitamins/minerals - unset keys fall back to the diet-computed default (see services/dietEngine.ts's getMicronutrientGoalsForDiet). Never covers carbs/protein/fat, which already have their own dailyMacroGoal. */
+  micronutrientGoalOverrides?: Partial<Micronutrients>;
 }
 
 export type FoodItemSource = 'local' | 'recent' | 'off' | 'custom' | 'ai' | 'community' | 'usda' | 'fatsecret';

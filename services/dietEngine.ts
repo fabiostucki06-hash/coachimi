@@ -236,8 +236,18 @@ export const FIBER_GOAL_OVERRIDE: Partial<Record<DietType, number>> = {
  * OLED widget, coach tips): MICRONUTRIENT_GOALS (or its gender-specific variant) with
  * iron/zinc bioavailability multipliers, electrolyte natriuresis multipliers, and the
  * fiber override layered on top.
+ *
+ * `userOverrides` (User.micronutrientGoalOverrides - manual per-nutrient targets set
+ * in Profil, e.g. a personal iron goal from a doctor) is applied last, on top of every
+ * diet-driven adjustment above, so a manual number always wins regardless of diet.
+ * Omit it (e.g. calculateMndScore's food-quality scoring below) to score against the
+ * diet's own reference intake instead of one user's personal override.
  */
-export function getMicronutrientGoalsForDiet(dietType: DietType, gender?: Gender): Required<Micronutrients> {
+export function getMicronutrientGoalsForDiet(
+  dietType: DietType,
+  gender?: Gender,
+  userOverrides?: Partial<Micronutrients>,
+): Required<Micronutrients> {
   const base = getBaseMicronutrientGoals(gender);
   const goals: Required<Micronutrients> = {
     ...base,
@@ -255,6 +265,15 @@ export function getMicronutrientGoalsForDiet(dietType: DietType, gender?: Gender
   const fiberOverride = FIBER_GOAL_OVERRIDE[dietType];
   if (fiberOverride !== undefined) {
     goals.fiber = fiberOverride;
+  }
+
+  if (userOverrides) {
+    for (const key of Object.keys(userOverrides) as (keyof Micronutrients)[]) {
+      const value = userOverrides[key];
+      if (value !== undefined && Number.isFinite(value) && value >= 0) {
+        goals[key] = value;
+      }
+    }
   }
 
   return goals;

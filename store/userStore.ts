@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { calculateDietMacros } from '@/services/dietEngine';
-import type { Macros, NutrientKey, User, WeightEntry } from '@/types';
+import type { Macros, Micronutrients, NutrientKey, User, WeightEntry } from '@/types';
 import {
   calculateBMR,
   calculateDailyTargets,
@@ -75,6 +75,8 @@ interface UserState {
   updateWeightEntry: (id: string, changes: { date?: string; weightKg?: number }) => void;
   removeWeightEntry: (id: string) => void;
   toggleNutrientVisibility: (key: NutrientKey) => void;
+  /** Sets (or, with `value` undefined/invalid, clears back to the diet-computed default) this nutrient's personal daily target - see services/dietEngine.ts's getMicronutrientGoalsForDiet. Never accepts carbs/protein/fat - those go through updateGoals. */
+  setMicronutrientGoalOverride: (key: keyof Micronutrients, value: number | undefined) => void;
   setMicronutrientFocus: (focus: MicronutrientFocus) => void;
   setDietType: (dietType: DietType) => void;
   finishOnboarding: () => void;
@@ -166,6 +168,18 @@ export const useUserStore = create<UserState>()(
             },
           },
         }));
+      },
+
+      setMicronutrientGoalOverride: (key, value) => {
+        set((state) => {
+          const nextOverrides = { ...state.user.micronutrientGoalOverrides };
+          if (value === undefined || !Number.isFinite(value) || value < 0) {
+            delete nextOverrides[key];
+          } else {
+            nextOverrides[key] = value;
+          }
+          return { user: { ...state.user, micronutrientGoalOverrides: nextOverrides } };
+        });
       },
 
       setMicronutrientFocus: (focus) => {

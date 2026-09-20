@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { CalendarRange, Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
+import { CalendarRange, Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, RotateCcw, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,8 +19,9 @@ import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
+import { NUTRIENT_META, NUTRIENT_ORDER } from '@/components/features/nutrientMeta';
 import { CYCLE_TYPE_META } from '@/services/cycleEngine';
-import { getDietTargetSummary, PROTEIN_FLOOR_G_PER_KG } from '@/services/dietEngine';
+import { getDietTargetSummary, getMicronutrientGoalsForDiet, PROTEIN_FLOOR_G_PER_KG } from '@/services/dietEngine';
 import { AvatarUploadError, pickAndUploadAvatar } from '@/services/profile';
 import { useCycleStore } from '@/store/cycleStore';
 import { todayKey } from '@/store/diaryStore';
@@ -30,7 +31,7 @@ import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
-import type { WeightEntry } from '@/types';
+import type { Micronutrients, WeightEntry } from '@/types';
 import { formatDateShort } from '@/utils/calendarDates';
 import type { ActivityLevel, Gender, Goal } from '@/utils/nutritionCalculator';
 
@@ -157,6 +158,85 @@ function WeightHistoryRow({
   );
 }
 
+/**
+ * One editable daily-target row for a non-macro nutrient (fiber, sugar, iron, ...) -
+ * shown for every nutrient the user turned on in "Sichtbare Nährstoffe" below. Value
+ * defaults to the diet-computed goal (`defaultGoal`) until the user sets their own via
+ * `onChange`; the reset button clears back to that default via `onChange(undefined)`.
+ * Commits on blur (not per-keystroke) so an in-progress edit like "1" isn't clamped
+ * away before the user reaches "15".
+ */
+function MicronutrientGoalRow({
+  label,
+  Icon,
+  color,
+  unit,
+  effectiveGoal,
+  isOverridden,
+  onChange,
+}: {
+  label: string;
+  Icon: React.ComponentType<{ color?: string; size?: number }>;
+  color: string;
+  unit: string;
+  effectiveGoal: number;
+  isOverridden: boolean;
+  onChange: (value: number | undefined) => void;
+}) {
+  const [text, setText] = useState(String(effectiveGoal));
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) setText(String(effectiveGoal));
+  }, [effectiveGoal, isFocused]);
+
+  function commit() {
+    setIsFocused(false);
+    const parsed = Number.parseFloat(text.replace(',', '.'));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      onChange(parsed);
+    } else {
+      setText(String(effectiveGoal));
+    }
+  }
+
+  return (
+    <View
+      className={`flex-row items-center justify-between rounded-2xl border bg-overlay/5 px-5 py-3.5 transition-shadow duration-200 ease-in-out ${
+        isFocused ? 'border-primary shadow-[0_0_0_4px_rgba(99,102,241,0.15)]' : 'border-surface-border shadow-none'
+      }`}
+    >
+      <View className="flex-1 flex-row items-center gap-3 pr-3">
+        <Icon color={color} size={18} />
+        <Text className="flex-1 text-sm font-semibold text-text-secondary">{label}</Text>
+      </View>
+      <View className="flex-row items-center gap-1.5">
+        {isOverridden && (
+          <Pressable
+            onPress={() => onChange(undefined)}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}-Ziel auf Standard zurücksetzen`}
+            className="h-6 w-6 items-center justify-center rounded-full bg-overlay/10 active:opacity-70"
+          >
+            <RotateCcw color="#A1A1AA" size={12} />
+          </Pressable>
+        )}
+        <TextInput
+          className="w-16 text-right text-sm font-semibold text-foreground"
+          keyboardType="decimal-pad"
+          value={text}
+          onChangeText={setText}
+          onFocus={() => setIsFocused(true)}
+          onBlur={commit}
+        />
+        <Text className="text-sm font-semibold" style={{ color }}>
+          {unit}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ProfilScreen() {
@@ -171,6 +251,7 @@ export default function ProfilScreen() {
   const updateWeightEntry = useUserStore((state) => state.updateWeightEntry);
   const removeWeightEntry = useUserStore((state) => state.removeWeightEntry);
   const toggleNutrientVisibility = useUserStore((state) => state.toggleNutrientVisibility);
+  const setMicronutrientGoalOverride = useUserStore((state) => state.setMicronutrientGoalOverride);
   const selectedDiaryDate = useUiStore((state) => state.selectedDate);
   const session = useSyncStore((state) => state.session);
   const signOut = useSyncStore((state) => state.signOut);
@@ -287,6 +368,14 @@ export default function ProfilScreen() {
 
   const currentDietType = user.dietType ?? 'balanced';
   const dietTargetSummary = getDietTargetSummary(currentDietType);
+
+  // Only nutrients the user actually turned on in "Sichtbare Nährstoffe" below get an
+  // editable target row here - carbs/protein/fat are excluded, those already have
+  // their own inputs in "Ziele" above.
+  const micronutrientGoals = getMicronutrientGoalsForDiet(currentDietType, user.gender, user.micronutrientGoalOverrides);
+  const visibleExtraNutrients = NUTRIENT_ORDER.filter(
+    (key) => user.visibleNutrients[key] && NUTRIENT_META[key].category !== 'macro',
+  ) as (keyof Micronutrients)[];
 
   function handleSaveProfile() {
     if (!isFormValid) return;
@@ -446,6 +535,30 @@ export default function ProfilScreen() {
         <Card className="gap-1">
           <NutrientVisibilitySelector visibleNutrients={user.visibleNutrients} onToggle={toggleNutrientVisibility} />
         </Card>
+
+        {visibleExtraNutrients.length > 0 && (
+          <Card className="gap-2">
+            <Text className="text-sm font-semibold text-text-secondary">Tagesbedarf: Extra Nährstoffe</Text>
+            <Text className="text-xs text-text-secondary">
+              Eigene Ziele für die oben ausgewählten Nährstoffe - ohne Eingabe gilt der aus deinem Ernährungsstil berechnete Standardwert.
+            </Text>
+            {visibleExtraNutrients.map((key) => {
+              const { label, unit, color, Icon } = NUTRIENT_META[key];
+              return (
+                <MicronutrientGoalRow
+                  key={key}
+                  label={label}
+                  Icon={Icon}
+                  color={color}
+                  unit={unit}
+                  effectiveGoal={micronutrientGoals[key]}
+                  isOverridden={user.micronutrientGoalOverrides?.[key] !== undefined}
+                  onChange={(value) => setMicronutrientGoalOverride(key, value)}
+                />
+              );
+            })}
+          </Card>
+        )}
 
         <Card className="gap-3">
           <Text className="text-sm font-semibold text-text-secondary">Darstellung</Text>
