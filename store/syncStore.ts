@@ -143,6 +143,10 @@ async function pullAndApply(session: Session): Promise<void> {
     // another device, foreground/reconnect) also gets a fresh balance rather
     // than showing whatever this device last knew.
     void useCoinsStore.getState().fetchCoins(session.user.id);
+    // Retry any earn whose add_coins RPC didn't confirm yet (e.g. earned while
+    // offline) - this is exactly the moment connectivity is known-good again,
+    // see store/rewardStore.ts's flushPendingCoinCredits.
+    void useRewardStore.getState().flushPendingCoinCredits();
 
     const remote = await pullSnapshot(session.user.id);
     console.log('[Sync] Remote payload fetched:', remote);

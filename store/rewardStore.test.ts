@@ -8,7 +8,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 // tests exercise rewardStore's own logic without hitting Supabase, and so
 // each test can control whether a "purchase" is affordable.
 const mockCoinsState = {
-  addCoins: jest.fn(async () => {}),
+  addCoins: jest.fn(async () => true),
   spendCoins: jest.fn(async () => true),
 };
 jest.mock('@/store/coinsStore', () => ({

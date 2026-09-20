@@ -14,8 +14,8 @@ interface CoinsState {
   error: string | null;
   /** Pulls the current balance from profiles.coins. Call on sign-in/session load and whenever the app wants a fresh read (reconnect, manual refresh). */
   fetchCoins: (userId: string) => Promise<void>;
-  /** Earns coins via the add_coins RPC (atomic, server-side) and adopts its returned balance - never computed locally. */
-  addCoins: (amount: number) => Promise<void>;
+  /** Earns coins via the add_coins RPC (atomic, server-side) and adopts its returned balance - never computed locally. Returns whether the credit actually reached the backend, so a caller (rewardStore's pending-credit queue) can retry a failed/offline attempt instead of losing it. */
+  addCoins: (amount: number) => Promise<boolean>;
   /** Spends coins via the spend_coins RPC, which itself rejects an insufficient balance - returns whether the spend went through. */
   spendCoins: (amount: number) => Promise<boolean>;
   /** Clears the balance on sign-out so the next account never briefly shows the previous one's number. */
@@ -39,14 +39,15 @@ export const useCoinsStore = create<CoinsState>((set) => ({
   },
 
   addCoins: async (amount) => {
-    if (amount <= 0) return;
+    if (amount <= 0) return true;
     const { data, error } = await supabase.rpc('add_coins', { p_amount: amount });
     if (error) {
       console.error('[coins] addCoins', error);
       set({ error: error.message });
-      return;
+      return false;
     }
     set({ coins: data as number, error: null });
+    return true;
   },
 
   spendCoins: async (amount) => {

@@ -84,6 +84,12 @@ export interface PurchaseCelebration {
   itemName: string;
 }
 
+/** An earn whose add_coins RPC hasn't confirmed yet (e.g. offline when earned) - kept in persisted state so it survives an app restart and gets retried instead of the coins silently vanishing. */
+interface PendingCoinCredit {
+  id: string;
+  amount: number;
+}
+
 interface RewardState {
   streak: number;
   lastActiveDate: string | null;
@@ -105,9 +111,13 @@ interface RewardState {
   activeBorder: BorderId;
   unlockedBorders: BorderId[];
   unlockedPerks: PerkId[];
+  /** Earns whose add_coins RPC hasn't confirmed yet - retried by flushPendingCoinCredits. */
+  pendingCoinCredits: PendingCoinCredit[];
 
   /** Records the earn locally (celebration pop-up, transaction history) and asks coinsStore to actually credit the backend balance - see store/coinsStore.ts. */
   addGoldBars: (amount: number, reason: string) => void;
+  /** Retries every not-yet-confirmed earn against the add_coins RPC - call whenever connectivity is freshly available (sign-in, reconnect, app foreground; see store/syncStore.ts's pullAndApply), so an earn made while offline doesn't stay lost forever. */
+  flushPendingCoinCredits: () => Promise<void>;
   dismissCelebration: () => void;
   dismissPurchaseCelebration: () => void;
   /** Call whenever the user logs a meal or a completed training session - advances the daily streak at most once per calendar day. */
@@ -171,14 +181,40 @@ export const useRewardStore = create<RewardState>()(
       activeBorder: 'none',
       unlockedBorders: ['none'],
       unlockedPerks: [],
+      pendingCoinCredits: [],
 
       addGoldBars: (amount, reason) => {
         if (amount <= 0) return;
+        const pendingId = makeId();
         set((state) => ({
           transactionHistory: pushTransaction(state.transactionHistory, amount, reason),
           celebration: { id: ++nextCelebrationId, amount, reason },
+          pendingCoinCredits: [...state.pendingCoinCredits, { id: pendingId, amount }],
         }));
-        void useCoinsStore.getState().addCoins(amount);
+        // Fire-and-forget from this call's perspective, but not from the coins'
+        // perspective: a failure (offline, dropped connection) leaves the entry
+        // in pendingCoinCredits above instead of losing the earn - retried by
+        // flushPendingCoinCredits once connectivity is back.
+        void useCoinsStore
+          .getState()
+          .addCoins(amount)
+          .then((succeeded) => {
+            if (succeeded) {
+              set((state) => ({ pendingCoinCredits: state.pendingCoinCredits.filter((entry) => entry.id !== pendingId) }));
+            }
+          });
+      },
+
+      flushPendingCoinCredits: async () => {
+        // Sequential, not Promise.all: add_coins mutates a single shared balance,
+        // so batching these still hits the backend one request at a time either
+        // way - doing it in order just keeps the retry logic simple.
+        for (const entry of get().pendingCoinCredits) {
+          const succeeded = await useCoinsStore.getState().addCoins(entry.amount);
+          if (succeeded) {
+            set((state) => ({ pendingCoinCredits: state.pendingCoinCredits.filter((e) => e.id !== entry.id) }));
+          }
+        }
       },
 
       dismissCelebration: () => set({ celebration: null }),

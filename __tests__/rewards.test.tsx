@@ -19,7 +19,7 @@ jest.mock('@/store/coinsStore', () => {
   return {
     useCoinsStore: createStore(() => ({
       coins: 0,
-      addCoins: jest.fn(async () => {}),
+      addCoins: jest.fn(async () => true),
       spendCoins: jest.fn(async () => true),
     })),
   };
