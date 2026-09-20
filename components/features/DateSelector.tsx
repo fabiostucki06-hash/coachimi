@@ -133,12 +133,18 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
       if (cell.key < today) {
         const entries = entriesByDate[cell.key] ?? [];
         const totalCalories = entries.reduce((sum, entry) => sum + entry.foodItem.caloriesPerServing * entry.servings, 0);
+        const totalProtein = entries.reduce((sum, entry) => sum + entry.foodItem.macrosPerServing.protein * entry.servings, 0);
+        const totalCarbs = entries.reduce((sum, entry) => sum + entry.foodItem.macrosPerServing.carbs * entry.servings, 0);
         const targets = getEffectiveDailyTargets(user, cycles, cell.key);
         compliance = getDayComplianceStatus({
           totalCalories,
           hasEntries: entries.length > 0,
           targetsSuppressed: targets.targetsSuppressed,
           calorieGoal: targets.calorieGoal,
+          totalProtein,
+          proteinGoal: targets.macroGoal.protein,
+          totalCarbs,
+          carbGoal: targets.macroGoal.carbs,
         });
       }
       info.set(cell.key, { rangeColor, compliance });

@@ -57,18 +57,36 @@ const COMPLIANCE_UPPER_BAND = 1.1;
 /**
  * Target-compliance status for one already-passed day, for the calendar's
  * per-day status dot. 'exempt' (a cheat/off day) always wins over the
- * calorie math - those days are excluded from compliance rating by design,
+ * macro math - those days are excluded from compliance rating by design,
  * per the feature spec. 'none' means "nothing to rate" (no entries logged,
- * or no goal to rate against).
+ * or no calorie goal to rate against).
+ *
+ * A day only counts as 'met' when all three of calories, protein AND carbs
+ * were reached - matching store/rewardStore.ts's checkCalorieProteinGoal
+ * wording ("Kalorienziel/Proteinziel erreicht"), extended to carbs per the
+ * same "erreicht" (reached) meaning: calories stay in the existing tolerance
+ * band (over-eating is still a miss, not a free pass), while protein/carbs
+ * just need to be at or above their goal - overshooting either isn't
+ * penalized the way overshooting calories is. A goal of 0 (e.g. carnivore's
+ * carb target) is treated as always satisfied, since there's nothing to reach.
  */
 export function getDayComplianceStatus(params: {
   totalCalories: number;
   hasEntries: boolean;
   targetsSuppressed: boolean;
   calorieGoal: number;
+  totalProtein?: number;
+  proteinGoal?: number;
+  totalCarbs?: number;
+  carbGoal?: number;
 }): DayComplianceStatus {
   if (params.targetsSuppressed) return 'exempt';
   if (!params.hasEntries || params.calorieGoal <= 0) return 'none';
-  const withinBand = params.totalCalories >= params.calorieGoal * COMPLIANCE_LOWER_BAND && params.totalCalories <= params.calorieGoal * COMPLIANCE_UPPER_BAND;
-  return withinBand ? 'met' : 'missed';
+
+  const calorieMet =
+    params.totalCalories >= params.calorieGoal * COMPLIANCE_LOWER_BAND && params.totalCalories <= params.calorieGoal * COMPLIANCE_UPPER_BAND;
+  const proteinMet = !params.proteinGoal || params.proteinGoal <= 0 || (params.totalProtein ?? 0) >= params.proteinGoal;
+  const carbsMet = !params.carbGoal || params.carbGoal <= 0 || (params.totalCarbs ?? 0) >= params.carbGoal;
+
+  return calorieMet && proteinMet && carbsMet ? 'met' : 'missed';
 }

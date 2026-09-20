@@ -106,4 +106,34 @@ describe('getDayComplianceStatus', () => {
       getDayComplianceStatus({ totalCalories: 800, hasEntries: true, targetsSuppressed: false, calorieGoal: 2000 }),
     ).toBe('missed');
   });
+
+  it('requires protein and carbs to also be reached, not just calories', () => {
+    expect(
+      getDayComplianceStatus({
+        totalCalories: 2000,
+        hasEntries: true,
+        targetsSuppressed: false,
+        calorieGoal: 2000,
+        totalProtein: 90,
+        proteinGoal: 150,
+        totalCarbs: 200,
+        carbGoal: 200,
+      }),
+    ).toBe('missed');
+  });
+
+  it('is met when calories, protein and carbs are all reached (overshooting protein/carbs is fine)', () => {
+    expect(
+      getDayComplianceStatus({
+        totalCalories: 2000,
+        hasEntries: true,
+        targetsSuppressed: false,
+        calorieGoal: 2000,
+        totalProtein: 160,
+        proteinGoal: 150,
+        totalCarbs: 210,
+        carbGoal: 200,
+      }),
+    ).toBe('met');
+  });
 });
