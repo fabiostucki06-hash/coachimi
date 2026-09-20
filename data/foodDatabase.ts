@@ -195,6 +195,7 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
 
   // Milchprodukte
   { id: 'local-vollmilch', name: 'Vollmilch, 3,8%', caloriesPer100g: 66, carbsPer100g: 4.8, proteinPer100g: 3.3, fatPer100g: 3.8 },
+  { id: 'local-rohmilch', name: 'Rohmilch', caloriesPer100g: 66, carbsPer100g: 4.8, proteinPer100g: 3.3, fatPer100g: 3.9 },
   { id: 'local-fettarme-milch', name: 'Fettarme Milch, 1,5%', caloriesPer100g: 47, carbsPer100g: 4.9, proteinPer100g: 3.4, fatPer100g: 1.5 },
   { id: 'local-buttermilch', name: 'Buttermilch', caloriesPer100g: 40, carbsPer100g: 4.8, proteinPer100g: 3.4, fatPer100g: 0.5 },
   { id: 'local-kondensmilch', name: 'Kondensmilch', caloriesPer100g: 135, carbsPer100g: 10, proteinPer100g: 7, fatPer100g: 8 },
