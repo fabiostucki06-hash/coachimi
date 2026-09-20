@@ -26,7 +26,7 @@ jest.mock('@/lib/supabase', () => ({
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { addMealAndSync, copyEntryAndSync, copyMealAndSync, updateMealAndSync } from '@/services/diaryActions';
+import { addMealAndSync, copyEntryAndSync, copyMealAndSync, importDiaryEntriesAndSync, updateMealAndSync } from '@/services/diaryActions';
 import { useOfflineQueueStore } from '@/services/offlineQueue';
 import { useDiaryStore, todayKey } from '@/store/diaryStore';
 import { useSyncStore } from '@/store/syncStore';
@@ -211,5 +211,66 @@ describe('updateMealAndSync', () => {
     expect(pushedEntries[0].servings).toBe(1.5);
     expect(pushedEntries[0].mealType).toBe('snack');
     expect(useDiaryStore.getState().entriesByDate[date][0].servings).toBe(1.5);
+  });
+});
+
+describe('importDiaryEntriesAndSync', () => {
+  const importedEntry = (id: string, loggedAt: string) => ({
+    id,
+    foodItem: foodA,
+    mealType: 'lunch' as const,
+    servings: 1,
+    loggedAt,
+  });
+
+  it('adds only missing entries, leaves existing ones untouched and pushes the merged diary when signed in', async () => {
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u-import' }, access_token: 'tok-import' });
+    await flush();
+    await flush();
+
+    const date = todayKey();
+    await addMealAndSync(date, foodB, 'dinner', 2);
+    const existing = useDiaryStore.getState().entriesByDate[date][0];
+    mockUpsert.mockClear();
+
+    const added = await importDiaryEntriesAndSync({
+      [date]: [{ ...existing, servings: 99 }, importedEntry('imp-1', '2026-09-18T10:00:00.000Z')],
+      '2026-09-10': [importedEntry('imp-2', '2026-09-10T10:00:00.000Z')],
+    });
+
+    expect(added).toBe(2);
+    expect(useDiaryStore.getState().entriesByDate[date].find((e) => e.id === existing.id)?.servings).toBe(2);
+    expect(useDiaryStore.getState().entriesByDate[date]).toHaveLength(2);
+    expect(useDiaryStore.getState().entriesByDate['2026-09-10']).toHaveLength(1);
+
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+    const pushed = mockUpsert.mock.calls[0][0].data.entriesByDate;
+    expect(pushed[date]).toHaveLength(2);
+    expect(pushed['2026-09-10']).toHaveLength(1);
+  });
+
+  it('does not push when everything in the file already exists', async () => {
+    useSyncStore.getState().init();
+    authCallback?.('INITIAL_SESSION', { user: { id: 'u-import-2' }, access_token: 'tok-import-2' });
+    await flush();
+    await flush();
+
+    const date = todayKey();
+    await addMealAndSync(date, foodA, 'lunch', 1);
+    const existing = useDiaryStore.getState().entriesByDate[date][0];
+    mockUpsert.mockClear();
+
+    expect(await importDiaryEntriesAndSync({ [date]: [existing] })).toBe(0);
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it('merges locally without pushing when signed out', async () => {
+    useSyncStore.setState({ session: null });
+    const added = await importDiaryEntriesAndSync({ '2026-08-01': [importedEntry('imp-3', '2026-08-01T10:00:00.000Z')] });
+
+    expect(added).toBe(1);
+    expect(useDiaryStore.getState().entriesByDate['2026-08-01']).toHaveLength(1);
+    expect(mockUpsert).not.toHaveBeenCalled();
   });
 });

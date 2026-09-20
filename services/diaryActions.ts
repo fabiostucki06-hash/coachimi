@@ -1,4 +1,5 @@
-import { buildSnapshot, isBaselineMissingError, pushSnapshotData, recordLocalChange } from '@/services/cloudSync';
+import { buildSnapshot, isBaselineMissingError, mergeRemoteDiary, pushSnapshotData, recordLocalChange } from '@/services/cloudSync';
+import { countDiaryEntries } from '@/services/localBackup';
 import { isNetworkError, useOfflineQueueStore } from '@/services/offlineQueue';
 import { makeEntryId, useDiaryStore, type MealEntryUpdate } from '@/store/diaryStore';
 import { useRewardStore } from '@/store/rewardStore';
@@ -45,9 +46,12 @@ function enqueue(mutation: () => Promise<void>): Promise<void> {
 // Supabase user_data is the single source of truth here: local state is only
 // ever touched AFTER the push has succeeded. On failure nothing is applied
 // locally at all - "rollback" is simply that the mutation never happened.
-async function pushThenCommit(date: string, nextEntriesForDate: MealEntry[], userId: string): Promise<void> {
+async function pushDiaryThenCommit(
+  nextEntriesByDate: Record<string, MealEntry[]>,
+  changedDates: string[],
+  userId: string,
+): Promise<void> {
   useSyncStore.setState({ status: 'syncing', error: null });
-  const nextEntriesByDate = { ...useDiaryStore.getState().entriesByDate, [date]: nextEntriesForDate };
   const snapshot = { ...buildSnapshot(), entriesByDate: nextEntriesByDate };
 
   let updatedAt: string;
@@ -59,7 +63,7 @@ async function pushThenCommit(date: string, nextEntriesForDate: MealEntry[], use
       // JWT / flaky connection at launch), so pushing would risk overwriting it.
       // Keep the meal locally, and kick the catch-up pull - once it succeeds,
       // syncStore merges the remote diary in and pushes the combined result.
-      useOfflineQueueStore.getState().markPending(date);
+      changedDates.forEach((changedDate) => useOfflineQueueStore.getState().markPending(changedDate));
       withSyncSuppressed(() => {
         useDiaryStore.setState({ entriesByDate: nextEntriesByDate });
       });
@@ -79,7 +83,7 @@ async function pushThenCommit(date: string, nextEntriesForDate: MealEntry[], use
       // listener to retry. That retry pushes the FULL current snapshot,
       // which already contains this change - see services/syncManager.ts.
       useOfflineQueueStore.getState().setOnline(false);
-      useOfflineQueueStore.getState().markPending(date);
+      changedDates.forEach((changedDate) => useOfflineQueueStore.getState().markPending(changedDate));
       withSyncSuppressed(() => {
         useDiaryStore.setState({ entriesByDate: nextEntriesByDate });
       });
@@ -96,6 +100,11 @@ async function pushThenCommit(date: string, nextEntriesForDate: MealEntry[], use
     useDiaryStore.setState({ entriesByDate: nextEntriesByDate });
   });
   useSyncStore.setState({ status: 'synced', lastSyncedAt: updatedAt, remoteUpdatedAt: updatedAt, error: null });
+}
+
+function pushThenCommit(date: string, nextEntriesForDate: MealEntry[], userId: string): Promise<void> {
+  const nextEntriesByDate = { ...useDiaryStore.getState().entriesByDate, [date]: nextEntriesForDate };
+  return pushDiaryThenCommit(nextEntriesByDate, [date], userId);
 }
 
 interface PendingMeal {
@@ -176,4 +185,32 @@ export function updateMealAndSync(date: string, entryId: string, changes: MealEn
     const nextEntries = currentEntries.map((entry) => (entry.id === entryId ? { ...entry, ...changes } : entry));
     await pushThenCommit(date, nextEntries, session.user.id);
   });
+}
+
+/**
+ * Merges entries from a local backup file into the diary and, when signed in,
+ * pushes the merged diary through the same write-then-commit path as any other
+ * mutation (so a failed push leaves local state untouched). Additive only:
+ * entries whose id already exists are never overwritten, and no rewards/streak
+ * side effects fire - importing must not be a way to farm coins. Resolves with
+ * the number of entries actually added.
+ */
+export async function importDiaryEntriesAndSync(imported: Record<string, MealEntry[]>): Promise<number> {
+  let added = 0;
+  await enqueue(async () => {
+    // Read inside the queue so a meal logged while the file was being picked is included.
+    const current = useDiaryStore.getState().entriesByDate;
+    const merged = mergeRemoteDiary(current, imported);
+    added = countDiaryEntries(merged) - countDiaryEntries(current);
+    if (added === 0) return;
+
+    const session = useSyncStore.getState().session;
+    if (!session) {
+      useDiaryStore.setState({ entriesByDate: merged, lastUpdatedAt: new Date().toISOString() });
+      return;
+    }
+    const changedDates = Object.keys(merged).filter((date) => merged[date] !== current[date]);
+    await pushDiaryThenCommit(merged, changedDates, session.user.id);
+  });
+  return added;
 }
