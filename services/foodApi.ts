@@ -19,6 +19,11 @@ const REQUEST_TIMEOUT_MS = 8000;
 const USDA_API_KEY = process.env.EXPO_PUBLIC_USDA_API_KEY?.trim() || 'DEMO_KEY';
 const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 const COMMUNITY_BARCODE_TABLE = 'community_barcodes';
+// Open Food Facts blocks or throttles requests that don't identify themselves - a
+// generic/default fetch User-Agent reads as bot traffic and can get silently
+// rate-limited, which is exactly what makes even well-known products (Coca-Cola
+// etc.) intermittently fail to resolve. See https://openfoodfacts.github.io/openfoodfacts-server/api/#requests
+const OFF_USER_AGENT = 'CoachImi/1.0.0 (Expo React Native app)';
 /** Background search fallback gets a tighter budget so typing never feels blocked by a slow network. */
 const SEARCH_TIMEOUT_MS = 2500;
 /** Below this many hits, escalate to the next broader search tier instead of settling for a thin result set. */
@@ -196,14 +201,19 @@ function normalizeFoodItem(product: OffProduct, fallbackId: string): FoodItem {
   };
 }
 
-async function fetchJson<T>(url: string, externalSignal?: AbortSignal, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<T> {
+async function fetchJson<T>(
+  url: string,
+  externalSignal?: AbortSignal,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+  headers?: Record<string, string>,
+): Promise<T> {
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), timeoutMs);
   externalSignal?.addEventListener('abort', () => timeoutController.abort());
 
   let response: Response;
   try {
-    response = await fetch(url, { signal: timeoutController.signal });
+    response = await fetch(url, { signal: timeoutController.signal, headers });
   } catch (error) {
     if (timeoutController.signal.aborted && !externalSignal?.aborted) {
       throw new FoodApiUnavailableError(error);
@@ -238,7 +248,7 @@ function sanitizeQuery(query: string): string {
 }
 
 async function runSearchTier(url: string, signal?: AbortSignal): Promise<FoodItem[]> {
-  const data = await fetchJson<OffSearchResponse>(url, signal, SEARCH_TIMEOUT_MS);
+  const data = await fetchJson<OffSearchResponse>(url, signal, SEARCH_TIMEOUT_MS, { 'User-Agent': OFF_USER_AGENT });
   if (__DEV__) console.log('OFF Raw API Response:', url, data);
   const products = data.products ?? [];
 
@@ -272,7 +282,7 @@ export function buildSwissQuery(term: string, retailerOnly: boolean): string {
 /** Swiss-market tier via Search-a-licious - same field mapping as `normalizeFoodItem`, just adapted for `hits`/array-brands instead of `products`/string-brands. Exported so services/staplePrefetch.ts can reuse it directly rather than duplicating the query/normalization logic. */
 export async function runSwissSearchTier(query: string, signal?: AbortSignal, retailerOnly = false): Promise<FoodItem[]> {
   const url = `${SEARCH_URL_SALICIOUS}?q=${encodeURIComponent(buildSwissQuery(query, retailerOnly))}&langs=de&page_size=${MAX_RESULTS}`;
-  const data = await fetchJson<SalaciousResponse>(url, signal, SEARCH_TIMEOUT_MS);
+  const data = await fetchJson<SalaciousResponse>(url, signal, SEARCH_TIMEOUT_MS, { 'User-Agent': OFF_USER_AGENT });
   const hits = data.hits ?? [];
 
   return hits
@@ -480,7 +490,7 @@ export async function upsertCommunityBarcode(
 /** Returns null on a clean 404 (product not in OFF) so the caller can fall through to Tier 3 - only a genuine network/parse failure throws. */
 async function fetchFromOff(barcode: string, signal?: AbortSignal): Promise<FoodItem | null> {
   const url = `${PRODUCT_URL}/${encodeURIComponent(barcode)}.json`;
-  const data = await fetchJson<OffProductResponse>(url, signal);
+  const data = await fetchJson<OffProductResponse>(url, signal, REQUEST_TIMEOUT_MS, { 'User-Agent': OFF_USER_AGENT });
   if (data.status !== 1 || !data.product) return null;
   return { ...normalizeFoodItem(data.product, barcode), source: 'off' };
 }
