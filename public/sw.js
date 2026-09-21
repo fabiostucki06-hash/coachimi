@@ -3,10 +3,16 @@
 // really the same index.html + JS bundle, so this worker's job is making
 // that shell load instantly (even offline) and relaying live "data changed"
 // pings between open windows so a widget window reflects a change made in
-// another one the moment it happens, not just on next cold load. There is no
-// push/Background Sync API involved - this is a static Vercel export with no
-// server to push from - "real time" here means "as fast as postMessage
-// between windows this worker controls".
+// another one the moment it happens, not just on next cold load. "Real time"
+// for the widget means "as fast as postMessage between windows this worker
+// controls" - no Background Sync API is involved.
+//
+// The `push` handler at the bottom turns a Web Push message into a system
+// notification and `notificationclick` focuses/opens the app. Nothing sends
+// pushes yet: this is a static Vercel export, so delivering one needs a
+// backend holding VAPID keys and the users' PushManager subscriptions. The
+// in-app reminders (services/notificationService.ts) don't use push at all -
+// the page schedules them and shows them via registration.showNotification.
 //
 // Cache-busting for a *new deploy* is primarily handled by hooks/useAutoUpdate.ts
 // (polls /build-version.json, then calls utils/hardRefresh.ts's
@@ -108,6 +114,56 @@ self.addEventListener('message', (event) => {
       for (const client of clients) {
         if (client.id !== event.source?.id) client.postMessage({ type: 'coach-imi-data-changed' });
       }
+    }),
+  );
+});
+
+// Web Push -> system notification. Payload is JSON: { title, body, url? }.
+// A non-JSON or empty payload falls back to a generic reminder instead of
+// dropping the push - browsers expect a push to show *something*.
+const NOTIFICATION_ICON = '/icon.png';
+const DEFAULT_NOTIFICATION = { title: 'Coach imi', body: 'Erinnerung' };
+
+self.addEventListener('push', (event) => {
+  let data = DEFAULT_NOTIFICATION;
+  if (event.data) {
+    try {
+      data = { ...DEFAULT_NOTIFICATION, ...event.data.json() };
+    } catch {
+      data = { ...DEFAULT_NOTIFICATION, body: event.data.text() || DEFAULT_NOTIFICATION.body };
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: NOTIFICATION_ICON,
+      badge: NOTIFICATION_ICON,
+      tag: 'coachimi-notification',
+      data: { url: data.url || '/' },
+    }),
+  );
+});
+
+// Only same-origin targets are honored, so a malformed payload can't turn a
+// tap on the notification into an open redirect.
+function resolveNotificationUrl(url) {
+  try {
+    const target = new URL(url || '/', self.location.origin);
+    return target.origin === self.location.origin ? target.href : self.location.origin + '/';
+  } catch {
+    return self.location.origin + '/';
+  }
+}
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = resolveNotificationUrl(event.notification.data?.url);
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => 'focus' in client);
+      return existing ? existing.focus() : self.clients.openWindow(target);
     }),
   );
 });

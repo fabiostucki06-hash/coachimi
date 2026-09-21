@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CloudSyncCard } from '@/components/features/CloudSyncCard';
 import { CycleManagerModal } from '@/components/features/CycleManagerModal';
 import { LocalBackupCard } from '@/components/features/LocalBackupCard';
+import { NotificationSettingsCard } from '@/components/features/NotificationSettingsCard';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
 import { PatchNotes } from '@/components/features/PatchNotes';
 import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
@@ -564,6 +565,8 @@ export default function ProfilScreen() {
           <Text className="text-sm font-semibold text-text-secondary">Darstellung</Text>
           <ThemeToggle />
         </Card>
+
+        <NotificationSettingsCard />
 
         <LocalBackupCard />
 
