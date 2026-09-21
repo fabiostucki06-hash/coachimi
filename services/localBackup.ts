@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useDiaryStore } from '@/store/diaryStore';
+import { useTrainingStore } from '@/store/trainingStore';
+import { useUserStore } from '@/store/userStore';
 import type { FoodItem, MealEntry, MealType } from '@/types';
 
 // Same key store/diaryStore.ts's persist middleware writes to - the backup is a
@@ -42,28 +44,83 @@ function safeParse(text: string): unknown {
   }
 }
 
-/** Serializes the on-disk diary (coach-imi-diary-storage) as a pretty-printed backup file body. Falls back to the live store if nothing has been persisted yet. */
-export async function createDiaryBackupJson(): Promise<string> {
-  const raw = await AsyncStorage.getItem(DIARY_STORAGE_KEY);
-  const persisted = raw ? safeParse(raw) : undefined;
-  const hasPersistedDiary = isRecord(persisted) && isRecord(persisted.state) && isRecord(persisted.state.entriesByDate);
-
+/**
+ * Builds the backup envelope from the live in-memory stores, not from what
+ * persist has flushed to AsyncStorage so far - so an export always contains the
+ * entry that was logged a moment ago, even if its write hasn't landed yet.
+ * `data` keeps the persisted-storage shape ({ state: { entriesByDate }, version })
+ * so parseDiaryBackup and older exports stay interchangeable; `training` and
+ * `settings` ride along as extra top-level sections the diary import ignores.
+ */
+function buildBackupEnvelope(): Record<string, unknown> {
   const { entriesByDate, lastUpdatedAt } = useDiaryStore.getState();
-  const data = hasPersistedDiary
-    ? persisted
-    : { state: { entriesByDate, lastUpdatedAt }, version: useDiaryStore.persist.getOptions().version ?? 0 };
+  const { templates, sessionsByDate } = useTrainingStore.getState();
 
-  return JSON.stringify(
-    {
-      format: BACKUP_FORMAT,
-      version: BACKUP_VERSION,
-      exportedAt: new Date().toISOString(),
-      storageKey: DIARY_STORAGE_KEY,
-      data,
-    },
-    null,
-    2,
-  );
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    storageKey: DIARY_STORAGE_KEY,
+    data: { state: { entriesByDate, lastUpdatedAt }, version: useDiaryStore.persist.getOptions().version ?? 0 },
+    training: { templates, sessionsByDate },
+    settings: useUserStore.getState().user,
+  };
+}
+
+/** Freshly compiles the current diary, training and settings state into a pretty-printed backup file body. */
+export async function createDiaryBackupJson(): Promise<string> {
+  return JSON.stringify(buildBackupEnvelope(), null, 2);
+}
+
+// --- Automatic background snapshot ------------------------------------------------
+
+export const AUTO_BACKUP_STORAGE_KEY = 'coach-imi-auto-backup';
+const AUTO_BACKUP_DEBOUNCE_MS = 2000;
+// AsyncStorage on the web is localStorage (~5 MB per origin, shared with the stores' own
+// persisted copies) - a snapshot too big to fit alongside them is skipped rather than risking
+// a quota error that would take down the real diary write.
+const AUTO_BACKUP_MAX_CHARS = 1_000_000;
+
+let autoBackupStarted = false;
+
+async function writeAutoBackup(): Promise<void> {
+  try {
+    const json = JSON.stringify(buildBackupEnvelope());
+    if (json.length > AUTO_BACKUP_MAX_CHARS) {
+      await AsyncStorage.removeItem(AUTO_BACKUP_STORAGE_KEY);
+      return;
+    }
+    await AsyncStorage.setItem(AUTO_BACKUP_STORAGE_KEY, json);
+  } catch (error) {
+    console.error('[backup] auto snapshot failed', error);
+  }
+}
+
+/**
+ * Silently re-snapshots diary, training and settings to local storage a moment after any of
+ * them changes (debounced, so a burst of edits is one write). Waits until all three stores
+ * have rehydrated so the initial empty state can never overwrite a good snapshot. Cloud
+ * backup of the same data is already handled per-mutation by services/cloudSync.ts.
+ */
+export function startAutoBackup(): void {
+  if (autoBackupStarted) return;
+  autoBackupStarted = true;
+
+  const stores = [useDiaryStore, useTrainingStore, useUserStore];
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const schedule = () => {
+    if (!stores.every((store) => store.persist.hasHydrated())) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      void writeAutoBackup();
+    }, AUTO_BACKUP_DEBOUNCE_MS);
+  };
+
+  for (const store of stores) {
+    store.subscribe(schedule);
+  }
 }
 
 function sanitizeFoodItem(value: unknown, entryId: string): FoodItem | null {

@@ -74,8 +74,9 @@ export function LocalBackupCard() {
     <Card className="gap-3">
       <Text className="text-sm font-semibold text-text-secondary">Lokales Backup</Text>
       <Text className="text-xs text-text-secondary">
-        Sichert dein Tagebuch als JSON-Datei. Beim Import werden fehlende Einträge hinzugefügt und in die Cloud übertragen –
-        bestehende Einträge bleiben unverändert.
+        Sichert Tagebuch, Training und Einstellungen im aktuellen Stand als JSON-Datei; im Hintergrund wird nach jeder
+        Änderung automatisch ein lokaler Snapshot angelegt. Beim Import werden fehlende Tagebuch-Einträge hinzugefügt und in
+        die Cloud übertragen – bestehende Einträge bleiben unverändert.
       </Text>
       <View className="gap-2">
         <Button

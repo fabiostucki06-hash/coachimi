@@ -2,16 +2,20 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Plus, X, Zap, ZapOff } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, Vibration, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
+import { TextField } from '@/components/ui/TextField';
 import { FoodApiError, ProductNotFoundError, getFoodByBarcode } from '@/services/foodApi';
 import { useUiStore } from '@/store/uiStore';
 import type { MealType } from '@/types';
 
 /** How long the scanner ignores new detections after a successful read, to avoid duplicate lookups from the same code lingering in frame. */
 const SCAN_LOCK_MS = 2000;
+
+/** EAN-8, UPC-A (12) and EAN-13 - the lengths the camera scanner above reads, so typing a code by hand is never stricter than scanning it. */
+const MANUAL_BARCODE_LENGTHS: readonly number[] = [8, 12, 13];
 
 export default function BarcodeScannerScreen() {
   const params = useLocalSearchParams<{ mealType: MealType }>();
@@ -24,6 +28,8 @@ export default function BarcodeScannerScreen() {
   const [notFound, setNotFound] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualCode, setManualCode] = useState('');
   const scannedRef = useRef(false);
   const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -31,13 +37,18 @@ export default function BarcodeScannerScreen() {
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
   }, []);
 
-  async function handleBarcodeScanned({ data }: { data: string }) {
+  function handleBarcodeScanned({ data }: { data: string }) {
+    if (scannedRef.current) return;
+    Vibration.vibrate(100);
+    void lookupBarcode(data);
+  }
+
+  async function lookupBarcode(data: string) {
     if (scannedRef.current) return;
     scannedRef.current = true;
     setLoading(true);
     setError(null);
     setNotFound(false);
-    Vibration.vibrate(100);
 
     try {
       // Multi-tier lookup (Supabase community cache -> Open Food Facts -> USDA) -
@@ -66,12 +77,20 @@ export default function BarcodeScannerScreen() {
     scannedRef.current = false;
   }
 
+  const manualCodeValid = MANUAL_BARCODE_LENGTHS.includes(manualCode.length);
+
+  function handleManualLookup() {
+    if (!manualCodeValid || loading) return;
+    void lookupBarcode(manualCode);
+  }
+
   function handleManualAdd() {
     router.replace({ pathname: '/add-food', params: { mealType, barcode: scannedBarcode ?? undefined } });
   }
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View className="flex-row items-center justify-between px-6 pt-4">
         <Text className="text-lg font-bold tracking-tight text-foreground">Barcode scannen</Text>
         <View className="flex-row items-center gap-2">
@@ -140,12 +159,38 @@ export default function BarcodeScannerScreen() {
         )}
       </View>
 
+      <View className="gap-3 px-6 pb-6">
+        {manualOpen ? (
+          <>
+            <TextField
+              label="EAN / Barcode"
+              value={manualCode}
+              onChangeText={(text) => setManualCode(text.replace(/D/g, '').slice(0, 13))}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              maxLength={13}
+              placeholder="z. B. 7610200012345"
+              returnKeyType="search"
+              onSubmitEditing={handleManualLookup}
+              autoFocus
+            />
+            <Text className="text-xs text-text-secondary">8, 12 oder 13 Ziffern – wie unter dem Strichcode gedruckt.</Text>
+            <Button label="Produkt suchen" onPress={handleManualLookup} disabled={!manualCodeValid || loading} loading={loading} />
+          </>
+        ) : (
+          <Pressable className="items-center py-2 active:opacity-70" onPress={() => setManualOpen(true)}>
+            <Text className="text-sm font-medium text-primary">EAN / Barcode manuell eingeben</Text>
+          </Pressable>
+        )}
+      </View>
+
       {error && (
         <View className="gap-3 px-6 pb-8">
           <Text className="text-center text-sm text-red-400">{error}</Text>
           <Button label="Erneut versuchen" variant="secondary" onPress={handleRetry} />
         </View>
       )}
+      </KeyboardAvoidingView>
 
       {notFound && (
         <>

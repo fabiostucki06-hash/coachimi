@@ -230,6 +230,11 @@ export function getSessionsForExercise(exerciseName: string, beforeDate?: string
   return results.sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/** True when at least one session on the day has a logged (reps > 0) set - the same bar `countRecentTrainingDays` uses, and what the calendar's workout checkmark shows. */
+export function hasLoggedWorkout(sessions: WorkoutSession[] | undefined): boolean {
+  return (sessions ?? []).some((session) => (session.exercises ?? []).some((exercise) => (exercise.sets ?? []).some((set) => set.reps > 0)));
+}
+
 /** Distinct dates in the last `days` that have at least one session with a logged set - feeds the supplement engine's "high training frequency" rule. */
 export function countRecentTrainingDays(days: number): number {
   const { sessionsByDate } = useTrainingStore.getState();

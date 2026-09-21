@@ -81,6 +81,8 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
   const comparison = compareToPrevious(exercise, history[0] ?? null);
   const tip = generateProgressionTip(exercise, history);
   const lastPerformance = getLastPerformance(history[0] ?? null);
+  // Set-by-set numbers from the previous session, so each row shows what to beat right where it's typed.
+  const previousSets = (history[0]?.sets ?? []).filter((previousSet) => previousSet.reps > 0);
 
   return (
     <View className="gap-3 border-t border-surface-border pt-3">
@@ -92,7 +94,7 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
       </View>
 
       {lastPerformance && (
-        <Text className="text-[11px] text-text-secondary">
+        <Text className="text-[11px] font-semibold text-foreground">
           Letztes Mal: {lastPerformance.weightKg} kg × {lastPerformance.reps} Wdh.
         </Text>
       )}
@@ -103,29 +105,39 @@ function ExerciseRow({ session, exercise }: { session: WorkoutSession; exercise:
       </View>
 
       <View className="gap-2">
-        {(exercise.sets ?? []).map((set, index) => (
-          <View key={index} className="flex-row items-center gap-2">
-            <Text className="w-5 text-xs text-text-secondary">{index + 1}</Text>
-            <WeightInput
-              weightKg={set.weightKg}
-              onChange={(weightKg) => updateSet(session.date, session.id, exercise.id, index, { weightKg })}
-            />
-            <TextInput
-              className="flex-1 rounded-xl border border-surface-border bg-overlay/5 px-3 py-2 text-sm text-foreground"
-              keyboardType="number-pad"
-              value={set.reps ? String(set.reps) : ''}
-              placeholder="Wdh."
-              placeholderTextColor="#A1A1AA"
-              onChangeText={(text) => updateSet(session.date, session.id, exercise.id, index, { reps: Math.round(parseNumber(text, 0)) })}
-            />
-            <Pressable
-              className="h-8 w-8 items-center justify-center rounded-full bg-red-500/10 active:opacity-80"
-              onPress={() => removeSet(session.date, session.id, exercise.id, index)}
-            >
-              <X color="#ef4444" size={12} />
-            </Pressable>
-          </View>
-        ))}
+        {(exercise.sets ?? []).map((set, index) => {
+          const previousSet = previousSets[index];
+          return (
+            <View key={index} className="gap-1">
+              <View className="flex-row items-center gap-2">
+                <Text className="w-5 text-xs text-text-secondary">{index + 1}</Text>
+                <WeightInput
+                  weightKg={set.weightKg}
+                  onChange={(weightKg) => updateSet(session.date, session.id, exercise.id, index, { weightKg })}
+                />
+                <TextInput
+                  className="flex-1 rounded-xl border border-surface-border bg-overlay/5 px-3 py-2 text-sm text-foreground"
+                  keyboardType="number-pad"
+                  value={set.reps ? String(set.reps) : ''}
+                  placeholder="Wdh."
+                  placeholderTextColor="#A1A1AA"
+                  onChangeText={(text) => updateSet(session.date, session.id, exercise.id, index, { reps: Math.round(parseNumber(text, 0)) })}
+                />
+                <Pressable
+                  className="h-8 w-8 items-center justify-center rounded-full bg-red-500/10 active:opacity-80"
+                  onPress={() => removeSet(session.date, session.id, exercise.id, index)}
+                >
+                  <X color="#ef4444" size={12} />
+                </Pressable>
+              </View>
+              {previousSet && (
+                <Text className="pl-7 text-[11px] font-semibold text-primary">
+                  Letztes Mal: {previousSet.weightKg} kg × {previousSet.reps} Wdh.
+                </Text>
+              )}
+            </View>
+          );
+        })}
         <Pressable
           className="flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-surface-border py-2 active:opacity-70"
           onPress={() => addSet(session.date, session.id, exercise.id)}

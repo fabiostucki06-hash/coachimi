@@ -15,7 +15,9 @@ import { useResolvedColorScheme } from '@/hooks/useResolvedColorScheme';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
 import { useWidgetDeepLinks } from '@/hooks/useWidgetDeepLinks';
 import { useWidgetSync } from '@/hooks/useWidgetSync';
+import { startAutoBackup } from '@/services/localBackup';
 import { startSyncManager } from '@/services/syncManager';
+import { WORKOUT_IMPORT_PATH } from '@/services/workoutShare';
 import { useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
 import { getThemeVars } from '@/utils/themePalettes';
@@ -35,6 +37,7 @@ export default function RootLayout() {
   useEffect(() => {
     init();
     startSyncManager();
+    startAutoBackup();
   }, [init]);
 
   // RootLayout only mounts once per real page load (a fresh open, or the user
@@ -44,9 +47,11 @@ export default function RootLayout() {
   // the dashboard route without also cancelling normal in-app navigation to other
   // tabs or modals. /widget is exempt: it's a manifest.json `shortcuts` target
   // meant to be opened directly (and to stay put once opened, not bounce to '/').
+  // /workout/import is exempt too: a shared-plan link carries its plan in the query.
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    if (window.location.pathname !== '/' && window.location.pathname !== '/widget') {
+    const { pathname } = window.location;
+    if (pathname !== '/' && pathname !== '/widget' && pathname !== WORKOUT_IMPORT_PATH) {
       router.replace('/');
     }
   }, []);
@@ -70,6 +75,7 @@ export default function RootLayout() {
           <Stack.Screen name="meal-detail" options={{ presentation: 'modal' }} />
           <Stack.Screen name="edit-meal-entry" options={{ presentation: 'modal' }} />
           <Stack.Screen name="rewards" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="workout/import" options={{ presentation: 'modal' }} />
           <Stack.Screen name="widget" options={{ animation: 'fade' }} />
         </Stack>
         <Toast />

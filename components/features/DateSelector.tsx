@@ -1,10 +1,11 @@
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Calendar, Check, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 
 import { CYCLE_TYPE_META, getActiveCycle, getDayComplianceStatus, getEffectiveDailyTargets, type DayComplianceStatus } from '@/services/cycleEngine';
 import { useCycleStore } from '@/store/cycleStore';
 import { todayKey, useDiaryStore } from '@/store/diaryStore';
+import { hasLoggedWorkout, useTrainingStore } from '@/store/trainingStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import { addDays, buildMonthGrid, monthYearOf, WEEKDAY_LABELS } from '@/utils/calendarDates';
@@ -117,6 +118,8 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
 
   const cycles = useCycleStore((state) => state.cycles);
   const entriesByDate = useDiaryStore((state) => state.entriesByDate);
+  // Live subscription: logging a set on the Training tab lights up its day here without a reload.
+  const trainingSessionsByDate = useTrainingStore((state) => state.sessionsByDate);
   const user = useUserStore((state) => state.user);
 
   // Per-cell cycle range color + past-day compliance dot for the currently viewed
@@ -252,6 +255,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
             {buildMonthGrid(viewedMonth.year, viewedMonth.month).map((cell) => {
               const isSelected = cell.key === selectedDate;
               const isCellToday = cell.key === todayKey();
+              const hasWorkout = hasLoggedWorkout(trainingSessionsByDate?.[cell.key]);
               const { rangeColor, compliance } = cellInfoByDate.get(cell.key) ?? { rangeColor: null, compliance: 'none' as DayComplianceStatus };
               return (
                 <Pressable
@@ -261,7 +265,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
                   style={rangeColor ? { backgroundColor: `${rangeColor}22` } : undefined}
                 >
                   <View
-                    className={`h-8 w-8 items-center justify-center rounded-full ${
+                    className={`relative h-8 w-8 items-center justify-center rounded-full ${
                       isSelected ? 'bg-primary' : isCellToday ? 'bg-primary/10' : ''
                     }`}
                   >
@@ -278,6 +282,14 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
                     >
                       {cell.day}
                     </Text>
+                    {hasWorkout && (
+                      <View
+                        accessibilityLabel="Training absolviert"
+                        className="absolute right-0 top-0 h-3.5 w-3.5 items-center justify-center rounded-full border border-surface bg-emerald-500"
+                      >
+                        <Check color="#ffffff" size={9} strokeWidth={4} />
+                      </View>
+                    )}
                   </View>
                   <View className="h-1.5 items-center justify-center">
                     {compliance !== 'none' && (

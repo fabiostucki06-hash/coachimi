@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Dumbbell, Pencil, Plus, Trash2, X } from 'lucide-react-native';
+import { Dumbbell, Pencil, Plus, Share2, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
+import { extractShareCode, shareWorkoutPlan } from '@/services/workoutShare';
+import { useToastStore } from '@/store/toastStore';
 import { useTrainingStore } from '@/store/trainingStore';
 import type { TemplateExercise, WorkoutTemplate } from '@/types';
 
@@ -113,19 +115,68 @@ function TemplateForm({
   );
 }
 
-function TemplateRow({ template, onEdit, onDelete }: { template: WorkoutTemplate; onEdit: () => void; onDelete: () => void }) {
+async function handleShare(template: WorkoutTemplate) {
+  const toast = useToastStore.getState();
+  try {
+    const outcome = await shareWorkoutPlan(template);
+    if (outcome === 'copied') toast.show('Link zum Plan in die Zwischenablage kopiert.', 'success');
+  } catch (err) {
+    console.error('[workout-share] share failed', err);
+    toast.show('Plan konnte nicht geteilt werden.', 'error');
+  }
+}
+
+function ImportPlanForm({ onCancel }: { onCancel: () => void }) {
+  const [input, setInput] = useState('');
+  const code = extractShareCode(input);
+
+  return (
+    <Card className="gap-4">
+      <TextField label="Code oder Link" value={input} onChangeText={setInput} placeholder="Geteilten Link oder Code einfügen" autoFocus />
+      <View className="flex-row gap-3">
+        <Button label="Abbrechen" variant="secondary" onPress={onCancel} className="flex-1" />
+        <Button
+          label="Weiter"
+          onPress={() => router.push({ pathname: '/workout/import', params: { code } })}
+          disabled={code.length === 0}
+          className="flex-1"
+        />
+      </View>
+    </Card>
+  );
+}
+
+function TemplateRow({
+  template,
+  onEdit,
+  onDelete,
+  onShare,
+}: {
+  template: WorkoutTemplate;
+  onEdit: () => void;
+  onDelete: () => void;
+  onShare: () => void;
+}) {
   return (
     <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3  ">
-      <View className="flex-row items-center gap-3">
+      <View className="min-w-0 flex-1 flex-row items-center gap-3">
         <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
           <Dumbbell color="#6366F1" size={16} />
         </View>
-        <View>
-          <Text className="text-sm font-semibold text-foreground">{template.name}</Text>
+        <View className="min-w-0 flex-1">
+          <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>{template.name}</Text>
           <Text className="text-xs text-text-secondary">{template.exercises.length} Übungen</Text>
         </View>
       </View>
-      <View className="flex-row items-center gap-2">
+      <View className="shrink-0 flex-row items-center gap-2">
+        <Pressable
+          className="flex-row items-center gap-1.5 rounded-full bg-primary/10 px-3 py-2 active:opacity-80"
+          onPress={onShare}
+          accessibilityLabel="Plan teilen"
+        >
+          <Share2 color="#6366F1" size={14} />
+          <Text className="text-xs font-semibold text-primary">Plan teilen</Text>
+        </Pressable>
         <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80 " onPress={onEdit}>
           <Pencil color="#A1A1AA" size={14} />
         </Pressable>
@@ -144,6 +195,7 @@ export default function TrainingTemplatesScreen() {
   const removeTemplate = useTrainingStore((state) => state.removeTemplate);
 
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editingTemplate = templates.find((template) => template.id === editingId) ?? null;
 
@@ -167,9 +219,11 @@ export default function TrainingTemplatesScreen() {
               template={template}
               onEdit={() => {
                 setCreating(false);
+                setImporting(false);
                 setEditingId(template.id);
               }}
               onDelete={() => removeTemplate(template.id)}
+              onShare={() => handleShare(template)}
             />
           ),
         )}
@@ -198,8 +252,13 @@ export default function TrainingTemplatesScreen() {
           />
         )}
 
-        {!creating && !editingTemplate && (
-          <Button label="Neuer Trainingsplan" icon={<Plus color="#ffffff" size={18} />} onPress={() => setCreating(true)} />
+        {importing && <ImportPlanForm onCancel={() => setImporting(false)} />}
+
+        {!creating && !editingTemplate && !importing && (
+          <>
+            <Button label="Neuer Trainingsplan" icon={<Plus color="#ffffff" size={18} />} onPress={() => setCreating(true)} />
+            <Button label="Plan importieren" variant="secondary" onPress={() => setImporting(true)} />
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

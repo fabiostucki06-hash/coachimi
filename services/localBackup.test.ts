@@ -4,8 +4,18 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { BackupError, countDiaryEntries, createDiaryBackupJson, DIARY_STORAGE_KEY, parseDiaryBackup } from '@/services/localBackup';
+import {
+  AUTO_BACKUP_STORAGE_KEY,
+  BackupError,
+  countDiaryEntries,
+  createDiaryBackupJson,
+  DIARY_STORAGE_KEY,
+  parseDiaryBackup,
+  startAutoBackup,
+} from '@/services/localBackup';
 import { useDiaryStore } from '@/store/diaryStore';
+import { useTrainingStore } from '@/store/trainingStore';
+import { useUserStore } from '@/store/userStore';
 
 const validEntry = {
   id: 'e1',
@@ -29,35 +39,63 @@ beforeEach(async () => {
 });
 
 describe('createDiaryBackupJson', () => {
-  it('wraps the persisted coach-imi-diary-storage value in a pretty-printed envelope', async () => {
-    const persisted = { state: { entriesByDate: { '2026-09-18': [validEntry] }, lastUpdatedAt: null }, version: 4 };
-    await AsyncStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(persisted));
+  it('compiles the live diary store into a pretty-printed envelope in persisted-storage shape', async () => {
+    useDiaryStore.setState({ entriesByDate: { '2026-09-18': [validEntry as never] } });
 
     const json = await createDiaryBackupJson();
     const backup = JSON.parse(json);
     expect(json).toContain('\n  "format"');
     expect(backup.format).toBe('coach-imi-diary-backup');
     expect(backup.storageKey).toBe(DIARY_STORAGE_KEY);
-    expect(backup.data).toEqual(persisted);
+    expect(backup.data.state.entriesByDate['2026-09-18']).toHaveLength(1);
+    expect(typeof backup.data.version).toBe('number');
   });
 
-  it('falls back to the live store when nothing has been persisted', async () => {
+  it('exports the live store, not a stale persisted copy', async () => {
+    await AsyncStorage.setItem(
+      DIARY_STORAGE_KEY,
+      JSON.stringify({ state: { entriesByDate: { '2026-01-01': [validEntry] } }, version: 4 }),
+    );
     useDiaryStore.setState({ entriesByDate: { '2026-09-19': [validEntry as never] } });
-    await AsyncStorage.removeItem(DIARY_STORAGE_KEY);
 
     const backup = JSON.parse(await createDiaryBackupJson());
-    expect(backup.data.state.entriesByDate['2026-09-19']).toHaveLength(1);
+    expect(Object.keys(backup.data.state.entriesByDate)).toEqual(['2026-09-19']);
+  });
+
+  it('includes training and settings sections', async () => {
+    useTrainingStore.setState({ templates: [{ id: 't1', name: 'Push', exercises: [] }], sessionsByDate: {} });
+
+    const backup = JSON.parse(await createDiaryBackupJson());
+    expect(backup.training.templates[0].name).toBe('Push');
+    expect(backup.settings).toEqual(expect.objectContaining({ name: expect.any(String) }));
   });
 
   it('round-trips through parseDiaryBackup', async () => {
-    await AsyncStorage.setItem(
-      DIARY_STORAGE_KEY,
-      JSON.stringify({ state: { entriesByDate: { '2026-09-18': [validEntry] } }, version: 4 }),
-    );
+    useDiaryStore.setState({ entriesByDate: { '2026-09-18': [validEntry as never] } });
+
     const parsed = parseDiaryBackup(await createDiaryBackupJson());
     expect(parsed.importedCount).toBe(1);
     expect(parsed.skippedCount).toBe(0);
     expect(parsed.entriesByDate['2026-09-18'][0].foodItem.name).toBe('Apfel');
+  });
+});
+
+describe('startAutoBackup', () => {
+  it('writes a snapshot to local storage shortly after a store changes', async () => {
+    jest.useFakeTimers();
+    try {
+      await Promise.all([useDiaryStore.persist.rehydrate(), useTrainingStore.persist.rehydrate(), useUserStore.persist.rehydrate()]);
+      startAutoBackup();
+      useDiaryStore.setState({ entriesByDate: { '2026-09-18': [validEntry as never] } });
+      expect(await AsyncStorage.getItem(AUTO_BACKUP_STORAGE_KEY)).toBeNull();
+
+      await jest.advanceTimersByTimeAsync(2500);
+
+      const snapshot = JSON.parse((await AsyncStorage.getItem(AUTO_BACKUP_STORAGE_KEY)) ?? 'null');
+      expect(snapshot.data.state.entriesByDate['2026-09-18']).toHaveLength(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

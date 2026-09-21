@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CloudSyncCard } from '@/components/features/CloudSyncCard';
 import { CycleManagerModal } from '@/components/features/CycleManagerModal';
-import { HealthAdvisor } from '@/components/features/HealthAdvisor';
 import { LocalBackupCard } from '@/components/features/LocalBackupCard';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
 import { PatchNotes } from '@/components/features/PatchNotes';
@@ -569,8 +568,6 @@ export default function ProfilScreen() {
         <LocalBackupCard />
 
         <SupplementRecommendations />
-
-        <HealthAdvisor />
 
         <Card className="gap-4">
           <View className="flex-row items-center gap-3">
