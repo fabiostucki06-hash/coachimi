@@ -61,7 +61,15 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  const { data: subscriptions, error } = await supabase.from('user_push_subscriptions').select('id, endpoint, p256dh, auth');
+  // Optional test hook: ?user_id=<uuid> restricts the fan-out to one
+  // account instead of every stored subscription. Still gated by the same
+  // CRON_SECRET check above, so this can't be used to target someone else
+  // without the secret.
+  const targetUserId = new URL(req.url).searchParams.get('user_id');
+
+  let query = supabase.from('user_push_subscriptions').select('id, endpoint, p256dh, auth');
+  if (targetUserId) query = query.eq('user_id', targetUserId);
+  const { data: subscriptions, error } = await query;
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
