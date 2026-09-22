@@ -1,16 +1,13 @@
 import { router } from 'expo-router';
-import { CalendarRange, Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, RotateCcw, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
+import { Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, RotateCcw, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CloudSyncCard } from '@/components/features/CloudSyncCard';
-import { CycleManagerModal } from '@/components/features/CycleManagerModal';
 import { LocalBackupCard } from '@/components/features/LocalBackupCard';
 import { NotificationSettingsCard } from '@/components/features/NotificationSettingsCard';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
 import { PatchNotes } from '@/components/features/PatchNotes';
-import { SupplementRecommendations } from '@/components/features/SupplementRecommendations';
 import { ThemeToggle } from '@/components/features/ThemeToggle';
 import { UsernameEditor } from '@/components/features/UsernameEditor';
 import { UserAvatar } from '@/components/features/UserAvatar';
@@ -21,11 +18,8 @@ import { DateField } from '@/components/ui/DateField';
 import { LineChart } from '@/components/ui/LineChart';
 import { TextField } from '@/components/ui/TextField';
 import { NUTRIENT_META, NUTRIENT_ORDER } from '@/components/features/nutrientMeta';
-import { CYCLE_TYPE_META } from '@/services/cycleEngine';
 import { getDietTargetSummary, getMicronutrientGoalsForDiet, PROTEIN_FLOOR_G_PER_KG } from '@/services/dietEngine';
 import { AvatarUploadError, pickAndUploadAvatar } from '@/services/profile';
-import { useCycleStore } from '@/store/cycleStore';
-import { todayKey } from '@/store/diaryStore';
 import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
@@ -264,9 +258,6 @@ export default function ProfilScreen() {
   const friendProfile = useProfileStore((state) => state.profile);
   const showToast = useToastStore((state) => state.show);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const cycles = useCycleStore((state) => state.cycles);
-  const [showCycleManager, setShowCycleManager] = useState(false);
-  const activeCycle = cycles.find((cycle) => cycle.startDate <= todayKey() && todayKey() <= cycle.endDate);
 
   async function handleSignOut() {
     await signOut();
@@ -461,8 +452,6 @@ export default function ProfilScreen() {
           )}
         </Card>
 
-        <CloudSyncCard />
-
         <View className="gap-2">
           <Text className="text-sm font-semibold text-text-secondary">Ziele</Text>
           <GoalInputRow icon={<Target color="#6366F1" size={18} />} label="Tagesziel Kalorien" value={calorieGoal} onChangeText={setCalorieGoal} suffix="kcal" accentColor="#6366F1" />
@@ -485,28 +474,6 @@ export default function ProfilScreen() {
           </Text>
           <ChipGroup options={DIET_TYPE_OPTIONS} selected={currentDietType} onSelect={setDietType} />
           {dietTargetSummary && <Text className="text-xs text-text-secondary">{dietTargetSummary}</Text>}
-        </Card>
-
-        <Card className="gap-3">
-          <View className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5">
-              <CalendarRange color="#A1A1AA" size={18} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-text-secondary">Diät-Zyklen</Text>
-              {activeCycle ? (
-                <Text className="text-xs" style={{ color: CYCLE_TYPE_META[activeCycle.type].color }}>
-                  Aktiv: {activeCycle.name} (bis {formatDateShort(activeCycle.endDate)})
-                </Text>
-              ) : (
-                <Text className="text-xs text-text-secondary">Kein aktiver Zyklus</Text>
-              )}
-            </View>
-          </View>
-          <Text className="text-xs text-text-secondary">
-            Plane feste Phasen wie Keto oder eine Cheat-/Refeed-Periode - Tagesziele werden dafür automatisch angepasst oder ausgesetzt.
-          </Text>
-          <Button label="Zyklen verwalten" variant="secondary" icon={<CalendarRange color="#6366F1" size={18} />} onPress={() => setShowCycleManager(true)} />
         </Card>
 
         <Card className="gap-4">
@@ -569,8 +536,6 @@ export default function ProfilScreen() {
         <NotificationSettingsCard />
 
         <LocalBackupCard />
-
-        <SupplementRecommendations />
 
         <Card className="gap-4">
           <View className="flex-row items-center gap-3">
@@ -648,8 +613,6 @@ export default function ProfilScreen() {
           </Pressable>
         )}
       </ScrollView>
-
-      <CycleManagerModal visible={showCycleManager} onClose={() => setShowCycleManager(false)} />
     </SafeAreaView>
   );
 }
