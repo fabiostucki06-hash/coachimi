@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SkeletonListRow } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
+import { NUTRIENT_META, NUTRIENT_ORDER } from '@/components/features/nutrientMeta';
 import { fuzzyFilterFoodItems, normalizeSearchText, searchLocalFoods } from '@/data/foodDatabase';
 import { FoodApiError, FoodApiUnavailableError, looksLikeBarcode, upsertCommunityBarcode } from '@/services/foodApi';
 import { getDietCompliance, rankFoodsForDiet } from '@/services/dietEngine';
@@ -18,7 +19,20 @@ import { useCustomFoodStore } from '@/store/customFoodStore';
 import { getRecentFoods } from '@/store/diaryStore';
 import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
-import type { FoodItem, MealType } from '@/types';
+import type { FoodItem, MealType, Micronutrients, NutrientKey } from '@/types';
+
+/** Which micronutrients (beyond the always-shown macros) get an optional input row on the custom-food form - whatever the user has enabled in their nutrient-visibility profile settings (see NutrientVisibilitySelector), so the form only asks for what they actually track. */
+function optionalMicronutrientKeys(visibleNutrients: Partial<Record<NutrientKey, boolean>>): (keyof Micronutrients)[] {
+  return NUTRIENT_ORDER.filter(
+    (key): key is keyof Micronutrients => key !== 'carbs' && key !== 'protein' && key !== 'fat' && Boolean(visibleNutrients[key]),
+  );
+}
+
+function pairUp<T>(items: T[]): T[][] {
+  const pairs: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) pairs.push(items.slice(i, i + 2));
+  return pairs;
+}
 
 const SOURCE_BADGES: Partial<Record<NonNullable<FoodItem['source']>, string>> = {
   local: 'Standard',
@@ -77,6 +91,8 @@ export default function AddFoodScreen() {
   const addCustomFood = useCustomFoodStore((state) => state.addCustomFood);
   const dietType = useUserStore((state) => state.user.dietType) ?? 'balanced';
   const gender = useUserStore((state) => state.user.gender);
+  const visibleNutrients = useUserStore((state) => state.user.visibleNutrients);
+  const micronutrientKeys = optionalMicronutrientKeys(visibleNutrients);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
@@ -95,7 +111,10 @@ export default function AddFoodScreen() {
   const [customCarbs, setCustomCarbs] = useState('');
   const [customProtein, setCustomProtein] = useState('');
   const [customFat, setCustomFat] = useState('');
-  const [customFiber, setCustomFiber] = useState('');
+  // Keyed by NutrientKey (fiber, sugar, vitaminC, ...) - only the ones the user
+  // tracks (micronutrientKeys) actually get rendered, so this can stay a flat
+  // string map instead of a fixed field per nutrient.
+  const [customMicronutrients, setCustomMicronutrients] = useState<Partial<Record<keyof Micronutrients, string>>>({});
 
   // Filtering/merging on every keystroke can get expensive as the custom-food and recent
   // lists grow - marking the result update as a transition keeps the TextInput itself
@@ -218,13 +237,18 @@ export default function AddFoodScreen() {
     setCustomCarbs('');
     setCustomProtein('');
     setCustomFat('');
-    setCustomFiber('');
+    setCustomMicronutrients({});
     setShowCustomForm(true);
   }
 
   function handleCustomFoodContinue() {
     const trimmedName = customName.trim();
     if (!trimmedName) return;
+
+    const micronutrientsPerServing: Micronutrients = {};
+    for (const key of micronutrientKeys) {
+      micronutrientsPerServing[key] = parseNumber(customMicronutrients[key] ?? '', 0);
+    }
 
     // Persisted (not a one-off): shows up at the top of future searches for this user.
     const foodItem = addCustomFood({
@@ -236,7 +260,7 @@ export default function AddFoodScreen() {
         protein: parseNumber(customProtein, 0),
         fat: parseNumber(customFat, 0),
       },
-      micronutrientsPerServing: { fiber: parseNumber(customFiber, 0), sugar: 0, sodium: 0, vitaminC: 0 },
+      micronutrientsPerServing,
       servingSize: 100,
       servingUnit: 'g',
     });
@@ -375,7 +399,26 @@ export default function AddFoodScreen() {
                     <TextField label="Fett" keyboardType="decimal-pad" value={customFat} onChangeText={setCustomFat} suffix="g" />
                   </View>
                 </View>
-                <TextField label="Ballaststoffe (optional)" keyboardType="decimal-pad" value={customFiber} onChangeText={setCustomFiber} suffix="g" />
+                {micronutrientKeys.length > 0 && (
+                  <>
+                    <Text className="text-xs font-medium text-text-secondary">Weitere Nährstoffe (optional)</Text>
+                    {pairUp(micronutrientKeys).map((pair) => (
+                      <View key={pair.join('-')} className="flex-row gap-3">
+                        {pair.map((key) => (
+                          <View key={key} className="flex-1">
+                            <TextField
+                              label={NUTRIENT_META[key].label}
+                              keyboardType="decimal-pad"
+                              value={customMicronutrients[key] ?? ''}
+                              onChangeText={(text) => setCustomMicronutrients((prev) => ({ ...prev, [key]: text }))}
+                              suffix={NUTRIENT_META[key].unit}
+                            />
+                          </View>
+                        ))}
+                      </View>
+                    ))}
+                  </>
+                )}
                 <Button label="Weiter" onPress={handleCustomFoodContinue} disabled={!customName.trim()} />
               </Card>
             )}
