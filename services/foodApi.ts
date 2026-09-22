@@ -258,9 +258,12 @@ async function runSearchTier(url: string, signal?: AbortSignal): Promise<FoodIte
 }
 
 // Major Swiss retailer own-brands (Search-a-licious `brands_tags` slugs) - a Migros/
-// Coop/Denner shopper logging own-brand groceries hits these constantly, so a hit
-// on one of them is boosted ahead of the generic country-only tier below.
-const SWISS_RETAILER_BRAND_TAGS = ['migros', 'coop', 'm-budget', 'prix-garantie', 'alnatura'];
+// Coop/Denner/Volg/Aldi/Lidl shopper logging own-brand groceries hits these
+// constantly, so a hit on one of them is boosted ahead of the generic
+// country-only tier below. Denner was named in this comment but missing from
+// the actual list - it's Switzerland's largest discounter, so that silently
+// dropped a huge share of own-brand hits to the slower generic tier.
+const SWISS_RETAILER_BRAND_TAGS = ['migros', 'coop', 'm-budget', 'prix-garantie', 'alnatura', 'denner', 'volg', 'aldi-suisse', 'lidl-schweiz', 'spar'];
 
 /**
  * Builds the Search-a-licious `q` param restricting to Swiss-market products, and -

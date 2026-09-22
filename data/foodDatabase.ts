@@ -305,6 +305,27 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-sojasauce', name: 'Sojasauce', caloriesPer100g: 60, carbsPer100g: 6, proteinPer100g: 8, fatPer100g: 0, sodiumPer100gMg: 5500 },
   { id: 'local-balsamico', name: 'Balsamico-Essig', caloriesPer100g: 88, carbsPer100g: 17, proteinPer100g: 0.5, fatPer100g: 0 },
   { id: 'local-pesto', name: 'Pesto', caloriesPer100g: 450, carbsPer100g: 6, proteinPer100g: 4, fatPer100g: 45 },
+
+  // Schweizer Spezialitäten - generic per-100g values (nutrition-table
+  // estimates, same standard as the rest of this file, not from a single
+  // brand) for everyday Swiss dishes that the DACH-focused list above
+  // doesn't cover, so common Swiss home-cooking logs without a network hit.
+  { id: 'local-roesti', name: 'Rösti', caloriesPer100g: 160, carbsPer100g: 22, proteinPer100g: 2.5, fatPer100g: 7, fiberPer100g: 2 },
+  { id: 'local-fondue-kaese', name: 'Käsefondue', caloriesPer100g: 290, carbsPer100g: 3, proteinPer100g: 17, fatPer100g: 23, sodiumPer100gMg: 700 },
+  { id: 'local-raclette-kaese', name: 'Raclettekäse', caloriesPer100g: 330, carbsPer100g: 0, proteinPer100g: 24, fatPer100g: 26, sodiumPer100gMg: 750 },
+  { id: 'local-cervelat', name: 'Cervelat', caloriesPer100g: 260, carbsPer100g: 1, proteinPer100g: 14, fatPer100g: 22, sodiumPer100gMg: 950 },
+  { id: 'local-bircher-muesli', name: 'Bircher Müesli', caloriesPer100g: 130, carbsPer100g: 20, proteinPer100g: 3, fatPer100g: 3.5, fiberPer100g: 2.5, sugarPer100g: 11 },
+  { id: 'local-zopf', name: 'Zopf', caloriesPer100g: 300, carbsPer100g: 50, proteinPer100g: 9, fatPer100g: 7 },
+  { id: 'local-aelplermagronen', name: 'Älplermagronen', caloriesPer100g: 175, carbsPer100g: 17, proteinPer100g: 6.5, fatPer100g: 9 },
+  { id: 'local-zuercher-geschnetzeltes', name: 'Zürcher Geschnetzeltes', caloriesPer100g: 155, carbsPer100g: 3, proteinPer100g: 16, fatPer100g: 9 },
+  { id: 'local-basler-laeckerli', name: 'Basler Läckerli', caloriesPer100g: 380, carbsPer100g: 72, proteinPer100g: 4, fatPer100g: 8, sugarPer100g: 45 },
+  { id: 'local-ovomaltine', name: 'Ovomaltine, Pulver', caloriesPer100g: 375, carbsPer100g: 75, proteinPer100g: 8, fatPer100g: 4, sugarPer100g: 60 },
+  { id: 'local-rivella-rot', name: 'Rivella Rot', caloriesPer100g: 22, carbsPer100g: 5.3, proteinPer100g: 0, fatPer100g: 0, sugarPer100g: 5.3 },
+  { id: 'local-toblerone', name: 'Toblerone', caloriesPer100g: 534, carbsPer100g: 58, proteinPer100g: 5.5, fatPer100g: 31, sugarPer100g: 55 },
+  { id: 'local-bratwurst-st-galler', name: 'St. Galler Bratwurst', caloriesPer100g: 280, carbsPer100g: 1.5, proteinPer100g: 14, fatPer100g: 24, sodiumPer100gMg: 850 },
+  { id: 'local-gruyere', name: 'Gruyère', caloriesPer100g: 396, carbsPer100g: 0, proteinPer100g: 27, fatPer100g: 32, sodiumPer100gMg: 650 },
+  { id: 'local-emmentaler', name: 'Emmentaler', caloriesPer100g: 380, carbsPer100g: 0, proteinPer100g: 28, fatPer100g: 30, sodiumPer100gMg: 400 },
+  { id: 'local-appenzeller-kaese', name: 'Appenzeller Käse', caloriesPer100g: 390, carbsPer100g: 0, proteinPer100g: 25, fatPer100g: 32, sodiumPer100gMg: 600 },
 ];
 
 export const LOCAL_FOOD_DATABASE: FoodItem[] = LOCAL_FOOD_SEEDS.map((seed) => ({

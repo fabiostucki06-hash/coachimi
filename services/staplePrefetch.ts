@@ -11,7 +11,10 @@ const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 // boosted Swiss search tier (Migros/Coop/M-Budget/Prix Garantie/Alnatura) surfaces
 // each chain's own-brand version of it - real Open Food Facts data, not hardcoded
 // nutrition facts, so it stays accurate as those products change.
-const STAPLE_QUERIES = ['Milch', 'Joghurt', 'Butter', 'Käse', 'Teigwaren', 'Reis', 'Brot', 'Eier', 'Apfel', 'Orangensaft'];
+const STAPLE_QUERIES = [
+  'Milch', 'Joghurt', 'Butter', 'Käse', 'Teigwaren', 'Reis', 'Brot', 'Eier', 'Apfel', 'Orangensaft',
+  'Rösti', 'Cervelat', 'Gruyère', 'Bircher Müesli', 'Zopf',
+];
 
 async function shouldRun(): Promise<boolean> {
   try {
