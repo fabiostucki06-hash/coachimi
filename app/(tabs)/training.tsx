@@ -258,7 +258,7 @@ export default function TrainingScreen() {
 
         <TrainingSyncBanner />
 
-        <DateSelector />
+        <DateSelector workoutOnly />
 
         {(sessions ?? []).length === 0 && !showAttachSheet ? (
           <Card>

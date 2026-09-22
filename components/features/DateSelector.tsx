@@ -52,9 +52,11 @@ interface DateSelectorProps {
   onDaySelected?: (dateKey: string) => void;
   /** Renders as a borderless inline row (no card chrome) for embedding in the header bar; the expandable calendar grid still opens below it. */
   compact?: boolean;
+  /** Training Calendar mode: strips the diet-cycle range tint and the calorie/macro compliance dot, leaving only the completed-workout checkmark - this view is about training sessions, not nutrition targets. */
+  workoutOnly?: boolean;
 }
 
-export function DateSelector({ onDaySelected, compact = false }: DateSelectorProps = {}) {
+export function DateSelector({ onDaySelected, compact = false, workoutOnly = false }: DateSelectorProps = {}) {
   const selectedDate = useUiStore((state) => state.selectedDate);
   const setSelectedDate = useUiStore((state) => state.setSelectedDate);
   const [expanded, setExpanded] = useState(false);
@@ -128,6 +130,7 @@ export function DateSelector({ onDaySelected, compact = false }: DateSelectorPro
   const cellInfoByDate = useMemo(() => {
     const today = todayKey();
     const info = new Map<string, { rangeColor: string | null; compliance: DayComplianceStatus }>();
+    if (workoutOnly) return info;
     for (const cell of buildMonthGrid(viewedMonth.year, viewedMonth.month)) {
       const activeCycle = getActiveCycle(cycles, cell.key);
       const rangeColor = activeCycle ? CYCLE_TYPE_META[activeCycle.type].color : null;
