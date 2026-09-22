@@ -1,13 +1,16 @@
 import { router } from 'expo-router';
-import { Dumbbell, Pencil, Plus, Share2, Trash2, X } from 'lucide-react-native';
+import { Dumbbell, Pencil, Plus, Send, Share2, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
+import { fetchFriendships, formatFriendLabel, type FriendListItem } from '@/services/friends';
 import { extractShareCode, shareWorkoutPlan } from '@/services/workoutShare';
+import { shareWorkoutPlanWithFriend } from '@/services/workoutPlanShares';
+import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
 import { useTrainingStore } from '@/store/trainingStore';
 import type { TemplateExercise, WorkoutTemplate } from '@/types';
@@ -126,6 +129,52 @@ async function handleShare(template: WorkoutTemplate) {
   }
 }
 
+/** Minimalist friend picker for sending a plan straight into a friend's inbox (services/workoutPlanShares.ts) - no link, no code, just pick who gets it. Only accepted friends show up, since sending is DB-gated on an accepted friendship anyway. */
+function InternalShareSheet({
+  template,
+  friends,
+  loading,
+  onConfirm,
+  onClose,
+}: {
+  template: WorkoutTemplate;
+  friends: FriendListItem[];
+  loading: boolean;
+  onConfirm: (friendId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Card className="gap-3">
+      <View className="flex-row items-center justify-between">
+        <Text className="flex-1 pr-3 text-sm font-semibold text-text-secondary" numberOfLines={1}>
+          &quot;{template.name}&quot; an Freund senden
+        </Text>
+        <Pressable onPress={onClose}>
+          <X color="#A1A1AA" size={16} />
+        </Pressable>
+      </View>
+      {loading ? (
+        <ActivityIndicator color="#6366F1" />
+      ) : friends.length === 0 ? (
+        <Text className="py-2 text-sm text-text-secondary">Noch keine Freunde - füge zuerst welche im Freunde-Tab hinzu.</Text>
+      ) : (
+        <View className="gap-1">
+          {friends.map((friend) => (
+            <Pressable
+              key={friend.friendshipId}
+              onPress={() => onConfirm(friend.profile.id)}
+              className="flex-row items-center justify-between rounded-2xl bg-overlay/5 px-4 py-3 active:opacity-80"
+            >
+              <Text className="text-sm font-semibold text-foreground">{formatFriendLabel(friend.profile)}</Text>
+              <Send color="#6366F1" size={16} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </Card>
+  );
+}
+
 function ImportPlanForm({ onCancel }: { onCancel: () => void }) {
   const [input, setInput] = useState('');
   const code = extractShareCode(input);
@@ -151,11 +200,13 @@ function TemplateRow({
   onEdit,
   onDelete,
   onShare,
+  onSendToFriend,
 }: {
   template: WorkoutTemplate;
   onEdit: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onSendToFriend: () => void;
 }) {
   return (
     <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3  ">
@@ -170,12 +221,18 @@ function TemplateRow({
       </View>
       <View className="shrink-0 flex-row items-center gap-2">
         <Pressable
-          className="flex-row items-center gap-1.5 rounded-full bg-primary/10 px-3 py-2 active:opacity-80"
+          className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 active:opacity-80"
+          onPress={onSendToFriend}
+          accessibilityLabel="An Freund senden"
+        >
+          <Send color="#6366F1" size={14} />
+        </Pressable>
+        <Pressable
+          className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 active:opacity-80"
           onPress={onShare}
           accessibilityLabel="Plan teilen"
         >
           <Share2 color="#6366F1" size={14} />
-          <Text className="text-xs font-semibold text-primary">Plan teilen</Text>
         </Pressable>
         <Pressable className="h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80 " onPress={onEdit}>
           <Pencil color="#A1A1AA" size={14} />
@@ -199,6 +256,40 @@ export default function TrainingTemplatesScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editingTemplate = templates.find((template) => template.id === editingId) ?? null;
 
+  const myId = useSyncStore((state) => state.session?.user.id);
+  const [sendTemplate, setSendTemplate] = useState<WorkoutTemplate | null>(null);
+  const [friends, setFriends] = useState<FriendListItem[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+
+  async function handleOpenInternalShare(template: WorkoutTemplate) {
+    setCreating(false);
+    setImporting(false);
+    setEditingId(null);
+    setSendTemplate(template);
+    if (!myId) return;
+    setLoadingFriends(true);
+    try {
+      const items = await fetchFriendships(myId);
+      setFriends(items.filter((item) => item.status === 'accepted'));
+    } catch (err) {
+      useToastStore.getState().show(err instanceof Error ? err.message : 'Freunde konnten nicht geladen werden');
+    } finally {
+      setLoadingFriends(false);
+    }
+  }
+
+  async function handleConfirmInternalShare(friendId: string) {
+    const template = sendTemplate;
+    if (!template || !myId) return;
+    setSendTemplate(null);
+    try {
+      await shareWorkoutPlanWithFriend(myId, friendId, template);
+      useToastStore.getState().show('Plan gesendet', 'success');
+    } catch (err) {
+      useToastStore.getState().show(err instanceof Error ? err.message : 'Senden fehlgeschlagen');
+    }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-4">
@@ -220,12 +311,24 @@ export default function TrainingTemplatesScreen() {
               onEdit={() => {
                 setCreating(false);
                 setImporting(false);
+                setSendTemplate(null);
                 setEditingId(template.id);
               }}
               onDelete={() => removeTemplate(template.id)}
               onShare={() => handleShare(template)}
+              onSendToFriend={() => handleOpenInternalShare(template)}
             />
           ),
+        )}
+
+        {sendTemplate && (
+          <InternalShareSheet
+            template={sendTemplate}
+            friends={friends}
+            loading={loadingFriends}
+            onConfirm={handleConfirmInternalShare}
+            onClose={() => setSendTemplate(null)}
+          />
         )}
 
         {editingTemplate && (
@@ -254,7 +357,7 @@ export default function TrainingTemplatesScreen() {
 
         {importing && <ImportPlanForm onCancel={() => setImporting(false)} />}
 
-        {!creating && !editingTemplate && !importing && (
+        {!creating && !editingTemplate && !importing && !sendTemplate && (
           <>
             <Button label="Neuer Trainingsplan" icon={<Plus color="#ffffff" size={18} />} onPress={() => setCreating(true)} />
             <Button label="Plan importieren" variant="secondary" onPress={() => setImporting(true)} />

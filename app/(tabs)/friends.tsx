@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Check, Inbox, Search, UserPlus, Users, X } from 'lucide-react-native';
+import { Check, Dumbbell, Inbox, Search, UserPlus, Users, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,9 +25,11 @@ import {
   type FriendProfile,
 } from '@/services/friends';
 import { fetchInboxMealShares, removeMealShare, type MealShare } from '@/services/mealShares';
+import { fetchInboxWorkoutPlanShares, removeWorkoutPlanShare, type WorkoutPlanShare } from '@/services/workoutPlanShares';
 import { useProfileStore } from '@/store/profileStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
+import { useTrainingStore } from '@/store/trainingStore';
 import { getLocalDateKey } from '@/utils/calendarDates';
 
 function SignedOutPrompt() {
@@ -175,6 +177,40 @@ function MealShareRow({ share, onAdd, onDismiss }: { share: MealShare; onAdd: ()
   );
 }
 
+/** One entry in the "Geteilte Trainingspläne" inbox - a workout plan a friend sent (services/workoutPlanShares.ts), reviewed here before it's cloned into the caller's own plan library. */
+function WorkoutPlanShareRow({ share, onAdd, onDismiss }: { share: WorkoutPlanShare; onAdd: () => void; onDismiss: () => void }) {
+  const [adding, setAdding] = useState(false);
+
+  async function handleAdd() {
+    if (adding) return;
+    setAdding(true);
+    try {
+      await onAdd();
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <View className="flex-row items-center justify-between gap-3 py-2">
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>
+          {share.name}
+        </Text>
+        <Text className="text-xs text-text-secondary">{share.exercises.length} Übungen</Text>
+      </View>
+      <View className="flex-row items-center gap-2">
+        <Pressable onPress={handleAdd} disabled={adding} className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+          {adding ? <ActivityIndicator size="small" color="#6366F1" /> : <Check color="#6366F1" size={16} />}
+        </Pressable>
+        <Pressable onPress={onDismiss} disabled={adding} className="h-9 w-9 items-center justify-center rounded-full bg-red-500/10">
+          <X color="#ef4444" size={16} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 function IncomingRequestRow({ item, onRespond }: { item: FriendListItem; onRespond: (accept: boolean) => void }) {
   return (
     <View className="flex-row items-center justify-between gap-3 py-2">
@@ -209,6 +245,8 @@ export default function FriendsScreen() {
   const [viewedFriend, setViewedFriend] = useState<FriendProfile | null>(null);
 
   const [inbox, setInbox] = useState<MealShare[]>([]);
+  const [planInbox, setPlanInbox] = useState<WorkoutPlanShare[]>([]);
+  const addTemplate = useTrainingStore((state) => state.addTemplate);
 
   const myId = session?.user.id;
 
@@ -242,10 +280,20 @@ export default function FriendsScreen() {
     }
   }, [myId, showToast]);
 
+  const loadPlanInbox = useCallback(async () => {
+    if (!myId) return;
+    try {
+      setPlanInbox(await fetchInboxWorkoutPlanShares(myId));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Geteilte Trainingspläne konnten nicht geladen werden');
+    }
+  }, [myId, showToast]);
+
   useEffect(() => {
     loadFriends();
     loadInbox();
-  }, [loadFriends, loadInbox]);
+    loadPlanInbox();
+  }, [loadFriends, loadInbox, loadPlanInbox]);
 
   if (!session || !myId) return <SignedOutPrompt />;
 
@@ -264,6 +312,26 @@ export default function FriendsScreen() {
     try {
       await removeMealShare(shareId);
       setInbox((current) => current.filter((item) => item.id !== shareId));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Aktion fehlgeschlagen');
+    }
+  }
+
+  async function handleAddSharedPlan(share: WorkoutPlanShare) {
+    try {
+      addTemplate(share.name, share.exercises);
+      await removeWorkoutPlanShare(share.id);
+      setPlanInbox((current) => current.filter((item) => item.id !== share.id));
+      showToast('Zu deinen Trainingsplänen hinzugefügt', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Hinzufügen fehlgeschlagen');
+    }
+  }
+
+  async function handleDismissSharedPlan(shareId: string) {
+    try {
+      await removeWorkoutPlanShare(shareId);
+      setPlanInbox((current) => current.filter((item) => item.id !== shareId));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Aktion fehlgeschlagen');
     }
@@ -364,6 +432,23 @@ export default function FriendsScreen() {
                 share={share}
                 onAdd={() => handleAddSharedMeal(share)}
                 onDismiss={() => handleDismissSharedMeal(share.id)}
+              />
+            ))}
+          </Card>
+        )}
+
+        {planInbox.length > 0 && (
+          <Card className="gap-1">
+            <View className="flex-row items-center gap-2">
+              <Dumbbell color="#6366F1" size={16} />
+              <Text className="text-sm font-semibold text-text-secondary">Geteilte Trainingspläne</Text>
+            </View>
+            {planInbox.map((share) => (
+              <WorkoutPlanShareRow
+                key={share.id}
+                share={share}
+                onAdd={() => handleAddSharedPlan(share)}
+                onDismiss={() => handleDismissSharedPlan(share.id)}
               />
             ))}
           </Card>
