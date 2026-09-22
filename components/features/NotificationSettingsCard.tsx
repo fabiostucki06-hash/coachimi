@@ -1,3 +1,4 @@
+import { Bell } from 'lucide-react-native';
 import { useState } from 'react';
 import { Platform, Switch, Text, View } from 'react-native';
 
@@ -8,6 +9,7 @@ import {
   isNotificationSupported,
   requestNotificationPermission,
 } from '@/services/notificationService';
+import { subscribeUserToPush, unsubscribeUserFromPush } from '@/services/pushNotificationService';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useToastStore } from '@/store/toastStore';
 
@@ -31,6 +33,7 @@ export function NotificationSettingsCard() {
   async function handleToggle(next: boolean) {
     if (!next) {
       setEnabled(false);
+      void unsubscribeUserFromPush();
       return;
     }
 
@@ -40,6 +43,9 @@ export function NotificationSettingsCard() {
       if (permission === 'granted') {
         setEnabled(true);
         toast(`Erinnerungen aktiviert (${REMINDER_TIMES} Uhr).`, 'success');
+        // Best-effort: local reminders (above) already work without this -
+        // push just makes them reach a fully closed app too.
+        void subscribeUserToPush();
       } else {
         setEnabled(false);
         toast(
@@ -57,23 +63,19 @@ export function NotificationSettingsCard() {
   }
 
   return (
-    <Card className="gap-3">
+    <Card>
       <View className="flex-row items-center justify-between gap-3">
-        <View className="flex-1 gap-1">
-          <Text className="text-sm font-semibold text-foreground">Mitteilungen & Erinnerungen aktivieren</Text>
-          <Text className="text-xs text-text-secondary">
-            {supported
-              ? `Erinnert dich um ${REMINDER_TIMES} Uhr ans Loggen und zeigt einen Hinweis, wenn du tagsüber länger als 4 Stunden nichts eingetragen hast. Erinnerungen kommen, solange die App geöffnet oder im Hintergrund aktiv ist.`
-              : 'Mitteilungen werden von diesem Browser nicht unterstützt. Auf dem iPhone funktionieren sie nur in der zum Home-Bildschirm hinzugefügten App.'}
-          </Text>
+        <View className="flex-row items-center gap-2">
+          <Bell size={18} color="#A1A1AA" />
+          <Text className="text-sm font-semibold text-foreground">Push-Mitteilungen</Text>
         </View>
         <Switch
           value={isOn}
           onValueChange={handleToggle}
           disabled={!supported || busy}
-          accessibilityLabel="Mitteilungen und Erinnerungen aktivieren"
-          trackColor={{ false: '#52525B', true: '#6366F1' }}
-          thumbColor="#ffffff"
+          accessibilityLabel="Push-Mitteilungen"
+          trackColor={{ false: '#27272A', true: '#6366F1' }}
+          thumbColor="#000000"
         />
       </View>
     </Card>
