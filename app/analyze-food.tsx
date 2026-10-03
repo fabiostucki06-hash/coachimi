@@ -30,15 +30,29 @@ const MEAL_LABELS: Record<MealType, string> = {
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
   base64: true,
-  quality: 0.8,
+  // Capture at full quality - prepareImageForAnalysis below is the one place that
+  // resizes/recompresses for the Vision API, so compressing again here on top of an
+  // already-lossy capture would stack JPEG artifacts right where the model needs
+  // clean detail (hidden-fat sheen, text on labels, portion edges).
+  quality: 1,
+  // No forced aspect ratio: a fixed 4:3 crop silently discards whatever the user
+  // didn't fit inside it, which for a wide table spread or a tall glass means the
+  // Vision API never even sees part of the meal. allowsEditing still lets the user
+  // crop deliberately (e.g. to cut out background clutter) - just not into a ratio
+  // that doesn't match their photo.
   allowsEditing: true,
-  aspect: [4, 3],
 };
 
-// Cap the longest edge before sending to the Vision API: large enough to keep
-// ingredient-level detail, small enough to keep payloads fast over mobile networks.
-const MAX_ANALYSIS_DIMENSION = 1024;
-const ANALYSIS_JPEG_QUALITY = 0.8;
+// Cap the longest edge before sending to the Vision API. Raised from 1024: gpt-4o's
+// "high" detail mode tiles the image in 512px blocks up to ~2048px per side, so more
+// resolution within that budget keeps small/garnish components and label text legible
+// instead of leaving it on the table. Still far short of the raw camera resolution, so
+// payload size over mobile networks stays reasonable.
+const MAX_ANALYSIS_DIMENSION = 1536;
+// Slightly above the picker default: this is the copy that actually reaches the
+// model, so it's worth spending a bit more payload to avoid compression blockiness
+// right where fine visual cues (doneness, oil sheen, garnish identity) matter most.
+const ANALYSIS_JPEG_QUALITY = 0.9;
 const GRAM_STEP = 10;
 
 /** Per-item Confidence Score badge - High/Medium/Low replaces a bare percentage so the review screen reads at a glance. */

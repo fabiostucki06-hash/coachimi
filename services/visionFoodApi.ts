@@ -56,7 +56,10 @@ const ANALYSIS_SCHEMA_PROMPT = `Du bist ein Ernährungsexperte mit Fokus auf pr�
 Analysiere das Foto Stück für Stück, nicht als Ganzes:
 1. Zerlege die Mahlzeit in ihre einzelnen erkennbaren Lebensmittel/Komponenten - Hauptkomponente (Protein), Kohlenhydratquelle,
    Gemüse/Salat, UND separat auch Saucen, Dressings, Dips und Beilagen, die eigene Nährwerte haben (z. B. "Hähnchenbrust",
-   "Reis", "Brokkoli", "Sojasauce" statt nur "Teller mit Essen").
+   "Reis", "Brokkoli", "Sojasauce" statt nur "Teller mit Essen"). Maximal 6 Komponenten: fasse bei mehr Vielfalt (z. B.
+   ein Buffet-Teller) visuell und mengenmäßig untergeordnete Elemente (Garnitur, einzelne Kräuterblätter, Deko) in die
+   nächstpassende Hauptkomponente ein, statt die Antwort mit vielen kleinen Posten zu überladen - das hält die Antwort
+   innerhalb des Token-Budgets und verhindert ein abgeschnittenes, ungültiges JSON-Ergebnis.
 2. Bestimme für jede Komponente die Zubereitungsart (z. B. gebraten, gekocht, roh, frittiert, paniert), falls erkennbar.
 3. Schätze für jede Komponente das Volumen (in cm³, ml bei Flüssigem/Suppen) über räumliche Referenzanker im Bild -
    primär der Tellerdurchmesser (Standard-Esstellerdurchmesser ca. 26cm, Beilagenteller ca. 20cm), ergänzt um Besteck
@@ -83,6 +86,11 @@ Analysiere das Foto Stück für Stück, nicht als Ganzes:
 7. Gib zusätzlich eine Gesamt-confidenceScore (0-1) für die ganze Analyse an, sowie eine kurze "reasoning" (1-2 Sätze,
    Deutsch) die knapp erklärt, wie Mengen/verstecktes Fett geschätzt wurden (z. B. welche Referenzgrößen benutzt
    wurden, ob Öl angenommen wurde).
+8. Plausibilitätscheck VOR der Ausgabe: berechne für jede Komponente kcal aus den Makros
+   (carbsPer100g*4 + proteinPer100g*4 + fatPer100g*9) und vergleiche mit deinem caloriesPer100g. Weichen beide um
+   mehr als ~15% ab, sind deine Werte intern inkonsistent - korrigiere caloriesPer100g so, dass es zu den Makros
+   passt (die Makros sind die direkter beobachtbare Schätzung, die Kalorienzahl ist daraus abgeleitet), statt die
+   Abweichung unkorrigiert stehen zu lassen.
 
 Falls das Bild unscharf, zu dunkel, teilweise verdeckt oder anderweitig schwer auswertbar ist: gib trotzdem deine
 beste konservative Schätzung ab (niemals verweigern), aber setze die confidence/confidenceScore entsprechend niedrig
@@ -230,8 +238,16 @@ async function analyzeWithOpenAi(base64Image: string): Promise<VisionAnalysisRes
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         response_format: { type: 'json_object' },
-        max_tokens: 1200,
-        temperature: 0.2,
+        // 1200 was tight enough that a real multi-component meal (5-6 items, ~20 fields
+        // each) could get cut off mid-JSON, which parseJsonLoose can't repair - the
+        // whole analysis would then silently fall back to the generic estimate. Raised
+        // alongside the "max 6 components" prompt rule above, which bounds the other
+        // side of the same problem.
+        max_tokens: 2000,
+        // Lower than a "creative" default on purpose: this call estimates numbers
+        // (grams, macros, confidence), not prose, so less sampling noise between runs
+        // on the same photo is a direct accuracy/consistency win.
+        temperature: 0.1,
         messages: [
           { role: 'system', content: ANALYSIS_SCHEMA_PROMPT },
           {
