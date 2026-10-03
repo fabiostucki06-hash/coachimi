@@ -107,10 +107,22 @@ async function searchLocal(query: string, signal?: AbortSignal): Promise<FoodIte
  * wholesale rather than re-implemented, so the text-search box gets the same
  * international brand coverage (ESN, and anything else OFF indexes) instead
  * of only the DACH-scoped FatSecret catalog and USDA's US-centric database.
- * Best-effort: any failure just means this tier contributes nothing.
+ *
+ * Strips any USDA-sourced items that cascade brings back, though: that's
+ * searchFood's OWN last-resort fallback (reached when every OFF sub-tier -
+ * Swiss, DE mirror, world - came back completely empty), and letting it leak
+ * into what's nominally "Tier 2: Open Food Facts" would preempt Tier 3's more
+ * European FatSecret/DACH catalog below on nothing more than this tier
+ * happening to run first. This hybrid pipeline already has its own, better
+ * USDA tier at the very end (Tier 4 - translates the query DE->EN first,
+ * which searchFood's untranslated internal fallback doesn't), so nothing is
+ * lost - it's just deferred to the right place in the priority order instead
+ * of jumping ahead of FatSecret. Best-effort: any failure just means this
+ * tier contributes nothing.
  */
 async function searchOff(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
-  return searchOpenFoodFacts(query, signal);
+  const results = await searchOpenFoodFacts(query, signal);
+  return results.filter((item) => item.source !== 'usda');
 }
 
 // --- Tier 3: FatSecret (DACH brand/barcode coverage) ------------------------------

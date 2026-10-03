@@ -139,6 +139,17 @@ describe('searchFoodHybrid', () => {
 
     expect(results).toEqual([]);
   });
+
+  it('strips USDA items out of the Open Food Facts tier - that cascade reaches USDA only as ITS OWN last resort, and letting that leak into Tier 2 would preempt the more European FatSecret tier below', async () => {
+    mockSearchFood.mockResolvedValue([
+      offItem({ id: 'off-1', name: 'Apfel', source: 'off' }),
+      offItem({ id: 'usda-1', name: 'Apple', source: 'usda' }),
+    ]);
+
+    const results = await searchFoodHybrid('Apfel');
+
+    expect(results.map((item) => item.id)).toEqual(['off-1']);
+  });
 });
 
 describe('cacheFoodItem', () => {
