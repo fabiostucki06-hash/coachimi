@@ -8,6 +8,15 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.0',
+    date: '2026-10-03',
+    highlights: [
+      'Neu: Mahlzeiten und einzelne Einträge lassen sich jetzt auch in einen anderen Mahlzeiten-Slot kopieren (z. B. Frühstück -> Mittagessen)',
+      'Neu: Ganze Mahlzeiten lassen sich mit Freunden teilen, nicht nur einzelne Lebensmittel - die Vorschau zeigt dabei die Nährwerte, die dein Freund selbst in seinem Profil ausgewählt hat',
+      'Verbessert: Eisenwerte in der lokalen Lebensmittel-Datenbank korrigiert; Proteinpulver, Kümmelöl, Reis (ungekocht) und weitere Brotsorten ergänzt',
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-09-11',
     highlights: [
