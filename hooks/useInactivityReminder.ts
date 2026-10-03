@@ -39,14 +39,17 @@ const SILENCED_PATHS = new Set([
  *
  * Fires at most once per inactivity reference, so the user gets one banner
  * rather than one a minute until they log something; logging a meal moves the
- * reference, which re-arms it for the next 4-hour gap. Mounted once in the
- * root layout.
+ * reference, which re-arms it for the next 4-hour gap. The dedupe marker is
+ * persisted (store/notificationStore.ts), not a plain ref, and the first
+ * check only runs on the interval tick below - never synchronously on mount -
+ * so a page reload/hard refresh can never itself be what triggers a banner;
+ * only the still-running interval (a genuinely scheduled, periodic check) can.
+ * Mounted once in the root layout.
  */
 export function useInactivityReminder() {
   const enabled = useNotificationStore((state) => state.remindersEnabled);
   const hasOnboarded = useUserStore((state) => state.hasOnboarded);
   const pathname = usePathname();
-  const notifiedForRef = useRef<number | null>(null);
 
   // Read through a ref so the interval doesn't have to be torn down and
   // re-armed on every diary change.
@@ -65,13 +68,14 @@ export function useInactivityReminder() {
       if (!shouldShowInactivityReminder(now, lastLoggedAt)) return;
 
       const reference = getInactivityReference(now, lastLoggedAt);
-      if (notifiedForRef.current === reference) return;
+      if (useNotificationStore.getState().lastInactivityNotifiedReference === reference) return;
 
-      notifiedForRef.current = reference;
+      useNotificationStore.getState().setLastInactivityNotifiedReference(reference);
       void showInactivityNotification(now.getTime() - reference);
     };
 
-    check();
+    // Deliberately no immediate `check()` here - only the interval below ever
+    // triggers a notification, so mounting (including on a reload) never does.
     const timer = setInterval(check, CHECK_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [enabled, hasOnboarded]);
