@@ -8,6 +8,13 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.5',
+    date: '2026-10-03',
+    highlights: [
+      'Fix: Freitext-Eintrag erkennt "Riegel", "Packung" und "Dose" jetzt als Mengeneinheit (z. B. "1 Riegel Proteinriegel") statt sie fälschlich zum Produktnamen zu zählen',
+    ],
+  },
+  {
     version: '1.5.4',
     date: '2026-10-03',
     highlights: [
