@@ -27,6 +27,7 @@ function makeDetected(overrides: Partial<DetectedFoodItem> = {}): DetectedFoodIt
   return {
     name: 'Hähnchenbrust gebraten',
     cookingMethod: 'gebraten',
+    portionLabel: null,
     estimatedGrams: 180,
     caloriesPer100g: 200,
     macrosPer100g: { carbs: 1, protein: 28, fat: 8 },

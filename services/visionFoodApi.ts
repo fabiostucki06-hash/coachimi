@@ -16,8 +16,10 @@ export interface DetectedFoodItem {
   needsVerification: boolean;
   /** Grams of cooking oil/butter/fat the model inferred from visual cues (sheen, crust, greasy plate edge) - already folded into fatPer100g/caloriesPer100g above, surfaced separately so the review UI can show it as its own "[Gekocht in Öl: ~Xg Fett]" tag instead of hiding it inside one opaque number. 0 when no hidden-fat indicator was detected. */
   hiddenFatGrams: number;
-  /** 1-2 alternative names the model considered when the component's IDENTITY (not just its quantity) was ambiguous, e.g. ['Rindfleisch', 'Schweinefleisch'] - drives the quick-confirm chips in the review UI. Empty when identity was clear. */
+  /** Up to 3 alternative names the model considered when the component's IDENTITY (not just its quantity) was ambiguous, e.g. ['Rindfleisch', 'Schweinefleisch', 'Kalbfleisch'] - drives the quick-confirm chips in the review UI. Empty when identity was clear. */
   nameAlternatives: string[];
+  /** Human-readable portion the model estimated in, e.g. "1 Riegel", "2 Scheiben", "1 Portion" - matching the same household-unit vocabulary utils/portionUnits.ts shows in the manual-entry picker, surfaced here as context next to estimatedGrams rather than as a second source of truth. null for bulk/loose foods (rice, sauce, salad) that were sized by volume instead. */
+  portionLabel: string | null;
 }
 
 export interface VisionAnalysisResult {
@@ -51,46 +53,84 @@ export function toConfidenceTier(confidence: number): ConfidenceTier {
   return 'low';
 }
 
-const ANALYSIS_SCHEMA_PROMPT = `Du bist ein Ernährungsexperte mit Fokus auf präzise Bildanalyse von Mahlzeiten.
+// Three explicit phases - identify, THEN size, THEN calculate nutrients - rather than
+// one flat instruction list. Forcing the model through them in order (not jumping
+// straight to "here's roughly 250g of chicken at roughly 165kcal/100g") is what makes
+// the European/Swiss bias in Phase 1 and Phase 3 actually stick: a name decided late
+// or a nutrient value guessed before the product is pinned down tends to regress to
+// whatever's statistically most common in the model's training data, which skews
+// American/USDA-style by default (same failure mode the search/photo-matching layers
+// already correct for post-hoc in services/foodSearch.ts and services/photoMatcher.ts -
+// this is the same fix one step earlier, at the source of the estimate itself).
+const ANALYSIS_SCHEMA_PROMPT = `Du bist ein Ernährungsexperte für den Schweizer/europäischen Markt mit Fokus auf präzise Bildanalyse von Mahlzeiten.
 
-Analysiere das Foto Stück für Stück, nicht als Ganzes:
-1. Zerlege die Mahlzeit in ihre einzelnen erkennbaren Lebensmittel/Komponenten - Hauptkomponente (Protein), Kohlenhydratquelle,
-   Gemüse/Salat, UND separat auch Saucen, Dressings, Dips und Beilagen, die eigene Nährwerte haben (z. B. "Hähnchenbrust",
-   "Reis", "Brokkoli", "Sojasauce" statt nur "Teller mit Essen"). Maximal 6 Komponenten: fasse bei mehr Vielfalt (z. B.
-   ein Buffet-Teller) visuell und mengenmäßig untergeordnete Elemente (Garnitur, einzelne Kräuterblätter, Deko) in die
-   nächstpassende Hauptkomponente ein, statt die Antwort mit vielen kleinen Posten zu überladen - das hält die Antwort
-   innerhalb des Token-Budgets und verhindert ein abgeschnittenes, ungültiges JSON-Ergebnis.
-2. Bestimme für jede Komponente die Zubereitungsart (z. B. gebraten, gekocht, roh, frittiert, paniert), falls erkennbar.
-3. Schätze für jede Komponente das Volumen (in cm³, ml bei Flüssigem/Suppen) über räumliche Referenzanker im Bild -
-   primär der Tellerdurchmesser (Standard-Esstellerdurchmesser ca. 26cm, Beilagenteller ca. 20cm), ergänzt um Besteck
-   (Gabel ca. 18-20cm, Löffel-Kopf ca. 4x7cm), Gläser, Hände/Finger als Sekundär-Maßstab. Rechne das geschätzte Volumen
-   über eine typische Dichte (g/cm³) für die jeweilige Lebensmittelgruppe in Gramm um (Richtwerte: Fleisch/Fisch gegart
-   ~1.0-1.1, gekochter Reis/Getreide ~0.9, Blattsalat/Rohgemüse ~0.3-0.4, gegartes Gemüse ~0.6-0.8, Saucen/Dips ~1.0-1.05,
-   frittierte/panierte Komponenten ~0.5-0.6 wegen Lufteinschluss) statt grob zu schätzen.
-4. Erkenne versteckte/unsichtbare Fette, die auf dem Foto nicht als eigenes Objekt sichtbar sind, aber die Nährwerte
-   deutlich verändern: Brat-/Frittieröl, Butter, Sahne, Dressing-Reste, Marinade. Nutze visuelle Hinweise (Glanz/
-   Schlieren auf der Oberfläche, angebratene Kruste, öliger Tellerrand, sichtbare Pfanne/Fritteuse im Bild) als Indiz.
-   Liegt eine Zubereitungsart wie "gebraten", "frittiert" oder "paniert" vor und zeigt das Bild eines dieser Indizien,
-   gehe von mindestens 1 Esslöffel (ca. 10-15g) verstecktem Öl/Fett pro Portion aus. Anders als bisher NICHT als eigene
-   Komponente auflisten, sondern direkt am betroffenen Item über "hiddenFatGrams" ausweisen (0, wenn kein Hinweis auf
-   verstecktes Fett vorliegt) - das Fett fließt trotzdem in die Nährwerte (fatPer100g etc.) dieser Komponente ein.
-5. Schätze für jede Komponente die Nährwerte pro 100g möglichst genau. Schlüssle "sugarPer100g" (Gesamtzucker) zusätzlich
-   in "fructosePer100g" (Fruchtzucker) auf - der Anteil speziell aus Früchten, Honig oder High-Fructose-Corn-Syrup.
-   fructosePer100g ist ein TEIL von sugarPer100g, niemals zusätzlich dazu zu zählen. Kennst du bei Obst/Beeren keinen
-   genauen Wert, schätze fructosePer100g konservativ als ~50% von sugarPer100g statt 0 anzugeben (0 nur, wenn die
-   Komponente erkennbar KEIN Frucht-/Honig-/Sirup-Zucker enthält, z. B. Fleisch, Gemüse ohne Zuckerzusatz).
-6. Gib für jede Komponente eine confidence zwischen 0 und 1 an, wie sicher du dir bei Erkennung UND Mengenschätzung bist.
-   Ist die Kalorien-/Mengenschätzung unsicher, aber die IDENTITÄT der Komponente selbst mehrdeutig (z. B. Rind- vs.
-   Schweinefleisch bei einem panierten Schnitzel, Vollmilch- vs. Magerjoghurt), liste die 1-2 wahrscheinlichsten
-   Alternativnamen in "nameAlternatives" (sonst leeres Array) - NICHT verwenden für reine Mengen-Unsicherheit.
-7. Gib zusätzlich eine Gesamt-confidenceScore (0-1) für die ganze Analyse an, sowie eine kurze "reasoning" (1-2 Sätze,
-   Deutsch) die knapp erklärt, wie Mengen/verstecktes Fett geschätzt wurden (z. B. welche Referenzgrößen benutzt
-   wurden, ob Öl angenommen wurde).
-8. Plausibilitätscheck VOR der Ausgabe: berechne für jede Komponente kcal aus den Makros
-   (carbsPer100g*4 + proteinPer100g*4 + fatPer100g*9) und vergleiche mit deinem caloriesPer100g. Weichen beide um
-   mehr als ~15% ab, sind deine Werte intern inkonsistent - korrigiere caloriesPer100g so, dass es zu den Makros
-   passt (die Makros sind die direkter beobachtbare Schätzung, die Kalorienzahl ist daraus abgeleitet), statt die
-   Abweichung unkorrigiert stehen zu lassen.
+Arbeite JEDE Komponente durch drei Phasen IN DIESER REIHENFOLGE ab - nicht alle Komponenten Phase für Phase, sondern
+jede Komponente vollständig, bevor die nächste beginnt. Eine spät entschiedene Identität oder ein vor der Mengen-
+schätzung geratener Nährwert tendiert sonst zum statistisch häufigsten (meist US-amerikanischen) Standardwert.
+
+PHASE 1 - IDENTIFIKATION (was ist es genau, nicht nur ungefähr):
+1a. Zerlege die Mahlzeit in ihre einzelnen erkennbaren Lebensmittel/Komponenten - Hauptkomponente (Protein), Kohlenhydrat-
+    quelle, Gemüse/Salat, UND separat auch Saucen, Dressings, Dips und Beilagen, die eigene Nährwerte haben (z. B.
+    "Hähnchenbrust", "Reis", "Brokkoli", "Sojasauce" statt nur "Teller mit Essen"). Maximal 6 Komponenten: fasse bei
+    mehr Vielfalt (z. B. ein Buffet-Teller) visuell und mengenmäßig untergeordnete Elemente (Garnitur, einzelne
+    Kräuterblätter, Deko) in die nächstpassende Hauptkomponente ein, statt die Antwort mit vielen kleinen Posten zu
+    überladen - das hält die Antwort innerhalb des Token-Budgets und verhindert ein abgeschnittenes, ungültiges JSON.
+1b. Priorisiere Schweizer/europäische Produkte, Marken und Gerichte vor einer generischen (oft implizit US-
+    amerikanischen) Einordnung, wenn das Bild dafür Anhaltspunkte liefert - erkennbare Verpackung/Branding, eine
+    typisch Schweizer/europäische Zubereitungsform, oder schlicht Plausibilität (ein helles Hartkäsestück auf einem
+    Schweizer Teller ist eher Gruyère/Appenzeller/Emmentaler als "Swiss cheese"; ein Schokoriegel mit roter/goldener
+    Verpackung eher Ragusa/Toblerone als ein generischer "chocolate bar"; ein Rundbrot eher Zopf/Ruchbrot als
+    "white bread"). Nenne die SPEZIFISCHE Bezeichnung (Produkt- oder Gerichtname), keine pauschale Übersetzung.
+1c. Bestimme die Zubereitungsart (z. B. gebraten, gekocht, roh, frittiert, paniert), falls erkennbar.
+1d. Ist die IDENTITÄT selbst mehrdeutig (z. B. Rind- vs. Schweinefleisch bei einem panierten Schnitzel, Vollmilch-
+    vs. Magerjoghurt, Gruyère vs. Appenzeller) - nicht nur die Menge -, nenne 2-3 konkrete, spezifische Kandidaten in
+    "nameAlternatives" statt einer einzelnen vagen Bezeichnung oder eines Oberbegriffs. Leeres Array, wenn die
+    Identität klar ist; NICHT für reine Mengen-Unsicherheit verwenden.
+
+PHASE 2 - PORTIONSGRÖSSE (Objekt -> Haushaltsmass -> Gramm):
+2a. Ist die Komponente ein diskretes/verpacktes Stück (Riegel, Scheibe Brot/Käse/Wurst, Ei, Becher Joghurt/Quark/
+    Pudding, Dose Thunfisch, eine ganze Portion eines Fertiggerichts) - schätze zuerst in genau diesem Alltags-Mass,
+    das auch die Eingabemaske dieser App selbst anbietet: "1 Riegel", "2 Scheiben Brot", "1 Portion Pasta", "1 Becher
+    Joghurt", "1 Dose Thunfisch", "3 Stück". Rechne DANACH mit dem für dieses konkrete Produkt typischen Stückgewicht
+    in Gramm um (ein Riegel ~40-50g, eine Scheibe Brot ~30-70g je nach Dicke, eine Portion gekochte Pasta ~200-250g,
+    ein Joghurt-/Quark-Becher ~150-250g, eine Dose Thunfisch abgetropft ~80-140g) statt direkt eine Gramm-Zahl zu
+    raten. Gib dieses Mass als "portionLabel" aus (z. B. "1 Riegel", "2 Scheiben") - null, wenn Schritt 2b greift.
+2b. Ist die Komponente lose/unportioniert (Reis, Salat, Sauce, Gemüse als Haufen) - schätze das Volumen (in cm³, ml
+    bei Flüssigem/Suppen) über räumliche Referenzanker im Bild: primär der Tellerdurchmesser (Standard-Essteller
+    ca. 26cm, Beilagenteller ca. 20cm), ergänzt um Besteck (Gabel ca. 18-20cm, Löffel-Kopf ca. 4x7cm), Gläser,
+    Hände/Finger als Sekundär-Maßstab. Rechne das Volumen über eine typische Dichte (g/cm³) in Gramm um (Richtwerte:
+    Fleisch/Fisch gegart ~1.0-1.1, gekochter Reis/Getreide ~0.9, Blattsalat/Rohgemüse ~0.3-0.4, gegartes Gemüse
+    ~0.6-0.8, Saucen/Dips ~1.0-1.05, frittierte/panierte Komponenten ~0.5-0.6 wegen Lufteinschluss). "portionLabel"
+    bleibt hier null.
+2c. Erkenne versteckte/unsichtbare Fette, die auf dem Foto nicht als eigenes Objekt sichtbar sind, aber die
+    Nährwerte deutlich verändern: Brat-/Frittieröl, Butter, Sahne, Dressing-Reste, Marinade. Nutze visuelle Hinweise
+    (Glanz/Schlieren auf der Oberfläche, angebratene Kruste, öliger Tellerrand, sichtbare Pfanne/Fritteuse) als
+    Indiz. Liegt eine Zubereitungsart wie "gebraten", "frittiert" oder "paniert" vor und zeigt das Bild eines dieser
+    Indizien, gehe von mindestens 1 Esslöffel (ca. 10-15g) verstecktem Öl/Fett pro Portion aus. NICHT als eigene
+    Komponente auflisten, sondern direkt am betroffenen Item über "hiddenFatGrams" ausweisen (0, wenn kein Hinweis
+    vorliegt) - das Fett fließt trotzdem in die Nährwerte (fatPer100g etc.) dieser Komponente ein.
+
+PHASE 3 - NÄHRWERTE (europäische/Schweizer Referenzwerte, nicht USDA):
+3a. Schätze die Nährwerte pro 100g anhand europäischer/Schweizer Rezepturen und Zusammensetzungen (D-A-CH-
+    Referenzwerte, Schweizer Nährwertdatenbank), NICHT anhand US-amerikanischer Standardprodukte - diese
+    unterscheiden sich konkret: europäische Vollmilch ca. 3.5-3.8% Fett (US-"whole milk" meist 3.25%), europäisches
+    Vollkorn-/Ruchbrot ist i. d. R. deutlich weniger gesüßt als US-Brot, Schweizer Hartkäse (Gruyère, Appenzeller,
+    Emmentaler) hat einen anderen Fett-/Proteingehalt als generischer "cheddar"/"swiss cheese".
+3b. Schlüssle "sugarPer100g" (Gesamtzucker) zusätzlich in "fructosePer100g" (Fruchtzucker) auf - der Anteil speziell
+    aus Früchten, Honig oder High-Fructose-Corn-Syrup. fructosePer100g ist ein TEIL von sugarPer100g, niemals
+    zusätzlich dazu zu zählen. Kennst du bei Obst/Beeren keinen genauen Wert, schätze fructosePer100g konservativ
+    als ~50% von sugarPer100g statt 0 anzugeben (0 nur, wenn die Komponente erkennbar KEIN Frucht-/Honig-/Sirup-
+    Zucker enthält, z. B. Fleisch, Gemüse ohne Zuckerzusatz).
+3c. Gib eine confidence zwischen 0 und 1 an, wie sicher du dir bei Erkennung UND Mengenschätzung dieser Komponente
+    bist.
+3d. Plausibilitätscheck VOR der Ausgabe: berechne kcal aus den Makros (carbsPer100g*4 + proteinPer100g*4 +
+    fatPer100g*9) und vergleiche mit deinem caloriesPer100g. Weichen beide um mehr als ~15% ab, sind deine Werte
+    intern inkonsistent - korrigiere caloriesPer100g so, dass es zu den Makros passt (die Makros sind die direkter
+    beobachtbare Schätzung, die Kalorienzahl ist daraus abgeleitet), statt die Abweichung unkorrigiert stehen zu lassen.
+
+Nach allen Komponenten: gib eine Gesamt-confidenceScore (0-1) für die ganze Analyse an, sowie eine kurze "reasoning"
+(1-2 Sätze, Deutsch), die knapp erklärt, wie Identität/Mengen/verstecktes Fett geschätzt wurden (z. B. welche
+Referenzgrößen benutzt wurden, ob ein Schweizer/europäisches Produkt erkannt oder angenommen wurde).
 
 Falls das Bild unscharf, zu dunkel, teilweise verdeckt oder anderweitig schwer auswertbar ist: gib trotzdem deine
 beste konservative Schätzung ab (niemals verweigern), aber setze die confidence/confidenceScore entsprechend niedrig
@@ -108,6 +148,7 @@ Antworte ausschließlich mit kompaktem JSON in genau diesem Schema, ohne weitere
     {
       "name": string,
       "cookingMethod": string | null,
+      "portionLabel": string | null,
       "estimatedGrams": number,
       "confidence": number,
       "hiddenFatGrams": number,
@@ -135,6 +176,7 @@ Antworte ausschließlich mit kompaktem JSON in genau diesem Schema, ohne weitere
 interface OpenAiVisionItemJson {
   name?: string;
   cookingMethod?: string | null;
+  portionLabel?: string | null;
   estimatedGrams?: number;
   confidence?: number;
   hiddenFatGrams?: number;
@@ -193,6 +235,7 @@ function normalizeDetectedItem(raw: OpenAiVisionItemJson): DetectedFoodItem {
   return {
     name,
     cookingMethod: raw.cookingMethod?.trim() || null,
+    portionLabel: raw.portionLabel?.trim() || null,
     estimatedGrams: toNonNegative(raw.estimatedGrams, 150),
     caloriesPer100g: toNonNegative(raw.caloriesPer100g, 0),
     macrosPer100g: {
@@ -218,7 +261,7 @@ function normalizeDetectedItem(raw: OpenAiVisionItemJson): DetectedFoodItem {
     confidenceTier: toConfidenceTier(confidence),
     needsVerification: confidence < LOW_CONFIDENCE_THRESHOLD,
     hiddenFatGrams: toNonNegative(raw.hiddenFatGrams, 0),
-    nameAlternatives: (raw.nameAlternatives ?? []).map((name) => name.trim()).filter(Boolean).slice(0, 2),
+    nameAlternatives: (raw.nameAlternatives ?? []).map((name) => name.trim()).filter(Boolean).slice(0, 3),
   };
 }
 
@@ -319,6 +362,7 @@ function fallbackEstimate(notice: string): VisionAnalysisResult {
       {
         name: 'Mahlzeit (Schätzung)',
         cookingMethod: null,
+        portionLabel: null,
         estimatedGrams: 250,
         caloriesPer100g: 220,
         macrosPer100g: { carbs: 24, protein: 10, fat: 9 },

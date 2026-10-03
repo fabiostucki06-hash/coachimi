@@ -1,7 +1,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AlertTriangle, Camera, Check, Droplet, ImagePlus, Minus, Plus, RotateCcw, Search, Sparkles, X } from 'lucide-react-native';
+import { AlertTriangle, Camera, Check, Droplet, ImagePlus, Minus, Package, Plus, RotateCcw, Search, Sparkles, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -78,6 +78,8 @@ interface EditableItem {
   id: string;
   name: string;
   cookingMethod: string | null;
+  /** The Vision model's own "1 Riegel"/"2 Scheiben"-style estimate before it converted to grams (services/visionFoodApi.ts) - shown as context next to the gram amount, not re-derived from it. null once a DB match overwrites the estimate, or for foods that were never discrete/packaged to begin with. */
+  portionLabel: string | null;
   grams: string;
   kcalPer100g: string;
   carbsPer100g: string;
@@ -104,6 +106,7 @@ function toEditableItem(detected: DetectedFoodItem, index: number): EditableItem
     id: `item-${index}-${Date.now()}`,
     name: detected.name,
     cookingMethod: detected.cookingMethod,
+    portionLabel: detected.portionLabel,
     grams: String(Math.round(detected.estimatedGrams)),
     kcalPer100g: String(Math.round(detected.caloriesPer100g)),
     carbsPer100g: String(Math.round(detected.macrosPer100g.carbs)),
@@ -126,6 +129,7 @@ function makeBlankItem(): EditableItem {
     id: `manual-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
     name: '',
     cookingMethod: null,
+    portionLabel: null,
     grams: '100',
     kcalPer100g: '',
     carbsPer100g: '',
@@ -402,6 +406,7 @@ export default function AnalyzeFoodScreen() {
     const rematchTarget: DetectedFoodItem = {
       name,
       cookingMethod: item.cookingMethod,
+      portionLabel: item.portionLabel,
       estimatedGrams: parseNumber(item.grams, 100),
       caloriesPer100g: parseNumber(item.kcalPer100g, 0),
       macrosPer100g: {
@@ -696,6 +701,14 @@ export default function AnalyzeFoodScreen() {
                         {CONFIDENCE_TIER_META[item.confidenceTier].label} ({Math.round(item.confidence * 100)}%)
                       </Text>
                     </View>
+                    {item.portionLabel && (
+                      <View className="flex-row items-center gap-1.5 self-start rounded-full bg-overlay/5 px-2.5 py-1">
+                        <Package color="#818CF8" size={12} />
+                        <Text className="text-[11px] font-medium text-text-secondary">
+                          ≈ {item.portionLabel}
+                        </Text>
+                      </View>
+                    )}
                     {item.hiddenFatGrams > 0 && (
                       <View className="flex-row items-center gap-1.5 self-start rounded-full bg-overlay/5 px-2.5 py-1">
                         <Droplet color="#f59e0b" size={12} />
