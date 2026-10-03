@@ -12,6 +12,7 @@ interface LocalFoodSeed {
   sugarPer100g?: number;
   sodiumPer100gMg?: number;
   vitaminCPer100gMg?: number;
+  ironPer100gMg?: number;
 }
 
 // Everyday German foods, macros per 100g. Values are standard nutrition-table
@@ -30,6 +31,7 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-toastbrot', name: 'Toastbrot', caloriesPer100g: 265, carbsPer100g: 49, proteinPer100g: 8, fatPer100g: 3.5, fiberPer100g: 2.5 },
   { id: 'local-broetchen', name: 'Brötchen', caloriesPer100g: 275, carbsPer100g: 52, proteinPer100g: 9, fatPer100g: 2 },
   { id: 'local-reis', name: 'Reis, gekocht', caloriesPer100g: 130, carbsPer100g: 28, proteinPer100g: 2.7, fatPer100g: 0.3 },
+  { id: 'local-reis-ungekocht', name: 'Reis, ungekocht', caloriesPer100g: 360, carbsPer100g: 79, proteinPer100g: 7, fatPer100g: 0.7, fiberPer100g: 1.3 },
   { id: 'local-vollkornreis', name: 'Vollkornreis, gekocht', caloriesPer100g: 123, carbsPer100g: 26, proteinPer100g: 2.7, fatPer100g: 1, fiberPer100g: 1.8 },
   // Raw/dry and cooked are kept as separate entries rather than one with a
   // "cooked" toggle - cooking absorbs water, so per-100g values genuinely
@@ -167,6 +169,10 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-spaetzle', name: 'Spätzle', caloriesPer100g: 168, carbsPer100g: 30, proteinPer100g: 6.5, fatPer100g: 2.5 },
   { id: 'local-ramen', name: 'Ramen-Nudeln, gekocht', caloriesPer100g: 188, carbsPer100g: 27, proteinPer100g: 5, fatPer100g: 6.7, sodiumPer100gMg: 500 },
   { id: 'local-vollkorntoast', name: 'Vollkorn-Toastbrot', caloriesPer100g: 250, carbsPer100g: 45, proteinPer100g: 10, fatPer100g: 3.5, fiberPer100g: 6.5 },
+  { id: 'local-weissbrot', name: 'Weißbrot', caloriesPer100g: 253, carbsPer100g: 50, proteinPer100g: 8, fatPer100g: 1.5, fiberPer100g: 2.5 },
+  { id: 'local-pumpernickel', name: 'Pumpernickel', caloriesPer100g: 206, carbsPer100g: 38, proteinPer100g: 5.5, fatPer100g: 1, fiberPer100g: 7 },
+  { id: 'local-ciabatta', name: 'Ciabatta', caloriesPer100g: 271, carbsPer100g: 52, proteinPer100g: 9, fatPer100g: 2.8 },
+  { id: 'local-fladenbrot', name: 'Fladenbrot', caloriesPer100g: 280, carbsPer100g: 53, proteinPer100g: 9, fatPer100g: 3 },
 
   // Protein: Fleisch, Fisch, Eier
   { id: 'local-ei-roh', name: 'Ei, roh', caloriesPer100g: 155, carbsPer100g: 1.1, proteinPer100g: 13, fatPer100g: 11 },
@@ -192,6 +198,15 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-tempeh', name: 'Tempeh', caloriesPer100g: 193, carbsPer100g: 9, proteinPer100g: 19, fatPer100g: 11 },
   { id: 'local-seitan', name: 'Seitan', caloriesPer100g: 370, carbsPer100g: 14, proteinPer100g: 75, fatPer100g: 2 },
   { id: 'local-edamame', name: 'Edamame, gekocht', caloriesPer100g: 122, carbsPer100g: 9, proteinPer100g: 11, fatPer100g: 5, fiberPer100g: 5 },
+  // Iron here is a realistic per-100g value for a generic whey protein powder (~1-5mg/100g
+  // is typical for unfortified whey; this sits at the upper end of that range) - NOT the
+  // per-100g iron content of a single ~20-30g scoop. A past bug conflated those two scales
+  // (e.g. reading a per-serving figure as if it were per-100g, or double-applying a g->mg
+  // conversion already baked into this seed), yielding biologically impossible values like
+  // 1300mg/100g - far above the entire D-A-CH daily reference intake (10-15mg, see
+  // MICRONUTRIENT_GOALS.iron in utils/nutritionCalculator.ts). Keep this value in that
+  // single-digit-mg range; the mapping below applies it as-is, with no extra scaling.
+  { id: 'local-proteinpulver', name: 'Proteinpulver (Whey)', caloriesPer100g: 380, carbsPer100g: 8, proteinPer100g: 75, fatPer100g: 6, ironPer100gMg: 4.5 },
 
   // Milchprodukte
   { id: 'local-vollmilch', name: 'Vollmilch, 3,8%', caloriesPer100g: 66, carbsPer100g: 4.8, proteinPer100g: 3.3, fatPer100g: 3.8 },
@@ -246,6 +261,7 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-sesamoel', name: 'Sesamöl', caloriesPer100g: 884, carbsPer100g: 0, proteinPer100g: 0, fatPer100g: 100 },
   { id: 'local-margarine', name: 'Margarine', caloriesPer100g: 717, carbsPer100g: 0.5, proteinPer100g: 0.2, fatPer100g: 80 },
   { id: 'local-schmalz', name: 'Schmalz', caloriesPer100g: 897, carbsPer100g: 0, proteinPer100g: 0, fatPer100g: 100 },
+  { id: 'local-kuemmeloel', name: 'Kümmelöl', caloriesPer100g: 884, carbsPer100g: 0, proteinPer100g: 0, fatPer100g: 100 },
 
   // Süßes & Snacks
   { id: 'local-zartbitterschokolade', name: 'Zartbitterschokolade', caloriesPer100g: 546, carbsPer100g: 46, proteinPer100g: 5, fatPer100g: 35, sugarPer100g: 40 },
@@ -343,6 +359,7 @@ export const LOCAL_FOOD_DATABASE: FoodItem[] = LOCAL_FOOD_SEEDS.map((seed) => ({
     fructose: estimateFructoseFromSugar(seed.name, seed.sugarPer100g),
     sodium: seed.sodiumPer100gMg ?? 0,
     vitaminC: seed.vitaminCPer100gMg ?? 0,
+    iron: seed.ironPer100gMg ?? 0,
   },
   servingSize: 100,
   servingUnit: 'g',
