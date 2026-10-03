@@ -8,6 +8,13 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.3',
+    date: '2026-10-03',
+    highlights: [
+      'Verbessert: Lebensmittelsuche und KI-Fotoerkennung bevorzugen jetzt europäische/Schweizer Datenbanken (Open Food Facts, FatSecret) klarer vor der US-amerikanischen USDA-Datenbank',
+    ],
+  },
+  {
     version: '1.5.2',
     date: '2026-10-03',
     highlights: [
