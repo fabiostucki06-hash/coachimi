@@ -8,6 +8,13 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.4',
+    date: '2026-10-03',
+    highlights: [
+      'Neu: Portionsgrößen-Auswahl für Joghurt, Quark/Hüttenkäse, Pudding und Thunfisch (Dose) - direkt als Becher/Dose statt nur in Gramm',
+    ],
+  },
+  {
     version: '1.5.3',
     date: '2026-10-03',
     highlights: [
