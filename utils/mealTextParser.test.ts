@@ -36,6 +36,19 @@ describe('parseMealDescription', () => {
     expect(parseMealDescription('2 Stück Banane', [])[0]).toMatchObject({ name: 'Banane', quantityGrams: 240 });
   });
 
+  // Regression: "Riegel"/"Packung"/"Dose" weren't in the unit regex at all, so they
+  // leaked into the food name instead of being recognized as a unit ("1 Riegel
+  // Proteinriegel" parsed as the literal name "Riegel Proteinriegel") - breaking both
+  // local fuzzy matching and any remote search fallback with a word the real product
+  // name doesn't contain.
+  it('recognizes "Riegel"/"Packung"/"Dose" as piece units, stripping them from the food name', () => {
+    expect(parseMealDescription('1 Riegel Proteinriegel', [])[0]).toMatchObject({ name: 'Proteinriegel', quantityGrams: 45 });
+    expect(parseMealDescription('2 Riegel Proteinriegel', [])[0]).toMatchObject({ name: 'Proteinriegel', quantityGrams: 90 });
+    expect(parseMealDescription('1 Packung Naturjoghurt', [])[0]).toMatchObject({ name: 'Naturjoghurt', quantityGrams: 180 });
+    expect(parseMealDescription('1 Dose Thunfisch', [])[0]).toMatchObject({ name: 'Thunfisch', quantityGrams: 140 });
+    expect(parseMealDescription('2 Dosen Thunfisch', [])[0]).toMatchObject({ name: 'Thunfisch', quantityGrams: 280 });
+  });
+
   it('assumes a standard 100g portion when no quantity is mentioned at all', () => {
     expect(parseMealDescription('Banane', [])[0]).toMatchObject({ name: 'Banane', quantityGrams: 100 });
   });

@@ -28,11 +28,21 @@ const UNIT_TO_GRAMS: Record<string, number> = {
   tl: 5,
 };
 
-/** Unit tokens that mean "N pieces", not a weight/volume - routed through getPortionWeightForCount instead of UNIT_TO_GRAMS. */
-const PIECE_UNITS = new Set(['stück', 'stk', 'st']);
+/**
+ * Unit tokens that mean "N pieces/containers", not a weight/volume - routed through
+ * getPortionWeightForCount instead of UNIT_TO_GRAMS, same as "Stück". "Riegel",
+ * "Packung"/"Packungen" and "Dose"/"Dosen" have no universal gram weight either (a
+ * Riegel's weight depends on which bar; a Packung/Dose's on which product) - without
+ * these listed in the regex alternation below, the word wasn't recognized as a unit at
+ * all and leaked into the food name instead ("1 Riegel Snickers" parsed as the literal
+ * name "Riegel Snickers", polluting both local fuzzy matching and any remote search
+ * fallback with a word the actual product name doesn't contain).
+ */
+const PIECE_UNITS = new Set(['stück', 'stk', 'st', 'riegel', 'packung', 'packungen', 'dose', 'dosen']);
 
-const LEADING_QUANTITY = /^(\d+(?:[.,]\d+)?)\s*(g|gramm|kg|ml|l|stück|stk\.?|st\.?|el|tl)?\.?\s+(.+)$/i;
-const TRAILING_QUANTITY = /^(.+?)\s+(\d+(?:[.,]\d+)?)\s*(g|gramm|kg|ml|l|stück|stk\.?|st\.?|el|tl)?\.?$/i;
+const UNIT_ALTERNATION = 'g|gramm|kg|ml|l|stück|stk\\.?|st\\.?|el|tl|riegel|packungen|packung|dosen|dose';
+const LEADING_QUANTITY = new RegExp(`^(\\d+(?:[.,]\\d+)?)\\s*(${UNIT_ALTERNATION})?\\.?\\s+(.+)$`, 'i');
+const TRAILING_QUANTITY = new RegExp(`^(.+?)\\s+(\\d+(?:[.,]\\d+)?)\\s*(${UNIT_ALTERNATION})?\\.?$`, 'i');
 
 /** Splits a free-text meal description into per-food segments: commas, "und"/"mit"/"+"/";" as separators. */
 function splitSegments(text: string): string[] {
