@@ -8,6 +8,14 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.1',
+    date: '2026-10-03',
+    highlights: [
+      'Verbessert: KI-Fotoanalyse erkennt Mahlzeiten jetzt genauer - höhere Bildqualität vor dem Upload, kein erzwungener Bildausschnitt mehr',
+      'Verbessert: KI-Schätzung gleicht Kalorien und Makros gegeneinander ab, um unplausible Werte zu vermeiden',
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-10-03',
     highlights: [
