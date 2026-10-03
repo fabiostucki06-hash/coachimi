@@ -53,12 +53,13 @@ it('commits the entry to the diary and dismisses back to meal-detail on confirm'
   expect(useUiStore.getState().pendingFoodItem).toBeNull();
 });
 
-// Regression: a barcode scan should preselect a matching portion (e.g. "1 Riegel")
-// instead of defaulting to a blanket 100g, so confirming without editing the amount
-// logs a realistic quantity for that product.
-it('preselects a matching portion chip when the selection came from a barcode scan', async () => {
+// Regression: a recognized food (by name, regardless of how it was added - search,
+// scan, AI photo) should preselect a matching portion (e.g. "1 Riegel") instead of
+// defaulting to a blanket 100g, so confirming without editing the amount logs a
+// realistic quantity for that product.
+it('preselects a matching portion chip for a recognized food', async () => {
   const barItem = { ...foodItem, id: 'food-2', name: 'Proteinriegel Schoko' };
-  useUiStore.getState().setPendingSelection(barItem, 'snack', { fromScan: true });
+  useUiStore.getState().setPendingSelection(barItem, 'snack');
 
   let tree!: ReturnType<typeof create>;
   act(() => {

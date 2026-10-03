@@ -3,9 +3,12 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 
 import {
+  DAILY_REMINDERS,
+  formatInactivityGap,
   getInactivityReference,
   getLastMealLoggedAt,
   getNextOccurrence,
+  reminderTag,
   shouldShowInactivityReminder,
 } from '@/services/notificationService';
 import type { MealEntry } from '@/types';
@@ -17,6 +20,33 @@ function at(hour: number, minute = 0): Date {
 function entry(loggedAt: Date): MealEntry {
   return { id: loggedAt.toISOString(), foodItem: {} as MealEntry['foodItem'], mealType: 'snack', servings: 1, loggedAt: loggedAt.toISOString() };
 }
+
+describe('reminderTag', () => {
+  // A shared tag would make every reminder after the first silently replace
+  // the one already in the tray instead of raising a system banner, so the
+  // three daily slots must never collide.
+  it('gives every daily reminder its own tag', () => {
+    const tags = DAILY_REMINDERS.map((reminder) => reminderTag(reminder.id));
+    expect(new Set(tags).size).toBe(DAILY_REMINDERS.length);
+  });
+
+  // These exact strings are what supabase/functions/send-push-reminders sends,
+  // which is what lets a push and the local timer for the same slot dedupe.
+  it('matches the tags the push edge function sends', () => {
+    expect(DAILY_REMINDERS.map((reminder) => reminderTag(reminder.id))).toEqual([
+      'coachimi-breakfast',
+      'coachimi-lunch',
+      'coachimi-dinner',
+    ]);
+  });
+});
+
+describe('formatInactivityGap', () => {
+  it('rounds down to whole hours and singularizes the first one', () => {
+    expect(formatInactivityGap(4 * 60 * 60 * 1000 + 1)).toBe('4 Stunden');
+    expect(formatInactivityGap(90 * 60 * 1000)).toBe('1 Stunde');
+  });
+});
 
 describe('getNextOccurrence', () => {
   it('returns today when the time has not passed yet', () => {

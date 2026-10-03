@@ -7,6 +7,12 @@ export interface PortionUnit {
 interface PortionCategory {
   /** Normalized (umlaut-folded, lowercase) whole-word tokens that identify this category. */
   keywords: string[];
+  /**
+   * Token suffixes that would otherwise match one of `keywords` by chance but mean
+   * something else - e.g. any "...reis" dish ends in "eis" (the German word for ice
+   * cream) without being one. Checked against the same normalized tokens as `keywords`.
+   */
+  excludeSuffixes?: string[];
   units: PortionUnit[];
   /** Which of `units` is preselected (e.g. in log-quantity) before the user picks one explicitly. */
   defaultUnitId: string;
@@ -32,6 +38,15 @@ const PORTION_CATEGORIES: PortionCategory[] = [
     defaultUnitId: 'apple_medium',
   },
   {
+    keywords: ['pfirsich', 'pfirsiche', 'nektarine', 'nektarinen'],
+    units: [
+      { id: 'peach_small', label: '1 kleiner Pfirsich', grams: 100 },
+      { id: 'peach_medium', label: '1 mittlerer Pfirsich', grams: 150 },
+      { id: 'peach_large', label: '1 großer Pfirsich', grams: 200 },
+    ],
+    defaultUnitId: 'peach_medium',
+  },
+  {
     keywords: ['banane', 'bananen'],
     units: [
       { id: 'banana_small', label: '1 kleine Banane', grams: 100 },
@@ -50,6 +65,25 @@ const PORTION_CATEGORIES: PortionCategory[] = [
     defaultUnitId: 'slice_medium',
   },
   {
+    // "Wrap"/"Tortilla" cover both the plain flatbread and a filled wrap sold/logged under
+    // either name - same rough size range either way.
+    keywords: ['wrap', 'wraps', 'tortilla', 'tortillas'],
+    units: [
+      { id: 'wrap_small', label: '1 kleiner Wrap', grams: 40 },
+      { id: 'wrap_medium', label: '1 Wrap', grams: 60 },
+      { id: 'wrap_large', label: '1 großer Wrap', grams: 80 },
+    ],
+    defaultUnitId: 'wrap_medium',
+  },
+  {
+    keywords: ['reiswaffel', 'reiswaffeln', 'reiscracker'],
+    units: [
+      { id: 'ricecake_single', label: '1 Reiswaffel', grams: 9 },
+      { id: 'ricecake_double', label: '2 Reiswaffeln', grams: 18 },
+    ],
+    defaultUnitId: 'ricecake_single',
+  },
+  {
     keywords: ['riegel'],
     units: [
       { id: 'bar_half', label: '1 halber Riegel', grams: 22.5 },
@@ -64,6 +98,20 @@ const PORTION_CATEGORIES: PortionCategory[] = [
       { id: 'egg_l', label: '1 Ei (Größe L)', grams: 65 },
     ],
     defaultUnitId: 'egg_m',
+  },
+  {
+    // "eis" alone catches any compound ending in it (Vanilleeis, Schokoeis, Erdbeereis,
+    // Softeis, ...); "eiscreme"/"eisbecher" catch forms that don't end in "eis" itself.
+    // excludeSuffixes keeps every "...reis" dish (Reis, Milchreis, Currryreis, ...) out -
+    // those end in the same three letters without being ice cream.
+    keywords: ['eis', 'eiscreme', 'eisbecher'],
+    excludeSuffixes: ['reis'],
+    units: [
+      { id: 'icecream_scoop', label: '1 Kugel Eis', grams: 60 },
+      { id: 'icecream_double', label: '2 Kugeln Eis', grams: 120 },
+      { id: 'icecream_bar', label: '1 Eis am Stiel', grams: 50 },
+    ],
+    defaultUnitId: 'icecream_scoop',
   },
 ];
 
@@ -96,8 +144,16 @@ function tokenMatchesKeyword(token: string, keyword: string): boolean {
 function matchCategory(foodName: string): PortionCategory | undefined {
   const tokens = tokenize(foodName);
   return PORTION_CATEGORIES.find((candidate) =>
-    candidate.keywords.some((keyword) => tokens.some((token) => tokenMatchesKeyword(token, keyword))),
+    candidate.keywords.some((keyword) =>
+      tokens.some(
+        (token) => tokenMatchesKeyword(token, keyword) && !candidate.excludeSuffixes?.some((suffix) => token.endsWith(suffix)),
+      ),
+    ),
   );
+}
+
+function defaultUnitOf(category: PortionCategory): PortionUnit {
+  return category.units.find((unit) => unit.id === category.defaultUnitId) ?? category.units[0];
 }
 
 /** Matches a searched/selected food name against the portion dictionary, falling back to generic portion-size presets for anything unrecognized. */
@@ -113,6 +169,31 @@ export function getPortionUnitsForFood(foodName: string): PortionUnit[] {
  */
 export function getDefaultPortionUnit(foodName: string): PortionUnit {
   const category = matchCategory(foodName);
-  if (category) return category.units.find((unit) => unit.id === category.defaultUnitId) ?? category.units[0];
+  if (category) return defaultUnitOf(category);
   return STAPLE_UNITS.find((unit) => unit.id === STAPLE_DEFAULT_UNIT_ID) ?? STAPLE_UNITS[0];
+}
+
+/**
+ * Like `getDefaultPortionUnit`, but `null` instead of the generic staple fallback when the
+ * food doesn't match a specific keyword category. Used wherever a confident, food-specific
+ * guess (banana, egg, wrap, ...) is worth auto-applying, but silently defaulting an
+ * unrecognized food (chicken breast, rice, ...) to "1 normale Portion" would misrepresent
+ * an entry the user hasn't actually sized yet.
+ */
+export function getKnownPortionUnit(foodName: string): PortionUnit | null {
+  const category = matchCategory(foodName);
+  return category ? defaultUnitOf(category) : null;
+}
+
+/**
+ * Grams for `count` whole pieces of `foodName` - used when a quantity is given as a bare
+ * count ("2 Bananen", "1 Wrap", "3 Stück Reiswaffel") rather than a weight. Recognized foods
+ * use their own typical per-piece weight (banana ~120g, egg ~55g, rice cake ~9g, ...);
+ * anything else falls back to a generic 100g per piece - a guess, but a far better one than
+ * treating the bare count itself as grams (which would log "2 Bananen" as 2g).
+ */
+export function getPortionWeightForCount(foodName: string, count: number): number {
+  const category = matchCategory(foodName);
+  const perPiece = category ? defaultUnitOf(category).grams : 100;
+  return perPiece * count;
 }

@@ -14,7 +14,7 @@ import { useUiStore } from '@/store/uiStore';
 import { useUserStore } from '@/store/userStore';
 import type { MealType, Micronutrients, NutrientKey } from '@/types';
 import { scaleNutrientsByServings } from '@/utils/nutritionCalculator';
-import { getDefaultPortionUnit } from '@/utils/portionUnits';
+import { getKnownPortionUnit } from '@/utils/portionUnits';
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: 'Frühstück',
@@ -27,15 +27,17 @@ const MEAL_LABELS: Record<MealType, string> = {
 export default function LogQuantityScreen() {
   const foodItem = useUiStore((state) => state.pendingFoodItem);
   const mealType = useUiStore((state) => state.pendingMealType);
-  const fromScan = useUiStore((state) => state.pendingFromScan);
   const clearPendingSelection = useUiStore((state) => state.clearPendingSelection);
   const selectedDate = useUiStore((state) => state.selectedDate);
   const visibleNutrients = useUserStore((state) => state.user.visibleNutrients);
 
   const isGramBased = foodItem?.servingUnit === 'g';
-  // Preselects the portion chip matching this food (e.g. a scanned bar defaults to "1
-  // Riegel") instead of a blanket 100g, so a single tap on "Bestätigen" is often enough.
-  const defaultPortionUnit = isGramBased && foodItem && fromScan ? getDefaultPortionUnit(foodItem.name) : null;
+  // Auto-detects common countable foods by name (banana, wrap, rice cake, protein bar, ...)
+  // and preselects the matching portion chip instead of a blanket 100g, so a single tap on
+  // "Bestätigen" already logs a realistic amount - however the food was added (search, scan,
+  // AI photo). `null` for anything not in the dictionary (chicken breast, rice, ...), which
+  // keeps those at the blanket 100g rather than guessing a generic portion size for them.
+  const defaultPortionUnit = isGramBased && foodItem ? getKnownPortionUnit(foodItem.name) : null;
   const [amount, setAmount] = useState(
     isGramBased ? String(defaultPortionUnit?.grams ?? foodItem?.servingSize ?? 100) : '1',
   );

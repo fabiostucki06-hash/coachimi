@@ -7,12 +7,15 @@
 // for the widget means "as fast as postMessage between windows this worker
 // controls" - no Background Sync API is involved.
 //
-// The `push` handler at the bottom turns a Web Push message into a system
-// notification and `notificationclick` focuses/opens the app. Nothing sends
-// pushes yet: this is a static Vercel export, so delivering one needs a
-// backend holding VAPID keys and the users' PushManager subscriptions. The
-// in-app reminders (services/notificationService.ts) don't use push at all -
-// the page schedules them and shows them via registration.showNotification.
+// The `push` handler at the bottom turns a Web Push message into a native
+// system notification (the OS banner + tray entry) and `notificationclick`
+// focuses/opens the app on the right screen. The sender is
+// supabase/functions/send-push-reminders, which holds the VAPID keys and
+// fans out to every stored PushManager subscription - that is what reaches a
+// fully closed app. services/notificationService.ts covers the app-open case
+// with its own registration.showNotification calls, using the same per-slot
+// `tag`, so the two paths dedupe into one tray entry instead of showing the
+// same reminder twice.
 //
 // Cache-busting for a *new deploy* is primarily handled by hooks/useAutoUpdate.ts
 // (polls /build-version.json, then calls utils/hardRefresh.ts's
@@ -27,7 +30,7 @@
 // detectable. `activate` below then deletes every cache key that isn't the
 // current CACHE_NAME, so the old shell cache never lingers.
 
-const CACHE_NAME = 'coach-imi-shell-v3';
+const CACHE_NAME = 'coach-imi-shell-v4';
 const SHELL_URLS = ['/', '/manifest.json'];
 
 // User data (diary, profile, diet cycles) lives in Supabase, a cross-origin host
@@ -118,11 +121,13 @@ self.addEventListener('message', (event) => {
   );
 });
 
-// Web Push -> system notification. Payload is JSON: { title, body, url? }.
-// A non-JSON or empty payload falls back to a generic reminder instead of
-// dropping the push - browsers expect a push to show *something*.
+// Web Push -> native system notification. Payload is JSON:
+// { title, body, url?, tag? }. A non-JSON or empty payload falls back to a
+// generic reminder instead of dropping the push - browsers expect a push to
+// show *something*, and a push that shows nothing under `userVisibleOnly`
+// costs the origin its push permission.
 const NOTIFICATION_ICON = '/icon.png';
-const DEFAULT_NOTIFICATION = { title: 'Coach imi', body: 'Erinnerung' };
+const DEFAULT_NOTIFICATION = { title: 'Coach imi', body: 'Erinnerung', tag: 'coachimi-reminder' };
 
 self.addEventListener('push', (event) => {
   let data = DEFAULT_NOTIFICATION;
@@ -134,36 +139,68 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  // The tag comes from the sender and is per reminder slot
+  // (coachimi-breakfast / -lunch / -dinner), never a single shared string:
+  // re-using one tag for all of them makes every reminder after the first
+  // *silently replace* the one already in the tray - the spec suppresses the
+  // banner, sound and vibration on a same-tag replacement - which looks
+  // exactly like "the notification never arrived". Distinct tags also let
+  // this push and the in-app timer for the same slot collapse into one entry
+  // (see services/notificationService.ts).
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: NOTIFICATION_ICON,
       badge: NOTIFICATION_ICON,
-      tag: 'coachimi-notification',
+      tag: data.tag || DEFAULT_NOTIFICATION.tag,
+      lang: 'de',
+      timestamp: Date.now(),
+      requireInteraction: false,
+      silent: false,
+      actions: [{ action: 'log-meal', title: 'Eintragen' }],
       data: { url: data.url || '/' },
     }),
   );
 });
 
 // Only same-origin targets are honored, so a malformed payload can't turn a
-// tap on the notification into an open redirect.
-function resolveNotificationUrl(url) {
+// tap on the notification into an open redirect. Returns the in-app route
+// (pathname + search), not an absolute URL - both branches of
+// `notificationclick` below want the route, and keeping it relative makes it
+// impossible to smuggle another origin through either one.
+function resolveNotificationRoute(url) {
   try {
     const target = new URL(url || '/', self.location.origin);
-    return target.origin === self.location.origin ? target.href : self.location.origin + '/';
+    if (target.origin !== self.location.origin) return '/';
+    return target.pathname + target.search;
   } catch {
-    return self.location.origin + '/';
+    return '/';
   }
 }
 
+// Tapping the banner (or its "Eintragen" action) should land on the screen
+// the reminder is about. Two cases:
+//
+//   - A window is already open: focus it and hand the route over by
+//     postMessage, so the app navigates in-process. Loading the route as a
+//     URL instead would be wrong here - app/_layout.tsx bounces every fresh
+//     load that isn't '/', '/widget' or the workout-import link back to the
+//     dashboard, so the deep link would be thrown away on arrival.
+//   - Nothing is open: open the dashboard with the route in `?route=`, which
+//     survives that same redirect check (the pathname is still '/') and is
+//     picked up by hooks/useNotificationRouting.ts once the app mounts.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = resolveNotificationUrl(event.notification.data?.url);
+  const route = resolveNotificationRoute(event.notification.data?.url);
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       const existing = clients.find((client) => 'focus' in client);
-      return existing ? existing.focus() : self.clients.openWindow(target);
+      if (existing) {
+        existing.postMessage({ type: 'coach-imi-open-route', route });
+        return existing.focus();
+      }
+      return self.clients.openWindow('/?route=' + encodeURIComponent(route));
     }),
   );
 });

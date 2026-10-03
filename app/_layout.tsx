@@ -5,13 +5,14 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 
-import { ActiveReminderBanner } from '@/components/ActiveReminderBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { GoldBarCelebration } from '@/components/ui/GoldBarCelebration';
 import { PurchaseCelebration } from '@/components/ui/PurchaseCelebration';
 import { Toast } from '@/components/ui/Toast';
 import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import { useInactivityReminder } from '@/hooks/useInactivityReminder';
+import { useNotificationRouting } from '@/hooks/useNotificationRouting';
 import { useReminderScheduler } from '@/hooks/useReminderScheduler';
 import { useResolvedColorScheme } from '@/hooks/useResolvedColorScheme';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
@@ -61,6 +62,8 @@ export default function RootLayout() {
   useAutoUpdate();
   useServiceWorker();
   useReminderScheduler();
+  useInactivityReminder();
+  useNotificationRouting();
   useWidgetSync();
   useWidgetDeepLinks();
 
@@ -85,7 +88,6 @@ export default function RootLayout() {
         <GoldBarCelebration />
         <PurchaseCelebration />
         <OfflineBanner />
-        <ActiveReminderBanner />
       </View>
     </ErrorBoundary>
   );

@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 interface NotificationState {
-  /** The Settings "Mitteilungen & Erinnerungen" switch - gates both the OS-level meal reminders and the in-app inactivity banner. Only ever turned on after the browser granted notification permission. */
+  /** The Settings "Push-Mitteilungen" switch - gates every reminder (the daily meal slots and the inactivity nudge), all of which are delivered as the device's own system notifications. Only ever turned on after the browser granted notification permission. */
   remindersEnabled: boolean;
   setRemindersEnabled: (enabled: boolean) => void;
 }

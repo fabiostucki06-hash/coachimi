@@ -3,14 +3,29 @@ import { Platform } from 'react-native';
 import { todayKey, useDiaryStore } from '@/store/diaryStore';
 import type { MealEntry, MealType } from '@/types';
 
-// Local (page-scheduled) reminders for the PWA. There's no server to push
-// from (static Vercel export), so the schedule lives in setTimeout timers
-// that only run while the app is open or its tab is alive in the background.
-// A timer that a sleeping device delivers hours late is dropped, not shown -
-// see REMINDER_GRACE_MS. Real closed-app delivery needs Web Push (VAPID + a
-// backend); public/sw.js already has the `push` handler waiting for it.
+// Everything this app calls a "reminder" is delivered as an OS-level
+// notification - the system banner/tray entry the device draws itself - never
+// as an in-app overlay. Two paths produce them:
+//
+//   1. Web Push (services/pushNotificationService.ts + the `push` handler in
+//      public/sw.js, fed by supabase/functions/send-push-reminders). This is
+//      the path that reaches a fully closed app, and the primary one.
+//   2. The setTimeout schedule below, which covers the app-open case and the
+//      inactivity nudge. A timer that a sleeping device delivers hours late is
+//      dropped, not shown - see REMINDER_GRACE_MS.
+//
+// Both paths route through registration.showNotification() and share the same
+// `tag` per reminder slot, so when push and the local timer both fire at
+// 08:00 the second one *replaces* the first in the tray instead of stacking a
+// duplicate banner. That dedupe is why tags must stay distinct per slot but
+// identical across the two paths - REMINDERS_BY_HOUR in the edge function
+// sends the very same tag strings.
 
-export type NotificationPermissionState = NotificationPermission | 'unsupported';
+export type NotificationPermissionState =
+  | NotificationPermission
+  /** iOS: the Notification API only exists once the PWA is installed to the home screen. */
+  | 'needs-install'
+  | 'unsupported';
 
 export interface MealReminder {
   id: string;
@@ -33,20 +48,50 @@ export const REMINDER_GRACE_MS = 15 * 60 * 1000;
 
 const NOTIFICATION_ICON = '/icon.png';
 
-// --- Permission / display ---
+/** Tag namespace shared with public/sw.js and the push edge function - see the dedupe note at the top. */
+export function reminderTag(id: string): string {
+  return `coachimi-${id}`;
+}
 
-export function isNotificationSupported(): boolean {
+export const INACTIVITY_REMINDER_TAG = reminderTag('inactivity');
+
+// --- Platform / permission ---
+
+function isIos(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  // iPadOS 13+ reports itself as "Macintosh"; the touch points give it away.
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+
+/** True when running as an installed PWA (home-screen launch) rather than a browser tab. */
+function isStandalonePwa(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  if (window.matchMedia?.('(display-mode: standalone)').matches) return true;
+  return (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+function isNotificationSupported(): boolean {
   return Platform.OS === 'web' && typeof Notification !== 'undefined';
 }
 
+/**
+ * The current permission, or why notifications can't be used at all.
+ * `needs-install` is the iOS case worth calling out in the UI: Safari exposes
+ * no Notification API in a plain tab, only to a PWA launched from the home
+ * screen (iOS 16.4+), so the fix there is "add to home screen", not "allow in
+ * the site settings".
+ */
 export function getNotificationPermission(): NotificationPermissionState {
-  return isNotificationSupported() ? Notification.permission : 'unsupported';
+  if (isNotificationSupported()) return Notification.permission;
+  if (Platform.OS === 'web' && isIos() && !isStandalonePwa()) return 'needs-install';
+  return 'unsupported';
 }
 
 /** Must be called from a user gesture (the Settings switch) - browsers ignore or auto-deny prompts otherwise. Resolves with the resulting state and never throws. */
 export async function requestNotificationPermission(): Promise<NotificationPermissionState> {
-  if (!isNotificationSupported()) return 'unsupported';
-  if (Notification.permission !== 'default') return Notification.permission;
+  const current = getNotificationPermission();
+  if (current !== 'default') return current;
   try {
     return await Notification.requestPermission();
   } catch {
@@ -54,22 +99,69 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   }
 }
 
+// --- Display ---
+
+/** `actions` is in the Notifications spec (service-worker notifications only) but missing from TypeScript's DOM lib. */
+type SystemNotificationOptions = NotificationOptions & {
+  actions?: { action: string; title: string }[];
+};
+
 interface LocalNotification {
   title: string;
   body: string;
   tag: string;
   url?: string;
+  /** Adds the "Eintragen" quick action - Android/desktop render it on the banner, iOS ignores it. */
+  withLogAction?: boolean;
 }
 
-/** Shows through the service worker registration when there is one (required for notifications on Android Chrome and installed iOS PWAs), else a plain `Notification`. Returns whether anything was shown. */
-export async function showLocalNotification({ title, body, tag, url = '/' }: LocalNotification): Promise<boolean> {
+/**
+ * `navigator.serviceWorker.ready` is the only reliable handle right after a
+ * cold load: `getRegistration()` can still resolve `undefined` while the
+ * worker is installing, and silently falling back to `new Notification()`
+ * there throws on Android Chrome ("Illegal constructor") - that browser only
+ * accepts service-worker notifications. Races a timeout so a page with no
+ * worker at all (private mode, registration failed) can't hang forever.
+ */
+async function getNotificationRegistration(timeoutMs = 3000): Promise<ServiceWorkerRegistration | null> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
+  const existing = await navigator.serviceWorker.getRegistration().catch(() => null);
+  if (existing) return existing;
+  return Promise.race([
+    navigator.serviceWorker.ready.catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ]);
+}
+
+/**
+ * Shows a native system notification (the OS banner + tray entry), never an
+ * in-app view. Goes through the service-worker registration whenever there is
+ * one - the only form Android Chrome and installed iOS PWAs accept - and
+ * falls back to the page-scoped `Notification` constructor only on desktop
+ * browsers without a worker. Returns whether anything was shown.
+ */
+export async function showLocalNotification({ title, body, tag, url = '/', withLogAction = false }: LocalNotification): Promise<boolean> {
   if (getNotificationPermission() !== 'granted') return false;
-  const options: NotificationOptions = { body, icon: NOTIFICATION_ICON, badge: NOTIFICATION_ICON, tag, data: { url } };
+
+  const options: SystemNotificationOptions = {
+    body,
+    icon: NOTIFICATION_ICON,
+    badge: NOTIFICATION_ICON,
+    tag,
+    lang: 'de',
+    // Let the OS dismiss it on its own schedule, like any other app's banner.
+    requireInteraction: false,
+    silent: false,
+    data: { url },
+    ...(withLogAction ? { actions: [{ action: 'log-meal', title: 'Eintragen' }] } : {}),
+  };
+
   try {
-    const registration = await navigator.serviceWorker?.getRegistration();
+    const registration = await getNotificationRegistration();
     if (registration) {
       await registration.showNotification(title, options);
     } else {
+      if (typeof Notification === 'undefined') return false;
       new Notification(title, options);
     }
     return true;
@@ -106,7 +198,13 @@ export function scheduleMealReminder(reminder: MealReminder): () => void {
       if (cancelled) return;
       const lateMs = Date.now() - target.getTime();
       if (lateMs <= REMINDER_GRACE_MS && !isMealLoggedToday(reminder.mealType)) {
-        void showLocalNotification({ title: reminder.title, body: reminder.body, tag: `coachimi-${reminder.id}` });
+        void showLocalNotification({
+          title: reminder.title,
+          body: reminder.body,
+          tag: reminderTag(reminder.id),
+          url: '/add-food',
+          withLogAction: true,
+        });
       }
       // Re-arm from just past the target so a timer that fires a hair early can't pick the same slot again.
       arm(new Date(Math.max(Date.now(), target.getTime()) + 1));
@@ -135,7 +233,7 @@ export function stopDailyReminders(): void {
   stopActiveReminders = null;
 }
 
-// --- Inactivity banner ---
+// --- Inactivity reminder ---
 
 export const INACTIVITY_THRESHOLD_MS = 4 * 60 * 60 * 1000;
 export const DAYTIME_START_HOUR = 8;
@@ -165,4 +263,21 @@ export function shouldShowInactivityReminder(now: Date, lastLoggedAt: number | n
   const hour = now.getHours();
   if (hour < DAYTIME_START_HOUR || hour >= DAYTIME_END_HOUR) return false;
   return now.getTime() - getInactivityReference(now, lastLoggedAt) > INACTIVITY_THRESHOLD_MS;
+}
+
+/** "3 Stunden" / "1 Stunde" - the gap wording used in the inactivity notification title. */
+export function formatInactivityGap(ms: number): string {
+  const hours = Math.floor(ms / (60 * 60 * 1000));
+  return `${hours} ${hours === 1 ? 'Stunde' : 'Stunden'}`;
+}
+
+/** Fires the inactivity nudge as a system banner. Returns whether it was shown. */
+export function showInactivityNotification(gapMs: number): Promise<boolean> {
+  return showLocalNotification({
+    title: `Schon ${formatInactivityGap(gapMs)} nichts eingetragen`,
+    body: 'Tippe hier, um deine nächste Mahlzeit zu loggen.',
+    tag: INACTIVITY_REMINDER_TAG,
+    url: '/add-food',
+    withLogAction: true,
+  });
 }

@@ -27,16 +27,29 @@ interface ReminderPayload {
   title: string;
   body: string;
   url?: string;
+  /** Notification tag - see the note below; public/sw.js passes it straight to showNotification. */
+  tag: string;
 }
 
 // Keyed by the Europe/Berlin hour this function is invoked at. Falls back to
 // a generic reminder for any other hour (e.g. a manual/test invocation).
+//
+// Each slot carries its OWN tag, and those strings are a contract with the
+// client: `coachimi-<id>` matches reminderTag() in
+// services/notificationService.ts, keyed by the ids in DAILY_REMINDERS. Two
+// things depend on that:
+//   - Distinct per slot, so the day's second and third reminders show a real
+//     system banner instead of silently replacing the first one in the tray
+//     (the Notifications spec suppresses re-alerting on a same-tag replace).
+//   - Identical to the client's, so when the app happens to be open and its
+//     local timer fires the same reminder, the two collapse into one tray
+//     entry rather than showing the user a duplicate.
 const REMINDERS_BY_HOUR: Record<number, ReminderPayload> = {
-  8: { title: 'Coach imi', body: 'Zeit für deinen Protein-Check! Trag dein Frühstück ein.' },
-  13: { title: 'Coach imi', body: 'Mikronährstoff-Check: Wie sieht dein Tag bisher aus?' },
-  20: { title: 'Coach imi', body: 'Tagesrückblick: Vergiss dein Abendessen nicht im Tagebuch.' },
+  8: { title: 'Coach imi', body: 'Zeit für deinen Protein-Check! Trag dein Frühstück ein.', tag: 'coachimi-breakfast' },
+  13: { title: 'Coach imi', body: 'Mikronährstoff-Check: Wie sieht dein Tag bisher aus?', tag: 'coachimi-lunch' },
+  20: { title: 'Coach imi', body: 'Tagesrückblick: Vergiss dein Abendessen nicht im Tagebuch.', tag: 'coachimi-dinner' },
 };
-const DEFAULT_REMINDER: ReminderPayload = { title: 'Coach imi', body: 'Zeit für deinen Makro-Check!' };
+const DEFAULT_REMINDER: ReminderPayload = { title: 'Coach imi', body: 'Zeit für deinen Makro-Check!', tag: 'coachimi-reminder' };
 
 function berlinHour(now: Date): number {
   const formatted = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: 'numeric', hour12: false }).format(now);
@@ -75,7 +88,10 @@ Deno.serve(async (req) => {
   }
 
   const payload = REMINDERS_BY_HOUR[berlinHour(new Date())] ?? DEFAULT_REMINDER;
-  const body = JSON.stringify({ ...payload, url: '/' });
+  // Tapping the banner should land on the logging screen, not the dashboard.
+  // public/sw.js only honors same-origin in-app routes here, and
+  // hooks/useNotificationRouting.ts only opens ones on its allowlist.
+  const body = JSON.stringify({ url: '/add-food', ...payload });
 
   let sent = 0;
   let removed = 0;

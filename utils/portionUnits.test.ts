@@ -1,4 +1,4 @@
-import { getDefaultPortionUnit, getPortionUnitsForFood } from '@/utils/portionUnits';
+import { getDefaultPortionUnit, getKnownPortionUnit, getPortionUnitsForFood, getPortionWeightForCount } from '@/utils/portionUnits';
 
 describe('getPortionUnitsForFood', () => {
   it('matches apple/pear-type fruit', () => {
@@ -27,6 +27,28 @@ describe('getPortionUnitsForFood', () => {
     expect(getPortionUnitsForFood('Fleisch').map((u) => u.id)).not.toEqual(['egg_m', 'egg_l']);
   });
 
+  it('matches wraps and tortillas', () => {
+    expect(getPortionUnitsForFood('Tortilla Wrap').map((u) => u.id)).toEqual(['wrap_small', 'wrap_medium', 'wrap_large']);
+    expect(getPortionUnitsForFood('Hähnchen Wraps').map((u) => u.id)[0]).toBe('wrap_small');
+  });
+
+  it('matches rice cakes', () => {
+    expect(getPortionUnitsForFood('Reiswaffel Natur').map((u) => u.id)).toEqual(['ricecake_single', 'ricecake_double']);
+  });
+
+  it('matches peaches and nectarines', () => {
+    expect(getPortionUnitsForFood('Pfirsich').map((u) => u.id)).toEqual(['peach_small', 'peach_medium', 'peach_large']);
+    expect(getPortionUnitsForFood('Nektarine').map((u) => u.id)[0]).toBe('peach_small');
+  });
+
+  it('matches ice cream without false-matching "...reis" dishes', () => {
+    expect(getPortionUnitsForFood('Vanilleeis').map((u) => u.id)).toEqual(['icecream_scoop', 'icecream_double', 'icecream_bar']);
+    expect(getPortionUnitsForFood('Schokoeis').map((u) => u.id)[0]).toBe('icecream_scoop');
+    expect(getPortionUnitsForFood('Eiscreme').map((u) => u.id)[0]).toBe('icecream_scoop');
+    expect(getPortionUnitsForFood('Reis').map((u) => u.id)).not.toEqual(['icecream_scoop', 'icecream_double', 'icecream_bar']);
+    expect(getPortionUnitsForFood('Milchreis').map((u) => u.id)).not.toEqual(['icecream_scoop', 'icecream_double', 'icecream_bar']);
+  });
+
   it('falls back to generic portion-size presets for anything unrecognized', () => {
     expect(getPortionUnitsForFood('Reis').map((u) => u.id)).toEqual(['portion_small', 'portion_medium', 'portion_large']);
     expect(getPortionUnitsForFood('Hähnchenbrust').map((u) => u.id)).toEqual(['portion_small', 'portion_medium', 'portion_large']);
@@ -47,5 +69,29 @@ describe('getDefaultPortionUnit', () => {
 
   it('defaults unrecognized foods to a normal-sized generic portion', () => {
     expect(getDefaultPortionUnit('Hähnchenbrust').id).toBe('portion_medium');
+  });
+});
+
+describe('getKnownPortionUnit', () => {
+  it('returns a specific match for recognized foods', () => {
+    expect(getKnownPortionUnit('Banane')?.id).toBe('banana_medium');
+    expect(getKnownPortionUnit('Tortilla Wrap')?.id).toBe('wrap_medium');
+  });
+
+  it('returns null instead of guessing a generic portion for unrecognized foods', () => {
+    expect(getKnownPortionUnit('Hähnchenbrust')).toBeNull();
+    expect(getKnownPortionUnit('Reis')).toBeNull();
+  });
+});
+
+describe('getPortionWeightForCount', () => {
+  it('multiplies a recognized food\'s typical per-piece weight by the count', () => {
+    expect(getPortionWeightForCount('Banane', 2)).toBe(240);
+    expect(getPortionWeightForCount('Reiswaffel', 3)).toBe(27);
+    expect(getPortionWeightForCount('Proteinriegel', 1)).toBe(45);
+  });
+
+  it('falls back to a generic 100g per piece for unrecognized foods', () => {
+    expect(getPortionWeightForCount('Kartoffel', 2)).toBe(200);
   });
 });
