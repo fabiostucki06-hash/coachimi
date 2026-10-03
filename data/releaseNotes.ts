@@ -8,6 +8,14 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.2',
+    date: '2026-10-03',
+    highlights: [
+      'Neu: Push-Erinnerungen sind jetzt kontextbezogen - sie zeigen, wie viel Protein/Kalorien du heute schon getrackt hast, plus motivierende Sprüche',
+      'Fix: der "schon lange nichts eingetragen"-Hinweis feuerte fälschlich bei jedem Hard-Refresh erneut - jetzt nur noch über den geplanten Intervall-Check',
+    ],
+  },
+  {
     version: '1.5.1',
     date: '2026-10-03',
     highlights: [
