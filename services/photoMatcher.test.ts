@@ -80,6 +80,32 @@ describe('matchDetectedFoods - multi-item plate payload', () => {
   });
 });
 
+describe('matchDetectedFood - USDA deprioritization', () => {
+  it('prefers an equally-relevant non-USDA candidate over a USDA one', async () => {
+    const detected = makeDetected({ name: 'Hähnchenbrust gebraten' });
+    mockedSearch.mockResolvedValue([
+      makeFood({ id: 'usda-1', name: 'Hähnchenbrust', source: 'usda' }),
+      makeFood({ id: 'off-1', name: 'Hähnchenbrust', source: 'off' }),
+    ]);
+
+    const results = await matchDetectedFoods([detected]);
+
+    expect(results[0]).toMatchObject({ status: 'db_verified', candidate: { id: 'off-1' } });
+  });
+
+  it('still picks a USDA candidate when it is clearly the better name match, not just equal', async () => {
+    const detected = makeDetected({ name: 'Hähnchenbrust gebraten' });
+    mockedSearch.mockResolvedValue([
+      makeFood({ id: 'usda-1', name: 'Hähnchenbrust gebraten', source: 'usda' }),
+      makeFood({ id: 'off-1', name: 'Rindfleisch', source: 'off' }),
+    ]);
+
+    const results = await matchDetectedFoods([detected]);
+
+    expect(results[0]).toMatchObject({ status: 'db_verified', candidate: { id: 'usda-1' } });
+  });
+});
+
 describe('correctedValuesFromMatch', () => {
   it('recalculates the full macro/micro profile once the match is confident enough', () => {
     const candidate = makeFood({ servingSize: 100 });

@@ -56,6 +56,19 @@ export interface PhotoMatch {
   score: number;
 }
 
+// searchFoodHybrid already tries its tiers in Local -> Open Food Facts
+// (Swiss-market first) -> FatSecret (DACH) -> USDA order, but picking "whichever
+// candidate has the highest name-similarity score" ignores that ordering entirely -
+// a USDA (US-centric) hit could still outrank an equally relevant European one on
+// text alone. This small penalty breaks that tie in the European item's favor
+// without overriding a USDA match that's genuinely, clearly the better name match -
+// it only affects which candidate wins when scores are close.
+const USDA_RANK_PENALTY = 0.05;
+
+function rankedScore(item: FoodItem, nameScore: number): number {
+  return item.source === 'usda' ? nameScore - USDA_RANK_PENALTY : nameScore;
+}
+
 /**
  * Cross-checks one Vision-detected food against the local Supabase `foods`
  * table / FatSecret / USDA (searchFoodHybrid's existing 3-tier pipeline -
@@ -78,11 +91,14 @@ export async function matchDetectedFood(detected: DetectedFoodItem, signal?: Abo
 
   let best = results[0];
   let bestScore = nameSimilarity(detected.name, best.name);
+  let bestRanked = rankedScore(best, bestScore);
   for (const candidate of results.slice(1)) {
     const score = nameSimilarity(detected.name, candidate.name);
-    if (score > bestScore) {
+    const ranked = rankedScore(candidate, score);
+    if (ranked > bestRanked) {
       best = candidate;
       bestScore = score;
+      bestRanked = ranked;
     }
   }
 
