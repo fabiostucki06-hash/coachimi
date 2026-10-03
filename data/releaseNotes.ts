@@ -8,6 +8,14 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.6',
+    date: '2026-10-03',
+    highlights: [
+      'Verbessert: KI-Fotoanalyse erkennt Schweizer/europäische Produkte (z. B. Gruyère statt "Swiss Cheese") und schätzt Portionen jetzt zuerst in Alltagsmass ("1 Riegel", "1 Portion Pasta") statt direkt in Gramm',
+      'Verbessert: bei unsicherer Erkennung schlägt die KI jetzt bis zu 3 konkrete Alternativen statt einer vagen Schätzung vor',
+    ],
+  },
+  {
     version: '1.5.5',
     date: '2026-10-03',
     highlights: [
