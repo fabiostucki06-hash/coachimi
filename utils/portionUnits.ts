@@ -92,6 +92,51 @@ const PORTION_CATEGORIES: PortionCategory[] = [
     defaultUnitId: 'bar_whole',
   },
   {
+    // Catches every compound ending in "joghurt" (Natur-, Frucht-, Mager-, Soja-,
+    // Griechischer Joghurt, ...) - all sold/logged in the same standard-cup sizes
+    // regardless of the specific variant.
+    keywords: ['joghurt', 'joghurts'],
+    units: [
+      { id: 'yogurt_small', label: '1 kleiner Becher', grams: 125 },
+      { id: 'yogurt_medium', label: '1 Becher', grams: 180 },
+      { id: 'yogurt_large', label: '1 großer Becher', grams: 250 },
+    ],
+    defaultUnitId: 'yogurt_medium',
+  },
+  {
+    // "Topfen" is the Austrian term for the same product. Hüttenkäse (cottage
+    // cheese) shares the category rather than getting its own: both are sold in
+    // the same ~200-250g tub format, and this app's portion presets have always
+    // been "close enough for logging, always editable afterwards" rather than
+    // exact per-brand packaging.
+    keywords: ['quark', 'topfen', 'huettenkaese'],
+    units: [
+      { id: 'quark_small', label: '1 kleiner Becher', grams: 200 },
+      { id: 'quark_medium', label: '1 Becher', grams: 250 },
+      { id: 'quark_large', label: '1 großer Becher', grams: 500 },
+    ],
+    defaultUnitId: 'quark_medium',
+  },
+  {
+    keywords: ['pudding', 'puddings'],
+    units: [
+      { id: 'pudding_single', label: '1 Becher', grams: 125 },
+      { id: 'pudding_double', label: '2 Becher', grams: 250 },
+    ],
+    defaultUnitId: 'pudding_single',
+  },
+  {
+    // Sized as DRAINED weight (oil/water poured off), matching how
+    // data/foodDatabase.ts's own "Thunfisch (Dose, im eigenen Saft)" per-100g
+    // values are standardly reported - not the gross can weight on the label.
+    keywords: ['thunfisch'],
+    units: [
+      { id: 'tuna_small', label: '1 kleine Dose', grams: 80 },
+      { id: 'tuna_medium', label: '1 Dose', grams: 140 },
+    ],
+    defaultUnitId: 'tuna_medium',
+  },
+  {
     keywords: ['ei', 'eier'],
     units: [
       { id: 'egg_m', label: '1 Ei (Größe M)', grams: 55 },

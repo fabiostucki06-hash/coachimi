@@ -36,6 +36,26 @@ describe('getPortionUnitsForFood', () => {
     expect(getPortionUnitsForFood('Reiswaffel Natur').map((u) => u.id)).toEqual(['ricecake_single', 'ricecake_double']);
   });
 
+  it('matches yogurt, including flavored/variant compounds', () => {
+    expect(getPortionUnitsForFood('Naturjoghurt').map((u) => u.id)).toEqual(['yogurt_small', 'yogurt_medium', 'yogurt_large']);
+    expect(getPortionUnitsForFood('Griechischer Joghurt').map((u) => u.id)[0]).toBe('yogurt_small');
+    expect(getPortionUnitsForFood('Sojajoghurt').map((u) => u.id)[0]).toBe('yogurt_small');
+  });
+
+  it('matches quark/Hüttenkäse tubs', () => {
+    expect(getPortionUnitsForFood('Magerquark').map((u) => u.id)).toEqual(['quark_small', 'quark_medium', 'quark_large']);
+    expect(getPortionUnitsForFood('Hüttenkäse').map((u) => u.id)[0]).toBe('quark_small');
+  });
+
+  it('matches pudding cups', () => {
+    expect(getPortionUnitsForFood('Schokopudding').map((u) => u.id)).toEqual(['pudding_single', 'pudding_double']);
+    expect(getPortionUnitsForFood('Vanillepudding').map((u) => u.id)[0]).toBe('pudding_single');
+  });
+
+  it('matches canned tuna, sized as drained weight', () => {
+    expect(getPortionUnitsForFood('Thunfisch').map((u) => u.id)).toEqual(['tuna_small', 'tuna_medium']);
+  });
+
   it('matches peaches and nectarines', () => {
     expect(getPortionUnitsForFood('Pfirsich').map((u) => u.id)).toEqual(['peach_small', 'peach_medium', 'peach_large']);
     expect(getPortionUnitsForFood('Nektarine').map((u) => u.id)[0]).toBe('peach_small');
@@ -65,6 +85,10 @@ describe('getDefaultPortionUnit', () => {
     expect(getDefaultPortionUnit('Banane').id).toBe('banana_medium');
     expect(getDefaultPortionUnit('Vollkornbrot').id).toBe('slice_medium');
     expect(getDefaultPortionUnit('Ei').id).toBe('egg_m');
+    expect(getDefaultPortionUnit('Naturjoghurt').id).toBe('yogurt_medium');
+    expect(getDefaultPortionUnit('Magerquark').id).toBe('quark_medium');
+    expect(getDefaultPortionUnit('Vanillepudding').id).toBe('pudding_single');
+    expect(getDefaultPortionUnit('Thunfisch').id).toBe('tuna_medium');
   });
 
   it('defaults unrecognized foods to a normal-sized generic portion', () => {
@@ -89,6 +113,8 @@ describe('getPortionWeightForCount', () => {
     expect(getPortionWeightForCount('Banane', 2)).toBe(240);
     expect(getPortionWeightForCount('Reiswaffel', 3)).toBe(27);
     expect(getPortionWeightForCount('Proteinriegel', 1)).toBe(45);
+    expect(getPortionWeightForCount('Naturjoghurt', 2)).toBe(360);
+    expect(getPortionWeightForCount('Thunfisch', 1)).toBe(140);
   });
 
   it('falls back to a generic 100g per piece for unrecognized foods', () => {
