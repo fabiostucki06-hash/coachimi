@@ -8,6 +8,24 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.9',
+    date: '2026-10-13',
+    highlights: [
+      'Fix: ganze Mahlzeiten an Freunde senden schlug fehl - funktioniert jetzt wieder',
+      'Fix: geteilte Mahlzeiten erscheinen im Freunde-Tab jetzt ohne App-Neustart, und ein unvollständiger Eintrag lässt den Posteingang nicht mehr abstürzen',
+      'Verbessert: empfangene Mahlzeiten zeigen, von wem sie kommen, und genau die Nährwerte, die du in deinem Profil ausgewählt hast (inkl. Makros) - auch bei einzeln gesendeten Lebensmitteln',
+      'Verbessert: klarere Fehlermeldungen beim Senden (z. B. wenn die Freundschaft noch nicht bestätigt ist)',
+    ],
+  },
+  {
+    version: '1.5.8',
+    date: '2026-10-13',
+    highlights: [
+      'Neu: Lebensmittel lassen sich auf Englisch, Französisch und Italienisch suchen - "chicken breast", "blanc de poulet" und "petto di pollo" finden alle die Hähnchenbrust, auch im Freitext-Eintrag',
+      'Neu: findet eine Suche in keiner Datenbank etwas, wird der Begriff automatisch ins Deutsche übersetzt und erneut gesucht',
+    ],
+  },
+  {
     version: '1.5.7',
     date: '2026-10-13',
     highlights: [
