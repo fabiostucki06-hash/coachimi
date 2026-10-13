@@ -8,6 +8,15 @@ export interface ReleaseNote {
 // this is the "what's new" list shown in-app, not a commit log.
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.7',
+    date: '2026-10-13',
+    highlights: [
+      'Neu: Fleisch gibt es jetzt getrennt als "roh" und "gebraten" (Hackfleisch gemischt, Rindshackfleisch, Rindshackfleisch light, Poulet/Hähnchen, Pute, Rind, Schwein, Kalb, Lamm, Speck) - gebratenes Fleisch hat pro 100g mehr Kalorien und Protein, weil beim Braten Wasser verloren geht',
+      'Neu: die Suche findet Fleisch auch unter den Schweizer Namen (z. B. "Pouletbrust", "Trutenbrust", "Gehacktes")',
+      'Verbessert: KI-Fotoanalyse unterscheidet bei Fleisch zwischen roh und gebraten und gleicht nicht mehr mit dem Eintrag im falschen Zustand ab',
+    ],
+  },
+  {
     version: '1.5.6',
     date: '2026-10-03',
     highlights: [
