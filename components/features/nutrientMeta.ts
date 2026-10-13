@@ -126,6 +126,13 @@ export const NUTRIENT_ORDER: NutrientKey[] = [
   'iodine',
 ];
 
+/** "12g" / "2.4µg" - whole numbers from 10 up, one decimal below that, so small-but-real micronutrient amounts (0.9mg iron, 2.4µg B12) don't round away to 0 or 1. */
+export function formatNutrientAmount(key: NutrientKey, value: number): string {
+  const amount = Number.isFinite(value) ? value : 0;
+  const rounded = amount >= 10 ? Math.round(amount) : Math.round(amount * 10) / 10;
+  return `${rounded}${NUTRIENT_META[key].unit}`;
+}
+
 /** Sums every tracked nutrient (macros + optional micronutrients, treating a missing value as 0) across a set of diary entries, scaled by each entry's servings via the shared scaling engine. */
 export function sumEntryNutrients(entries: MealEntry[]): Record<NutrientKey, number> {
   const totals = Object.fromEntries(NUTRIENT_ORDER.map((key) => [key, 0])) as Record<NutrientKey, number>;

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Check, Dumbbell, Inbox, Search, UserPlus, Users, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FriendActivityCard } from '@/components/features/FriendActivityCard';
 import { FriendProfileModal } from '@/components/features/FriendProfileModal';
 import { MEAL_TYPE_META } from '@/components/features/mealMeta';
-import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
+import { formatNutrientAmount, NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
@@ -33,7 +33,7 @@ import { useSyncStore } from '@/store/syncStore';
 import { useToastStore } from '@/store/toastStore';
 import { useTrainingStore } from '@/store/trainingStore';
 import { useUserStore } from '@/store/userStore';
-import type { NutrientVisibility } from '@/types';
+import type { FoodItem, MealType, NutrientVisibility } from '@/types';
 import { getLocalDateKey } from '@/utils/calendarDates';
 
 function SignedOutPrompt() {
@@ -143,78 +143,45 @@ function SearchResultRow({ profile, onSend, sent }: { profile: FriendProfile; on
   );
 }
 
-/** One entry in the "Geteilte Mahlzeiten" inbox - a meal a friend sent (services/mealShares.ts), reviewed here before it ever touches the caller's own diary. */
-function MealShareRow({ share, onAdd, onDismiss }: { share: MealShare; onAdd: () => void; onDismiss: () => void }) {
-  const [adding, setAdding] = useState(false);
-  const { label: mealLabel } = MEAL_TYPE_META[share.mealType];
-  const kcal = Math.round(share.foodItem.caloriesPerServing * share.servings);
-
-  async function handleAdd() {
-    if (adding) return;
-    setAdding(true);
-    try {
-      await onAdd();
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  return (
-    <View className="flex-row items-center justify-between gap-3 py-2">
-      <View className="flex-1">
-        <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>
-          {share.foodItem.name}
-        </Text>
-        <Text className="text-xs text-text-secondary">
-          {mealLabel} · {kcal} kcal
-        </Text>
-      </View>
-      <View className="flex-row items-center gap-2">
-        <Pressable onPress={handleAdd} disabled={adding} className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-          {adding ? <ActivityIndicator size="small" color="#6366F1" /> : <Check color="#6366F1" size={16} />}
-        </Pressable>
-        <Pressable onPress={onDismiss} disabled={adding} className="h-9 w-9 items-center justify-center rounded-full bg-red-500/10">
-          <X color="#ef4444" size={16} />
-        </Pressable>
-      </View>
-    </View>
-  );
+interface SharedMealItem {
+  foodItem: FoodItem;
+  servings: number;
 }
 
 /**
- * One entry in the "Geteilte Mahlzeiten" inbox for a WHOLE shared meal
- * section (services/mealGroupShares.ts) - unlike MealShareRow (one food
- * item) this bundles every item a friend sent as a single unit. The macro
- * breakdown shown is "the recipient's profile-selected macros": the viewer
- * of this screen IS the recipient, so it reads straight from their own
- * `visibleNutrients` (passed in, not re-fetched) rather than assuming the
- * sender's selection - same idea as the sender-side preview in
- * app/meal-detail.tsx's ShareSheet, just resolved locally instead of over
- * fetchFriendSnapshot since no second profile is involved here.
+ * One entry in the "Geteilte Mahlzeiten" inbox, reviewed here before it ever
+ * touches the caller's own diary - either a single food a friend sent
+ * (services/mealShares.ts) or a WHOLE meal section bundled as one unit
+ * (services/mealGroupShares.ts); both arrive here as a list of items.
+ *
+ * The nutrient line is filtered to what the RECIPIENT tracks: the viewer of
+ * this screen is the recipient, so it reads straight from their own
+ * `visibleNutrients` (passed in, not re-fetched) rather than whatever the
+ * sender had selected - same idea as the sender-side preview in
+ * app/meal-detail.tsx's ShareSheet, resolved locally since no second profile
+ * is involved. The three macros are listed like any other visible nutrient.
  */
-function MealGroupShareRow({
-  share,
+function SharedMealRow({
+  items,
+  mealType,
+  senderLabel,
   visibleNutrients,
   onAdd,
   onDismiss,
 }: {
-  share: MealGroupShare;
+  items: SharedMealItem[];
+  mealType: MealType;
+  senderLabel: string | null;
   visibleNutrients: NutrientVisibility;
-  onAdd: () => void;
+  onAdd: () => Promise<void>;
   onDismiss: () => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const { label: mealLabel } = MEAL_TYPE_META[share.mealType];
-  const entries = share.items.map((item) => ({
-    id: '',
-    mealType: share.mealType,
-    loggedAt: '',
-    foodItem: item.foodItem,
-    servings: item.servings,
-  }));
-  const totals = sumEntryNutrients(entries);
-  const kcal = Math.round(share.items.reduce((sum, item) => sum + item.foodItem.caloriesPerServing * item.servings, 0));
-  const extraVisibleKeys = NUTRIENT_ORDER.filter((key) => visibleNutrients[key] && key !== 'carbs' && key !== 'protein' && key !== 'fat');
+  const { label: mealLabel } = MEAL_TYPE_META[mealType];
+  const totals = sumEntryNutrients(items.map((item) => ({ id: '', mealType, loggedAt: '', foodItem: item.foodItem, servings: item.servings })));
+  const kcal = Math.round(items.reduce((sum, item) => sum + item.foodItem.caloriesPerServing * item.servings, 0));
+  const visibleKeys = NUTRIENT_ORDER.filter((key) => visibleNutrients[key]);
+  const details = [senderLabel ? `Von ${senderLabel}` : null, mealLabel, items.length > 1 ? `${items.length} Lebensmittel` : null, `${kcal} kcal`];
 
   async function handleAdd() {
     if (adding) return;
@@ -231,10 +198,10 @@ function MealGroupShareRow({
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-1">
           <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>
-            {share.items.map((item) => item.foodItem.name).join(', ')}
+            {items.map((item) => item.foodItem.name).join(', ')}
           </Text>
-          <Text className="text-xs text-text-secondary">
-            {mealLabel} · {share.items.length} Lebensmittel · {kcal} kcal
+          <Text className="text-xs text-text-secondary" numberOfLines={1}>
+            {details.filter(Boolean).join(' · ')}
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
@@ -246,12 +213,11 @@ function MealGroupShareRow({
           </Pressable>
         </View>
       </View>
-      {extraVisibleKeys.length > 0 && (
-        <View className="flex-row flex-wrap gap-2">
-          {extraVisibleKeys.map((key) => (
+      {visibleKeys.length > 0 && (
+        <View className="flex-row flex-wrap gap-x-3 gap-y-1">
+          {visibleKeys.map((key) => (
             <Text key={key} className="text-[11px] text-text-secondary">
-              {NUTRIENT_META[key].label}: {Math.round(totals[key])}
-              {NUTRIENT_META[key].unit}
+              {NUTRIENT_META[key].label}: {formatNutrientAmount(key, totals[key])}
             </Text>
           ))}
         </View>
@@ -385,22 +351,50 @@ export default function FriendsScreen() {
 
   useEffect(() => {
     loadFriends();
-    loadInbox();
-    loadGroupInbox();
-    loadPlanInbox();
-  }, [loadFriends, loadInbox, loadGroupInbox, loadPlanInbox]);
+  }, [loadFriends]);
+
+  // Tab screens stay mounted, so a mount-only load would never show a meal a
+  // friend sent after the app was opened - the inboxes reload every time this
+  // tab comes back into focus instead.
+  useFocusEffect(
+    useCallback(() => {
+      loadInbox();
+      loadGroupInbox();
+      loadPlanInbox();
+    }, [loadInbox, loadGroupInbox, loadPlanInbox]),
+  );
 
   if (!session || !myId) return <SignedOutPrompt />;
 
-  async function handleAddSharedMeal(share: MealShare) {
+  /**
+   * Logs a shared meal, then clears it from the inbox - two separate steps on
+   * purpose. Once the diary write has succeeded the row leaves the list no
+   * matter what: if only the inbox cleanup fails, reporting the whole thing
+   * as "Hinzufügen fehlgeschlagen" would invite a second tap and a duplicate
+   * diary entry.
+   */
+  async function addSharedToDiary(addToDiary: () => Promise<void>, clearFromInbox: () => Promise<void>, dropFromList: () => void) {
     try {
-      await addMealAndSync(getLocalDateKey(), share.foodItem, share.mealType, share.servings);
-      await removeMealShare(share.id);
-      setInbox((current) => current.filter((item) => item.id !== share.id));
-      showToast('Zum Tagebuch hinzugefügt', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Hinzufügen fehlgeschlagen');
+      await addToDiary();
+    } catch {
+      // The diary layer already showed its own failure toast.
+      return;
     }
+    dropFromList();
+    try {
+      await clearFromInbox();
+      showToast('Zum Tagebuch hinzugefügt', 'success');
+    } catch {
+      showToast('Hinzugefügt - konnte aber nicht aus dem Posteingang entfernt werden. Bitte dort verwerfen, falls es wieder erscheint.');
+    }
+  }
+
+  function handleAddSharedMeal(share: MealShare) {
+    return addSharedToDiary(
+      () => addMealAndSync(getLocalDateKey(), share.foodItem, share.mealType, share.servings),
+      () => removeMealShare(share.id),
+      () => setInbox((current) => current.filter((item) => item.id !== share.id)),
+    );
   }
 
   async function handleDismissSharedMeal(shareId: string) {
@@ -412,18 +406,16 @@ export default function FriendsScreen() {
     }
   }
 
-  async function handleAddSharedMealGroup(share: MealGroupShare) {
-    try {
-      await addMealsAndSync(
-        getLocalDateKey(),
-        share.items.map((item) => ({ foodItem: item.foodItem, mealType: share.mealType, servings: item.servings })),
-      );
-      await removeMealGroupShare(share.id);
-      setGroupInbox((current) => current.filter((item) => item.id !== share.id));
-      showToast('Zum Tagebuch hinzugefügt', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Hinzufügen fehlgeschlagen');
-    }
+  function handleAddSharedMealGroup(share: MealGroupShare) {
+    return addSharedToDiary(
+      () =>
+        addMealsAndSync(
+          getLocalDateKey(),
+          share.items.map((item) => ({ foodItem: item.foodItem, mealType: share.mealType, servings: item.servings })),
+        ),
+      () => removeMealGroupShare(share.id),
+      () => setGroupInbox((current) => current.filter((item) => item.id !== share.id)),
+    );
   }
 
   async function handleDismissSharedMealGroup(shareId: string) {
@@ -500,6 +492,7 @@ export default function FriendsScreen() {
   const outgoing = friendships.filter((item) => item.status === 'pending' && item.direction === 'outgoing');
   const accepted = friendships.filter((item) => item.status === 'accepted');
   const existingFriendIds = new Set(friendships.map((item) => item.profile.id));
+  const senderLabelById: Record<string, string> = Object.fromEntries(friendships.map((item) => [item.profile.id, formatFriendLabel(item.profile)]));
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -545,18 +538,23 @@ export default function FriendsScreen() {
               <Text className="text-sm font-semibold text-text-secondary">Geteilte Mahlzeiten</Text>
             </View>
             {groupInbox.map((share) => (
-              <MealGroupShareRow
+              <SharedMealRow
                 key={share.id}
-                share={share}
+                items={share.items}
+                mealType={share.mealType}
+                senderLabel={senderLabelById[share.fromUserId] ?? null}
                 visibleNutrients={visibleNutrients}
                 onAdd={() => handleAddSharedMealGroup(share)}
                 onDismiss={() => handleDismissSharedMealGroup(share.id)}
               />
             ))}
             {inbox.map((share) => (
-              <MealShareRow
+              <SharedMealRow
                 key={share.id}
-                share={share}
+                items={[share]}
+                mealType={share.mealType}
+                senderLabel={senderLabelById[share.fromUserId] ?? null}
+                visibleNutrients={visibleNutrients}
                 onAdd={() => handleAddSharedMeal(share)}
                 onDismiss={() => handleDismissSharedMeal(share.id)}
               />

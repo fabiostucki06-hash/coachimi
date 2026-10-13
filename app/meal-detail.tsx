@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MEAL_TYPES } from '@/components/features/mealMeta';
-import { NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
+import { formatNutrientAmount, NUTRIENT_META, NUTRIENT_ORDER, sumEntryNutrients } from '@/components/features/nutrientMeta';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DateField } from '@/components/ui/DateField';
@@ -143,8 +143,7 @@ function ShareSheet({
             <View className="flex-row flex-wrap gap-2 pt-1">
               {visibleKeys.map((key) => (
                 <Text key={key} className="text-xs text-foreground">
-                  {NUTRIENT_META[key].label}: {Math.round(totals[key])}
-                  {NUTRIENT_META[key].unit}
+                  {NUTRIENT_META[key].label}: {formatNutrientAmount(key, totals[key])}
                 </Text>
               ))}
             </View>
