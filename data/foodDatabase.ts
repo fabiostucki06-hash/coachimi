@@ -1,3 +1,4 @@
+import { canonicalizeFoodTerms, FOOD_ALIAS_WORDS, normalizeSearchText, SEARCH_STOPWORDS } from '@/data/foodAliases';
 import type { FoodItem } from '@/types';
 import { estimateFructoseFromSugar } from '@/utils/nutritionCalculator';
 
@@ -393,15 +394,7 @@ export const LOCAL_FOOD_DATABASE: FoodItem[] = LOCAL_FOOD_SEEDS.map((seed) => ({
   source: 'local',
 }));
 
-/** Lowercase, strips accents/diacritics, and collapses non-alphanumeric runs to single spaces. */
-export function normalizeSearchText(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
+export { normalizeSearchText };
 
 function levenshteinDistance(a: string, b: string): number {
   if (a === b) return 0;
@@ -427,34 +420,59 @@ function fuzzyWordMatch(word: string, text: string): boolean {
   return text.split(' ').some((candidate) => Math.abs(candidate.length - word.length) <= maxDistance && levenshteinDistance(word, candidate) <= maxDistance);
 }
 
-// Regional names for the same food, each mapped to the spelling the entries above
-// use - Swiss German says "Poulet"/"Trute"/"Gehacktes" where they say "Hähnchen"/
-// "Pute"/"Hackfleisch". Too far apart for the typo tolerance in fuzzyWordMatch, so
-// they're rewritten explicitly. Keys and values are already in normalized form
-// (see normalizeSearchText), and matched as substrings since they mostly occur
-// inside compounds ("Pouletbrust", "Trutenbrust").
-const REGIONAL_TERMS: [regional: string, canonical: string][] = [
-  ['poulet', 'hahnchen'],
-  ['chicken', 'hahnchen'],
-  ['trute', 'pute'],
-  ['gehacktes', 'hackfleisch'],
-];
+// Every word the common-foods names consist of. A query word found here is real
+// German food vocabulary and must never be "corrected" towards a foreign alias
+// that happens to be one letter away ("Mango" is not a typo of Italian "manzo").
+let knownNameWords: Set<string> | null = null;
 
-/** Rewrites regional food terms in an already-normalized string to one canonical spelling ("pouletbrust" -> "hahnchenbrust"), so both sides of a name comparison agree on them. */
-export function canonicalizeRegionalTerms(normalizedText: string): string {
-  return REGIONAL_TERMS.reduce((text, [regional, canonical]) => text.split(regional).join(canonical), normalizedText);
+function getKnownNameWords(): Set<string> {
+  knownNameWords ??= new Set(LOCAL_FOOD_SEEDS.flatMap((seed) => normalizeSearchText(seed.name).split(' ')));
+  return knownNameWords;
 }
 
-/** Fuzzy-filters any FoodItem list by name against `query` - shared by the common-foods DB and the recent-foods list. */
+/** A misspelled foreign food word ("petty" for Italian "petto") resolved to the alias it's one edit away from, so it still translates - unchanged if it's a known word already or nothing is that close. */
+function correctAliasTypo(word: string): string {
+  if (word.length < 5 || FOOD_ALIAS_WORDS.includes(word) || getKnownNameWords().has(word)) return word;
+  return FOOD_ALIAS_WORDS.find((alias) => Math.abs(alias.length - word.length) <= 1 && levenshteinDistance(word, alias) <= 1) ?? word;
+}
+
+// Which "cooked" word an entry uses depends on the food ("Hähnchenbrust, gebraten"
+// but "Reis, gekocht"), and a translated query can't know that ("cooked chicken
+// breast" -> "gekocht ..."), so for matching they all mean the same thing: cooked.
+const COOKED_WORDS = ['gekocht', 'gebraten', 'gegart'];
+
+function queryWordMatches(word: string, normalizedName: string): boolean {
+  if (COOKED_WORDS.includes(word)) return COOKED_WORDS.some((cooked) => normalizedName.includes(cooked));
+  return fuzzyWordMatch(word, normalizedName);
+}
+
+/**
+ * Fuzzy-filters any FoodItem list by name against `query` - shared by the
+ * common-foods DB and the recent-foods list. Language-independent: query and
+ * names are both rewritten to the database's German vocabulary first (see
+ * data/foodAliases.ts), so "chicken breast", "blanc de poulet" and "petto di
+ * pollo" all find "Hähnchenbrust", and a German query still finds a food the
+ * user saved under a foreign name.
+ */
 export function fuzzyFilterFoodItems<T extends { name: string }>(query: string, items: T[]): T[] {
-  const normalizedQuery = canonicalizeRegionalTerms(normalizeSearchText(query));
+  const normalizedQuery = normalizeSearchText(query);
   if (!normalizedQuery) return [];
 
-  const queryWords = normalizedQuery.split(' ').filter(Boolean);
+  // Typos are only corrected towards a foreign alias when the query demonstrably
+  // is foreign-language - i.e. another word in it already translated. On its own,
+  // a word one letter off an alias is more likely a German word this vocabulary
+  // doesn't know ("Minze" is not a misspelled "mince").
+  let canonicalQuery = canonicalizeFoodTerms(normalizedQuery);
+  if (canonicalQuery !== normalizedQuery) {
+    canonicalQuery = canonicalizeFoodTerms(normalizedQuery.split(' ').map(correctAliasTypo).join(' '));
+  }
+  const allWords = canonicalQuery.split(' ').filter(Boolean);
+  const meaningfulWords = allWords.filter((word) => !SEARCH_STOPWORDS.has(word));
+  const queryWords = meaningfulWords.length > 0 ? meaningfulWords : allWords;
 
   return items.filter((item) => {
-    const normalizedName = canonicalizeRegionalTerms(normalizeSearchText(item.name));
-    return queryWords.every((word) => fuzzyWordMatch(word, normalizedName));
+    const normalizedName = canonicalizeFoodTerms(normalizeSearchText(item.name));
+    return queryWords.every((word) => queryWordMatches(word, normalizedName));
   });
 }
 

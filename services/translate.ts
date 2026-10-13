@@ -37,6 +37,11 @@ export async function translateText(text: string, from: string, to: string): Pro
   }
 }
 
+/** Translates a query in whatever language it's in to German (MyMemory detects the source language itself) - returns the text unchanged if it already is German or the lookup fails. */
+export function translateToGerman(text: string): Promise<string> {
+  return translateText(text, 'autodetect', 'de');
+}
+
 export function translateDeToEn(text: string): Promise<string> {
   return translateText(text, 'de', 'en');
 }

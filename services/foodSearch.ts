@@ -1,6 +1,7 @@
+import { translateFoodQueryToGerman } from '@/data/foodAliases';
 import { supabase } from '@/lib/supabase';
 import { looksLikeBarcode, searchFood as searchOpenFoodFacts } from '@/services/foodApi';
-import { translateDeToEn, translateEnToDe } from '@/services/translate';
+import { translateDeToEn, translateEnToDe, translateToGerman } from '@/services/translate';
 import type { FoodItem, Macros, Micronutrients } from '@/types';
 import { foldFructoseIntoSugar, MICRONUTRIENT_GOALS, percentDvToAmount, withFructoseFoldedIntoSugar } from '@/utils/nutritionCalculator';
 
@@ -456,23 +457,49 @@ export async function cacheFoodItem(item: FoodItem): Promise<void> {
  * FoodData Central, each tier only run if the previous ones came back under
  * MIN_RESULTS_BEFORE_ESCALATE hits combined. Every tier is best-effort: a single
  * tier's failure just falls through to the next instead of failing the whole search.
+ * Works for a query in any language - see the comments inside.
  */
 export async function searchFoodHybrid(query: string, signal?: AbortSignal): Promise<FoodItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const local = await searchLocal(trimmed, signal).catch(() => [] as FoodItem[]);
+  // The food database is German, so a query in another language ("chicken
+  // breast", "blanc de poulet") is also searched under its German name - known
+  // offline from data/foodAliases.ts, no translation round-trip. A bare barcode
+  // is never a food name.
+  const german = looksLikeBarcode(trimmed) ? null : translateFoodQueryToGerman(trimmed);
+  const safely = (search: Promise<FoodItem[]>) => search.catch(() => [] as FoodItem[]);
+
+  // Tier 1 is one cheap RPC, so it always runs for both spellings - German first:
+  // those are the curated entries the foreign query was actually asking for.
+  const local = german
+    ? mergeUniqueById(await Promise.all([safely(searchLocal(german, signal)), safely(searchLocal(trimmed, signal))]))
+    : await safely(searchLocal(trimmed, signal));
   if (local.length >= MIN_RESULTS_BEFORE_ESCALATE) return local;
 
-  const off = await searchOff(trimmed, signal).catch(() => [] as FoodItem[]);
-  let results = mergeUniqueById([local, off]);
+  // Open Food Facts is multilingual, so the query as typed goes first (a French
+  // query finds French-labelled Swiss products); the German one only fills gaps.
+  let results = mergeUniqueById([local, await safely(searchOff(trimmed, signal))]);
+  if (german && results.length < MIN_RESULTS_BEFORE_ESCALATE) {
+    results = mergeUniqueById([results, await safely(searchOff(german, signal))]);
+  }
   if (results.length >= MIN_RESULTS_BEFORE_ESCALATE) return results;
 
-  const fatSecret = await searchFatSecret(trimmed, signal).catch(() => [] as FoodItem[]);
+  const fatSecret = await safely(searchFatSecret(german ?? trimmed, signal));
   results = mergeUniqueById([results, fatSecret]);
   if (results.length >= MIN_RESULTS_BEFORE_ESCALATE) return results;
 
-  const usda = await searchUsdaTranslated(trimmed, signal).catch(() => [] as FoodItem[]);
+  const usda = await safely(searchUsdaTranslated(german ?? trimmed, signal));
   results = mergeUniqueById([results, usda]);
-  return results;
+  if (results.length > 0 || german || looksLikeBarcode(trimmed)) return results;
+
+  // Dead end in every tier, and the query wasn't in the offline vocabulary
+  // either: last resort, machine-translate it to German and retry the two
+  // tiers that hold German names. Only ever costs a request when the search
+  // would otherwise have come back empty.
+  const machineGerman = await translateToGerman(trimmed);
+  if (!machineGerman || machineGerman.toLowerCase() === trimmed.toLowerCase()) return results;
+  const translatedLocal = await safely(searchLocal(machineGerman, signal));
+  if (translatedLocal.length >= MIN_RESULTS_BEFORE_ESCALATE) return translatedLocal;
+  return mergeUniqueById([translatedLocal, await safely(searchOff(machineGerman, signal))]);
 }

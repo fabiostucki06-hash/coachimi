@@ -1,4 +1,4 @@
-import { canonicalizeRegionalTerms } from '@/data/foodDatabase';
+import { canonicalizeFoodTerms } from '@/data/foodAliases';
 import { searchFoodHybrid } from '@/services/foodSearch';
 import type { DetectedFoodItem } from '@/services/visionFoodApi';
 import type { FoodItem, Macros, Micronutrients } from '@/types';
@@ -15,9 +15,10 @@ const MATCH_SCORE_THRESHOLD = 0.55;
 export const AUTO_APPLY_MATCH_THRESHOLD = 0.8;
 
 function normalize(text: string): string {
-  // Regional terms are folded last ("Pouletbrust" -> "hahnchenbrust"), so a Swiss
-  // name from the Vision model still lines up with a standard-German DB entry.
-  return canonicalizeRegionalTerms(
+  // Foreign/regional terms are folded last ("Pouletbrust", "chicken breast" ->
+  // "hahnchenbrust"), so whatever language the Vision model or a search hit names
+  // a food in, it still lines up with the German DB entry.
+  return canonicalizeFoodTerms(
     text
       .toLowerCase()
       .normalize('NFD')

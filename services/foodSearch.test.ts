@@ -140,6 +140,35 @@ describe('searchFoodHybrid', () => {
     expect(results).toEqual([]);
   });
 
+  it('searches a foreign-language query under its German name too - German first locally, as typed first on Open Food Facts', async () => {
+    mockRpc.mockImplementation(async (_fn: string, args: { search_query: string }) => ({
+      data: args.search_query === 'Hähnchenbrust' ? [localRow({ id: 'de-1', name: 'Hähnchenbrust, roh' })] : [],
+      error: null,
+    }));
+    mockSearchFood.mockResolvedValue([]);
+
+    const results = await searchFoodHybrid('chicken breast');
+
+    expect(mockRpc).toHaveBeenCalledWith('search_foods_fuzzy', { search_query: 'Hähnchenbrust', match_limit: 20 });
+    expect(mockRpc).toHaveBeenCalledWith('search_foods_fuzzy', { search_query: 'chicken breast', match_limit: 20 });
+    expect(mockSearchFood.mock.calls.map((call) => call[0])).toEqual(['chicken breast', 'Hähnchenbrust']);
+    expect(results.map((item) => item.name)).toEqual(['Hähnchenbrust, roh']);
+  });
+
+  it('machine-translates an unknown foreign query as a last resort, only once every tier came back empty', async () => {
+    const fetchMock = globalThis.fetch as jest.Mock;
+    fetchMock.mockImplementation(async (url: string) => {
+      if (!url.includes('mymemory') || !url.includes('autodetect')) throw new Error('network disabled in tests');
+      return { ok: true, json: async () => ({ responseData: { translatedText: 'Rosenkohl' } }) };
+    });
+    mockSearchFood.mockImplementation(async (query: string) => (query === 'Rosenkohl' ? [offItem({ id: 'off-rk', name: 'Rosenkohl' })] : []));
+
+    const results = await searchFoodHybrid('cavoletti di Bruxelles');
+
+    expect(results.map((item) => item.id)).toEqual(['off-rk']);
+    fetchMock.mockReset().mockRejectedValue(new Error('network disabled in tests'));
+  });
+
   it('strips USDA items out of the Open Food Facts tier - that cascade reaches USDA only as ITS OWN last resort, and letting that leak into Tier 2 would preempt the more European FatSecret tier below', async () => {
     mockSearchFood.mockResolvedValue([
       offItem({ id: 'off-1', name: 'Apfel', source: 'off' }),
