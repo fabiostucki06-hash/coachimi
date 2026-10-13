@@ -81,7 +81,12 @@ PHASE 1 - IDENTIFIKATION (was ist es genau, nicht nur ungefähr):
     Schweizer Teller ist eher Gruyère/Appenzeller/Emmentaler als "Swiss cheese"; ein Schokoriegel mit roter/goldener
     Verpackung eher Ragusa/Toblerone als ein generischer "chocolate bar"; ein Rundbrot eher Zopf/Ruchbrot als
     "white bread"). Nenne die SPEZIFISCHE Bezeichnung (Produkt- oder Gerichtname), keine pauschale Übersetzung.
-1c. Bestimme die Zubereitungsart (z. B. gebraten, gekocht, roh, frittiert, paniert), falls erkennbar.
+1c. Bestimme die Zubereitungsart (z. B. gebraten, gekocht, roh, frittiert, paniert), falls erkennbar. Bei Fleisch,
+    Geflügel und Hackfleisch gehört der Zustand IMMER zusätzlich in den "name" selbst ("Rindshackfleisch, gebraten",
+    "Pouletbrust, gebraten", "Rindstatar, roh" - nicht nur "Hackfleisch" oder "Poulet"): rohes und gebratenes Fleisch
+    sind in der Nährwertdatenbank getrennte Einträge mit deutlich unterschiedlichen Werten pro 100g. Auf einem
+    angerichteten Teller ist Fleisch im Zweifel gegart; "roh" nur, wenn es erkennbar roh ist (Tatar, Carpaccio,
+    Fleisch in der Verkaufsverpackung/auf dem Schneidebrett vor dem Braten).
 1d. Ist die IDENTITÄT selbst mehrdeutig (z. B. Rind- vs. Schweinefleisch bei einem panierten Schnitzel, Vollmilch-
     vs. Magerjoghurt, Gruyère vs. Appenzeller) - nicht nur die Menge -, nenne 2-3 konkrete, spezifische Kandidaten in
     "nameAlternatives" statt einer einzelnen vagen Bezeichnung oder eines Oberbegriffs. Leeres Array, wenn die
@@ -116,6 +121,11 @@ PHASE 3 - NÄHRWERTE (europäische/Schweizer Referenzwerte, nicht USDA):
     unterscheiden sich konkret: europäische Vollmilch ca. 3.5-3.8% Fett (US-"whole milk" meist 3.25%), europäisches
     Vollkorn-/Ruchbrot ist i. d. R. deutlich weniger gesüßt als US-Brot, Schweizer Hartkäse (Gruyère, Appenzeller,
     Emmentaler) hat einen anderen Fett-/Proteingehalt als generischer "cheddar"/"swiss cheese".
+    Die Werte gelten für den Zustand, in dem die Komponente auf dem Bild liegt - "estimatedGrams" ist das Gewicht wie
+    fotografiert, also müssen die Nährwerte pro 100g zum selben Zustand gehören. Fleisch verliert beim Braten ca.
+    25-30% Gewicht (Wasser) und ist gegart pro 100g entsprechend dichter: Pouletbrust roh ~108 kcal/23g Protein,
+    gebraten ~165 kcal/31g Protein; Rindshackfleisch roh ~213 kcal, gebraten ~257 kcal. Niemals Rohwerte mit einem
+    gegarten Gewicht kombinieren (oder umgekehrt).
 3b. Schlüssle "sugarPer100g" (Gesamtzucker) zusätzlich in "fructosePer100g" (Fruchtzucker) auf - der Anteil speziell
     aus Früchten, Honig oder High-Fructose-Corn-Syrup. fructosePer100g ist ein TEIL von sugarPer100g, niemals
     zusätzlich dazu zu zählen. Kennst du bei Obst/Beeren keinen genauen Wert, schätze fructosePer100g konservativ

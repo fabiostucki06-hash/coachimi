@@ -3,7 +3,7 @@ jest.mock('@/services/foodSearch', () => ({
 }));
 
 import { searchFoodHybrid } from '@/services/foodSearch';
-import { AUTO_APPLY_MATCH_THRESHOLD, correctedValuesFromMatch, matchDetectedFoods, nameSimilarity, type PhotoMatch } from '@/services/photoMatcher';
+import { AUTO_APPLY_MATCH_THRESHOLD, correctedValuesFromMatch, matchDetectedFoods, nameSimilarity, preparationState, type PhotoMatch } from '@/services/photoMatcher';
 import type { DetectedFoodItem } from '@/services/visionFoodApi';
 import type { FoodItem } from '@/types';
 
@@ -104,6 +104,50 @@ describe('matchDetectedFood - USDA deprioritization', () => {
     const results = await matchDetectedFoods([detected]);
 
     expect(results[0]).toMatchObject({ status: 'db_verified', candidate: { id: 'usda-1' } });
+  });
+});
+
+describe('matchDetectedFood - raw vs. cooked', () => {
+  it('never verifies a cooked detection against the raw entry, however close the rest of the name is', async () => {
+    const detected = makeDetected({ name: 'Rindshackfleisch light (5% Fett), gebraten' });
+    mockedSearch.mockResolvedValue([
+      makeFood({ id: 'raw', name: 'Rindshackfleisch light (5% Fett), roh', source: 'local' }),
+      makeFood({ id: 'cooked', name: 'Rindshackfleisch light (5% Fett), gebraten', source: 'local' }),
+    ]);
+
+    const results = await matchDetectedFoods([detected]);
+
+    expect(results[0]).toMatchObject({ status: 'db_verified', candidate: { id: 'cooked' }, score: 1 });
+  });
+
+  it('falls back to the AI estimate when only the opposite state is in the DB', async () => {
+    const detected = makeDetected({ name: 'Rindshackfleisch light (5% Fett)', cookingMethod: 'gebraten' });
+    mockedSearch.mockResolvedValue([makeFood({ id: 'raw', name: 'Rindshackfleisch light (5% Fett), roh', source: 'local' })]);
+
+    const results = await matchDetectedFoods([detected]);
+
+    expect(results[0]).toEqual({ status: 'ai_estimate', candidate: null, score: 0 });
+  });
+
+  it('matches a Swiss-named detection against the standard-German entry', async () => {
+    const detected = makeDetected({ name: 'Pouletbrust, gebraten' });
+    mockedSearch.mockResolvedValue([
+      makeFood({ id: 'raw', name: 'Hähnchenbrust, roh', source: 'local' }),
+      makeFood({ id: 'cooked', name: 'Hähnchenbrust, gebraten', source: 'local' }),
+    ]);
+
+    const results = await matchDetectedFoods([detected]);
+
+    expect(results[0]).toMatchObject({ status: 'db_verified', candidate: { id: 'cooked' }, score: 1 });
+  });
+});
+
+describe('preparationState', () => {
+  it('reads the state off whole words only', () => {
+    expect(preparationState('Hackfleisch gemischt, roh')).toBe('raw');
+    expect(preparationState('Hähnchenbrust, gebraten')).toBe('cooked');
+    expect(preparationState('Rohschinken')).toBeNull();
+    expect(preparationState('Hähnchenbrust')).toBeNull();
   });
 });
 

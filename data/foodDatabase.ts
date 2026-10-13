@@ -16,7 +16,8 @@ interface LocalFoodSeed {
 }
 
 // Everyday German foods, macros per 100g. Values are standard nutrition-table
-// estimates (raw/typical preparation unless noted) - close enough for logging,
+// estimates (raw/typical preparation unless noted; meat always states it
+// explicitly, see below) - close enough for logging,
 // always editable by the user afterwards.
 const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-apfel', name: 'Apfel', caloriesPer100g: 52, carbsPer100g: 14, proteinPer100g: 0.3, fatPer100g: 0.2, fiberPer100g: 2.4, sugarPer100g: 10 },
@@ -50,13 +51,35 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-cornflakes', name: 'Cornflakes', caloriesPer100g: 378, carbsPer100g: 84, proteinPer100g: 7, fatPer100g: 1, sugarPer100g: 8 },
   { id: 'local-quinoa', name: 'Quinoa, gekocht', caloriesPer100g: 120, carbsPer100g: 21, proteinPer100g: 4.4, fatPer100g: 1.9, fiberPer100g: 2.8 },
   { id: 'local-ei', name: 'Ei, gekocht', caloriesPer100g: 155, carbsPer100g: 1.1, proteinPer100g: 13, fatPer100g: 11 },
+  // Meat: every cut carries its preparation state in the name, as a separate
+  // "gebraten" and "roh" entry - same reasoning as the pasta pair above, just
+  // in the opposite direction: frying drives out ~25-30% of the weight as
+  // water, so the same piece of meat is denser/more caloric per 100g cooked
+  // than raw. Logging a cooked weight against raw values (or vice versa) is
+  // off by roughly that margin. The cooked variant is listed first, so a
+  // free-text entry without a state ("200g Hackfleisch", see
+  // utils/mealTextParser.ts - it takes the first match) defaults to the
+  // as-eaten state. Cooked values assume no added fat - frying oil/butter is
+  // logged separately.
   { id: 'local-haehnchenbrust', name: 'Hähnchenbrust, gebraten', caloriesPer100g: 165, carbsPer100g: 0, proteinPer100g: 31, fatPer100g: 3.6 },
-  { id: 'local-pute', name: 'Putenbrust', caloriesPer100g: 135, carbsPer100g: 0, proteinPer100g: 29, fatPer100g: 1.7 },
-  { id: 'local-rindfleisch', name: 'Rindfleisch, mager', caloriesPer100g: 187, carbsPer100g: 0, proteinPer100g: 26, fatPer100g: 9 },
-  { id: 'local-schweinefleisch', name: 'Schweinefleisch, mager', caloriesPer100g: 242, carbsPer100g: 0, proteinPer100g: 27, fatPer100g: 14 },
-  { id: 'local-hackfleisch', name: 'Hackfleisch, gemischt', caloriesPer100g: 254, carbsPer100g: 0, proteinPer100g: 18, fatPer100g: 20 },
+  { id: 'local-haehnchenbrust-roh', name: 'Hähnchenbrust, roh', caloriesPer100g: 108, carbsPer100g: 0, proteinPer100g: 23.5, fatPer100g: 1.5 },
+  { id: 'local-pute', name: 'Putenbrust, gebraten', caloriesPer100g: 135, carbsPer100g: 0, proteinPer100g: 29, fatPer100g: 1.7 },
+  { id: 'local-pute-roh', name: 'Putenbrust, roh', caloriesPer100g: 105, carbsPer100g: 0, proteinPer100g: 24, fatPer100g: 1 },
+  { id: 'local-rindfleisch', name: 'Rindfleisch mager, gebraten', caloriesPer100g: 187, carbsPer100g: 0, proteinPer100g: 26, fatPer100g: 9 },
+  { id: 'local-rindfleisch-roh', name: 'Rindfleisch mager, roh', caloriesPer100g: 140, carbsPer100g: 0, proteinPer100g: 20.5, fatPer100g: 6.5 },
+  { id: 'local-schweinefleisch', name: 'Schweinefleisch mager, gebraten', caloriesPer100g: 242, carbsPer100g: 0, proteinPer100g: 27, fatPer100g: 14 },
+  { id: 'local-schweinefleisch-roh', name: 'Schweinefleisch mager, roh', caloriesPer100g: 172, carbsPer100g: 0, proteinPer100g: 20.5, fatPer100g: 10 },
+  { id: 'local-schweinsfilet', name: 'Schweinsfilet, gebraten', caloriesPer100g: 148, carbsPer100g: 0, proteinPer100g: 29, fatPer100g: 3.5 },
+  { id: 'local-schweinsfilet-roh', name: 'Schweinsfilet, roh', caloriesPer100g: 110, carbsPer100g: 0, proteinPer100g: 22, fatPer100g: 2.5 },
+  { id: 'local-hackfleisch-gebraten', name: 'Hackfleisch gemischt, gebraten', caloriesPer100g: 285, carbsPer100g: 0, proteinPer100g: 25, fatPer100g: 20.5 },
+  { id: 'local-hackfleisch', name: 'Hackfleisch gemischt, roh', caloriesPer100g: 254, carbsPer100g: 0, proteinPer100g: 18, fatPer100g: 20 },
+  { id: 'local-rindshackfleisch-gebraten', name: 'Rindshackfleisch, gebraten', caloriesPer100g: 257, carbsPer100g: 0, proteinPer100g: 26, fatPer100g: 17 },
+  { id: 'local-rindshackfleisch-roh', name: 'Rindshackfleisch, roh', caloriesPer100g: 213, carbsPer100g: 0, proteinPer100g: 19.5, fatPer100g: 15 },
+  { id: 'local-rindshackfleisch-light-gebraten', name: 'Rindshackfleisch light (5% Fett), gebraten', caloriesPer100g: 165, carbsPer100g: 0, proteinPer100g: 26.5, fatPer100g: 6.5 },
+  { id: 'local-rindshackfleisch-light-roh', name: 'Rindshackfleisch light (5% Fett), roh', caloriesPer100g: 131, carbsPer100g: 0, proteinPer100g: 21.5, fatPer100g: 5 },
   { id: 'local-wurst', name: 'Wurst (Brühwurst)', caloriesPer100g: 280, carbsPer100g: 2, proteinPer100g: 13, fatPer100g: 25, sodiumPer100gMg: 900 },
-  { id: 'local-speck', name: 'Speck', caloriesPer100g: 541, carbsPer100g: 0.5, proteinPer100g: 12, fatPer100g: 55 },
+  { id: 'local-speck-gebraten', name: 'Speck (Bratspeck), gebraten', caloriesPer100g: 496, carbsPer100g: 0.5, proteinPer100g: 34, fatPer100g: 40 },
+  { id: 'local-speck', name: 'Speck, roh', caloriesPer100g: 541, carbsPer100g: 0.5, proteinPer100g: 12, fatPer100g: 55 },
   { id: 'local-lachs', name: 'Lachs, gegart', caloriesPer100g: 208, carbsPer100g: 0, proteinPer100g: 22, fatPer100g: 13 },
   { id: 'local-thunfisch', name: 'Thunfisch (Dose, im eigenen Saft)', caloriesPer100g: 116, carbsPer100g: 0, proteinPer100g: 26, fatPer100g: 1 },
   { id: 'local-garnelen', name: 'Garnelen, gegart', caloriesPer100g: 99, carbsPer100g: 0.2, proteinPer100g: 21, fatPer100g: 1.4 },
@@ -178,10 +201,14 @@ const LOCAL_FOOD_SEEDS: LocalFoodSeed[] = [
   { id: 'local-ei-roh', name: 'Ei, roh', caloriesPer100g: 155, carbsPer100g: 1.1, proteinPer100g: 13, fatPer100g: 11 },
   { id: 'local-eiklar', name: 'Eiweiß / Eiklar', caloriesPer100g: 52, carbsPer100g: 0.7, proteinPer100g: 11, fatPer100g: 0.2 },
   { id: 'local-haehnchenschenkel', name: 'Hähnchenschenkel, gebraten', caloriesPer100g: 216, carbsPer100g: 0, proteinPer100g: 26, fatPer100g: 12 },
+  { id: 'local-haehnchenschenkel-roh', name: 'Hähnchenschenkel, roh', caloriesPer100g: 160, carbsPer100g: 0, proteinPer100g: 18.5, fatPer100g: 9.5 },
   { id: 'local-haehnchen-haut', name: 'Hähnchen mit Haut, gebraten', caloriesPer100g: 250, carbsPer100g: 0, proteinPer100g: 27, fatPer100g: 15 },
+  { id: 'local-haehnchen-haut-roh', name: 'Hähnchen mit Haut, roh', caloriesPer100g: 210, carbsPer100g: 0, proteinPer100g: 18.5, fatPer100g: 15 },
   { id: 'local-pute-aufschnitt', name: 'Pute, Aufschnitt', caloriesPer100g: 106, carbsPer100g: 1, proteinPer100g: 20, fatPer100g: 2 },
-  { id: 'local-kalbfleisch', name: 'Kalbfleisch, mager', caloriesPer100g: 172, carbsPer100g: 0, proteinPer100g: 24, fatPer100g: 8 },
-  { id: 'local-lammfleisch', name: 'Lammfleisch', caloriesPer100g: 294, carbsPer100g: 0, proteinPer100g: 25, fatPer100g: 21 },
+  { id: 'local-kalbfleisch', name: 'Kalbfleisch mager, gebraten', caloriesPer100g: 172, carbsPer100g: 0, proteinPer100g: 24, fatPer100g: 8 },
+  { id: 'local-kalbfleisch-roh', name: 'Kalbfleisch mager, roh', caloriesPer100g: 128, carbsPer100g: 0, proteinPer100g: 19.5, fatPer100g: 5.5 },
+  { id: 'local-lammfleisch', name: 'Lammfleisch, gebraten', caloriesPer100g: 294, carbsPer100g: 0, proteinPer100g: 25, fatPer100g: 21 },
+  { id: 'local-lammfleisch-roh', name: 'Lammfleisch, roh', caloriesPer100g: 228, carbsPer100g: 0, proteinPer100g: 17.5, fatPer100g: 17.5 },
   { id: 'local-leberwurst', name: 'Leberwurst', caloriesPer100g: 326, carbsPer100g: 2, proteinPer100g: 14, fatPer100g: 30, sodiumPer100gMg: 900 },
   { id: 'local-salami', name: 'Salami', caloriesPer100g: 407, carbsPer100g: 1.5, proteinPer100g: 22, fatPer100g: 35, sodiumPer100gMg: 1500 },
   { id: 'local-schinken-gekocht', name: 'Schinken, gekocht', caloriesPer100g: 145, carbsPer100g: 1, proteinPer100g: 20, fatPer100g: 6, sodiumPer100gMg: 1100 },
@@ -400,15 +427,33 @@ function fuzzyWordMatch(word: string, text: string): boolean {
   return text.split(' ').some((candidate) => Math.abs(candidate.length - word.length) <= maxDistance && levenshteinDistance(word, candidate) <= maxDistance);
 }
 
+// Regional names for the same food, each mapped to the spelling the entries above
+// use - Swiss German says "Poulet"/"Trute"/"Gehacktes" where they say "Hähnchen"/
+// "Pute"/"Hackfleisch". Too far apart for the typo tolerance in fuzzyWordMatch, so
+// they're rewritten explicitly. Keys and values are already in normalized form
+// (see normalizeSearchText), and matched as substrings since they mostly occur
+// inside compounds ("Pouletbrust", "Trutenbrust").
+const REGIONAL_TERMS: [regional: string, canonical: string][] = [
+  ['poulet', 'hahnchen'],
+  ['chicken', 'hahnchen'],
+  ['trute', 'pute'],
+  ['gehacktes', 'hackfleisch'],
+];
+
+/** Rewrites regional food terms in an already-normalized string to one canonical spelling ("pouletbrust" -> "hahnchenbrust"), so both sides of a name comparison agree on them. */
+export function canonicalizeRegionalTerms(normalizedText: string): string {
+  return REGIONAL_TERMS.reduce((text, [regional, canonical]) => text.split(regional).join(canonical), normalizedText);
+}
+
 /** Fuzzy-filters any FoodItem list by name against `query` - shared by the common-foods DB and the recent-foods list. */
 export function fuzzyFilterFoodItems<T extends { name: string }>(query: string, items: T[]): T[] {
-  const normalizedQuery = normalizeSearchText(query);
+  const normalizedQuery = canonicalizeRegionalTerms(normalizeSearchText(query));
   if (!normalizedQuery) return [];
 
   const queryWords = normalizedQuery.split(' ').filter(Boolean);
 
   return items.filter((item) => {
-    const normalizedName = normalizeSearchText(item.name);
+    const normalizedName = canonicalizeRegionalTerms(normalizeSearchText(item.name));
     return queryWords.every((word) => fuzzyWordMatch(word, normalizedName));
   });
 }

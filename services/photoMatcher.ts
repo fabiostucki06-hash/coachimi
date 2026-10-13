@@ -1,3 +1,4 @@
+import { canonicalizeRegionalTerms } from '@/data/foodDatabase';
 import { searchFoodHybrid } from '@/services/foodSearch';
 import type { DetectedFoodItem } from '@/services/visionFoodApi';
 import type { FoodItem, Macros, Micronutrients } from '@/types';
@@ -14,13 +15,17 @@ const MATCH_SCORE_THRESHOLD = 0.55;
 export const AUTO_APPLY_MATCH_THRESHOLD = 0.8;
 
 function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Regional terms are folded last ("Pouletbrust" -> "hahnchenbrust"), so a Swiss
+  // name from the Vision model still lines up with a standard-German DB entry.
+  return canonicalizeRegionalTerms(
+    text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
 }
 
 function tokenize(text: string): Set<string> {
@@ -48,6 +53,43 @@ export function nameSimilarity(a: string, b: string): number {
   const normB = normalize(b);
   const substringBonus = normA.length > 2 && (normB.includes(normA) || normA.includes(normB)) ? 0.15 : 0;
   return Math.min(1, jaccard + substringBonus);
+}
+
+const RAW_STATE_TOKENS = new Set(['roh', 'rohe', 'roher', 'rohes', 'ungekocht', 'raw']);
+const COOKED_STATE_TOKENS = new Set([
+  'gebraten',
+  'angebraten',
+  'gekocht',
+  'gegart',
+  'gegrillt',
+  'grilliert',
+  'gedampft',
+  'gedunstet',
+  'geschmort',
+  'gebacken',
+  'frittiert',
+  'paniert',
+  'pochiert',
+  'cooked',
+  'fried',
+  'grilled',
+  'roasted',
+]);
+
+/**
+ * Whether a food name states a raw or a cooked preparation ("Hackfleisch, roh" vs.
+ * "Hackfleisch gemischt, gebraten") - null when it says neither. Whole tokens only,
+ * so "Rohschinken"/"Rohmilch" don't read as raw.
+ */
+export function preparationState(text: string): 'raw' | 'cooked' | null {
+  const tokens = tokenize(text);
+  for (const token of tokens) {
+    if (COOKED_STATE_TOKENS.has(token)) return 'cooked';
+  }
+  for (const token of tokens) {
+    if (RAW_STATE_TOKENS.has(token)) return 'raw';
+  }
+  return null;
 }
 
 export interface PhotoMatch {
@@ -85,14 +127,27 @@ export async function matchDetectedFood(detected: DetectedFoodItem, signal?: Abo
   } catch {
     return { status: 'ai_estimate', candidate: null, score: 0 };
   }
-  if (results.length === 0) {
+  // A candidate in the opposite preparation state is the wrong entry no matter how
+  // well the rest of its name matches: "Rindshackfleisch, roh" shares every other
+  // token with a detected "Rindshackfleisch gebraten", but its per-100g values are
+  // ~25-30% lower (water not yet cooked out), and the grams the Vision model
+  // estimated are of the food as photographed. Candidates that don't state a
+  // preparation at all stay eligible.
+  const detectedState = preparationState(`${detected.name} ${detected.cookingMethod ?? ''}`);
+  const eligible = detectedState
+    ? results.filter((candidate) => {
+        const candidateState = preparationState(candidate.name);
+        return candidateState === null || candidateState === detectedState;
+      })
+    : results;
+  if (eligible.length === 0) {
     return { status: 'ai_estimate', candidate: null, score: 0 };
   }
 
-  let best = results[0];
+  let best = eligible[0];
   let bestScore = nameSimilarity(detected.name, best.name);
   let bestRanked = rankedScore(best, bestScore);
-  for (const candidate of results.slice(1)) {
+  for (const candidate of eligible.slice(1)) {
     const score = nameSimilarity(detected.name, candidate.name);
     const ranked = rankedScore(candidate, score);
     if (ranked > bestRanked) {

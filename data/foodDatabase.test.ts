@@ -34,6 +34,54 @@ describe('searchLocalFoods', () => {
   });
 });
 
+describe('raw vs. cooked meat variants', () => {
+  const names = (query: string) => searchLocalFoods(query).map((item) => item.name);
+
+  it('surfaces both states for a bare "Hackfleisch" search, incl. the light variant', () => {
+    expect(names('Hackfleisch')).toEqual(
+      expect.arrayContaining([
+        'Hackfleisch gemischt, roh',
+        'Hackfleisch gemischt, gebraten',
+        'Rindshackfleisch, roh',
+        'Rindshackfleisch, gebraten',
+        'Rindshackfleisch light (5% Fett), roh',
+        'Rindshackfleisch light (5% Fett), gebraten',
+      ]),
+    );
+  });
+
+  it('narrows to one state when the query names it', () => {
+    const raw = names('Hackfleisch roh');
+    expect(raw.length).toBeGreaterThan(0);
+    expect(raw.every((name) => name.endsWith(', roh'))).toBe(true);
+    expect(names('Hackfleisch light gebraten')).toEqual(['Rindshackfleisch light (5% Fett), gebraten']);
+  });
+
+  it('finds the Hähnchen/Pute/Hackfleisch entries under their Swiss names', () => {
+    expect(names('Pouletbrust')).toEqual(expect.arrayContaining(['Hähnchenbrust, roh', 'Hähnchenbrust, gebraten']));
+    expect(names('Trutenbrust roh')).toEqual(['Putenbrust, roh']);
+    expect(names('Gehacktes')).toContain('Hackfleisch gemischt, roh');
+  });
+
+  it('states a preparation for every plain meat cut, each with a denser cooked counterpart', () => {
+    const rawMeats = LOCAL_FOOD_DATABASE.filter((item) => item.name.endsWith(', roh') && item.macrosPerServing.carbs === 0);
+    expect(rawMeats.length).toBeGreaterThanOrEqual(12);
+    for (const raw of rawMeats) {
+      const cooked = LOCAL_FOOD_DATABASE.find((item) => item.name === raw.name.replace(/, roh$/, ', gebraten'));
+      expect(cooked).toBeDefined();
+      expect(cooked!.caloriesPerServing).toBeGreaterThan(raw.caloriesPerServing);
+      expect(cooked!.macrosPerServing.protein).toBeGreaterThan(raw.macrosPerServing.protein);
+    }
+  });
+
+  it('keeps calories consistent with the macros for every meat variant', () => {
+    for (const item of LOCAL_FOOD_DATABASE.filter((entry) => /, (roh|gebraten)$/.test(entry.name) && entry.macrosPerServing.carbs < 1)) {
+      const fromMacros = item.macrosPerServing.carbs * 4 + item.macrosPerServing.protein * 4 + item.macrosPerServing.fat * 9;
+      expect(Math.abs(item.caloriesPerServing - fromMacros) / item.caloriesPerServing).toBeLessThan(0.08);
+    }
+  });
+});
+
 describe('fuzzyFilterFoodItems', () => {
   it('is order-independent across query words', () => {
     const items = [{ name: 'Hähnchenbrust, gebraten' }];
