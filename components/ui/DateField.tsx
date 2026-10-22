@@ -9,12 +9,14 @@ interface DateFieldProps {
   label?: string;
   value: string;
   onChange: (dateKey: string) => void;
+  /** Borderless, shorter trigger matching `<TextField compact />`. */
+  compact?: boolean;
 }
 
 // Compact "tap to open a month grid" date picker, for forms that need to
 // pick one arbitrary past/future date (e.g. logging a weight entry)
 // rather than the always-visible day-strip DateSelector uses.
-export function DateField({ label, value, onChange }: DateFieldProps) {
+export function DateField({ label, value, onChange, compact = false }: DateFieldProps) {
   const [expanded, setExpanded] = useState(false);
   const [viewedMonth, setViewedMonth] = useState(() => monthYearOf(value));
 
@@ -40,10 +42,12 @@ export function DateField({ label, value, onChange }: DateFieldProps) {
       {label && <Text className="text-xs font-medium tracking-tight text-text-secondary">{label}</Text>}
       <Pressable
         onPress={open}
-        className="flex-row items-center gap-2 rounded-2xl border border-surface-border bg-overlay/5 px-5 py-3.5"
+        className={`flex-row items-center gap-2 border bg-overlay/5 ${
+          compact ? 'rounded-xl px-3.5 py-2.5' : 'rounded-2xl px-5 py-3.5'
+        } ${expanded ? 'border-primary' : compact ? 'border-transparent' : 'border-surface-border'}`}
       >
-        <Calendar color="#6366F1" size={16} />
-        <Text className="text-base text-foreground">{formatDateShort(value)}</Text>
+        <Calendar color="#6366F1" size={compact ? 15 : 16} strokeWidth={1.75} />
+        <Text className={`text-foreground ${compact ? 'text-[15px]' : 'text-base'}`}>{formatDateShort(value)}</Text>
       </Pressable>
 
       {expanded && (

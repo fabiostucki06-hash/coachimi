@@ -1,7 +1,7 @@
-import { BookOpen, CalendarSync, ChartColumn, Dumbbell, User, Users } from 'lucide-react-native';
+import { BookOpen, CalendarSync, ChartColumn, Dumbbell, User, Users, type LucideIcon } from 'lucide-react-native';
 import { Link, Tabs, usePathname } from 'expo-router';
-import type { ComponentProps, ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import type { ComponentProps } from 'react';
+import { Pressable, Text, View, type ColorValue } from 'react-native';
 
 import { ThemeToggle } from '@/components/features/ThemeToggle';
 import { Logo } from '@/components/ui/Logo';
@@ -31,15 +31,14 @@ const SIDEBAR_LINKS = [
   { href: '/profil', label: 'Profil', Icon: User },
 ] as const;
 
-function TabIcon({ focused, children }: { focused: boolean; children: ReactNode }) {
-  return (
-    <View
-      className={`items-center justify-center rounded-full px-4 py-1.5 transition-colors duration-200 ease-in-out ${
-        focused ? 'bg-primary/10' : 'bg-transparent'
-      }`}
-    >
-      {children}
-    </View>
+// One stroke weight for every nav icon (slightly bolder when active) so the
+// bar reads as a single line-art set rather than lucide's default 2px.
+const ICON_STROKE = 1.75;
+const ICON_STROKE_ACTIVE = 2.25;
+
+function tabIcon(Icon: LucideIcon) {
+  return ({ color, size, focused }: { color: ColorValue; size: number; focused: boolean }) => (
+    <Icon color={color} size={size} strokeWidth={focused ? ICON_STROKE_ACTIVE : ICON_STROKE} />
   );
 }
 
@@ -65,7 +64,11 @@ function DesktopSidebar() {
                 isFocused ? 'bg-primary/10' : 'active:bg-overlay/5'
               }`}
             >
-              <Icon color={isFocused ? ACTIVE_COLOR : inactiveColor} size={20} />
+              <Icon
+                color={isFocused ? ACTIVE_COLOR : inactiveColor}
+                size={20}
+                strokeWidth={isFocused ? ICON_STROKE_ACTIVE : ICON_STROKE}
+              />
               <Text
                 className={`text-sm font-semibold ${isFocused ? 'text-primary' : 'text-text-secondary'}`}
               >
@@ -94,7 +97,7 @@ function MobileTabBar({ state, descriptors, navigation }: TabBarProps) {
     const isFocused = state.index === index;
     const label = typeof options.title === 'string' ? options.title : route.name;
     const color = isFocused ? ACTIVE_COLOR : inactiveColor;
-    const icon = options.tabBarIcon?.({ color, size: 24, focused: isFocused });
+    const icon = options.tabBarIcon?.({ color, size: 20, focused: isFocused });
 
     function onPress() {
       const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -104,22 +107,32 @@ function MobileTabBar({ state, descriptors, navigation }: TabBarProps) {
     return { key: route.key, label, isFocused, icon, onPress };
   });
 
+  // Slim floating bar: icon sits in a small pill that fills in for the active
+  // tab, with a compact label underneath - no full-width highlight blocks.
   return (
     <View className="absolute bottom-4 left-4 right-4">
-      <View
-        className="h-[68px] flex-row items-center overflow-hidden rounded-[28px] border border-surface-border bg-surface px-1 backdrop-blur-xl"
-        style={{
-          shadowColor: '#000000',
-          shadowOpacity: 0.4,
-          shadowRadius: 24,
-          shadowOffset: { width: 0, height: 8 },
-        }}
-      >
+      <View className="h-[58px] flex-row items-center rounded-3xl border border-surface-border/60 bg-surface/95 px-1 shadow-lg shadow-black/25 backdrop-blur-xl">
         {items.map((item) => (
-          <Pressable key={item.key} onPress={item.onPress} className="flex-1 items-center justify-center gap-0.5">
-            <TabIcon focused={item.isFocused}>{item.icon}</TabIcon>
+          <Pressable
+            key={item.key}
+            onPress={item.onPress}
+            accessibilityRole="tab"
+            accessibilityLabel={item.label}
+            accessibilityState={{ selected: item.isFocused }}
+            className="h-full flex-1 items-center justify-center gap-1 active:opacity-70"
+          >
+            <View
+              className={`h-7 w-11 items-center justify-center rounded-full transition-colors duration-200 ease-in-out ${
+                item.isFocused ? 'bg-primary/15' : 'bg-transparent'
+              }`}
+            >
+              {item.icon}
+            </View>
             <Text
-              className={`text-[11px] font-medium ${item.isFocused ? 'text-primary' : 'text-text-secondary'}`}
+              numberOfLines={1}
+              className={`text-[10px] leading-3 tracking-tight ${
+                item.isFocused ? 'font-semibold text-primary' : 'font-medium text-text-secondary'
+              }`}
             >
               {item.label}
             </Text>
@@ -142,42 +155,42 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Tagebuch',
-          tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} />,
+          tabBarIcon: tabIcon(BookOpen),
         }}
       />
       <Tabs.Screen
         name="training"
         options={{
           title: 'Training',
-          tabBarIcon: ({ color, size }) => <Dumbbell color={color} size={size} />,
+          tabBarIcon: tabIcon(Dumbbell),
         }}
       />
       <Tabs.Screen
         name="cycles"
         options={{
           title: 'Zyklen',
-          tabBarIcon: ({ color, size }) => <CalendarSync color={color} size={size} />,
+          tabBarIcon: tabIcon(CalendarSync),
         }}
       />
       <Tabs.Screen
         name="statistik"
         options={{
           title: 'Statistik',
-          tabBarIcon: ({ color, size }) => <ChartColumn color={color} size={size} />,
+          tabBarIcon: tabIcon(ChartColumn),
         }}
       />
       <Tabs.Screen
         name="friends"
         options={{
           title: 'Freunde',
-          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          tabBarIcon: tabIcon(Users),
         }}
       />
       <Tabs.Screen
         name="profil"
         options={{
           title: 'Profil',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          tabBarIcon: tabIcon(User),
         }}
       />
     </Tabs>

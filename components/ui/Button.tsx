@@ -2,11 +2,13 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Size = 'md' | 'sm';
 
 interface ButtonProps {
   label: string;
   onPress?: () => void;
   variant?: Variant;
+  size?: Size;
   disabled?: boolean;
   loading?: boolean;
   icon?: ReactNode;
@@ -34,6 +36,7 @@ export function Button({
   label,
   onPress,
   variant = 'primary',
+  size = 'md',
   disabled = false,
   loading = false,
   icon,
@@ -43,7 +46,9 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      className={`flex-row items-center justify-center gap-2 rounded-2xl px-5 py-3.5 transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 ${VARIANT_CLASSES[variant]} ${
+      className={`flex-row items-center justify-center transition-[transform,opacity] duration-150 ease-in-out active:scale-[0.98] active:opacity-80 ${
+        size === 'sm' ? 'gap-1.5 rounded-xl px-4 py-2.5' : 'gap-2 rounded-2xl px-5 py-3.5'
+      } ${VARIANT_CLASSES[variant]} ${
         disabled || loading ? 'opacity-50' : ''
       } ${className}`}
     >
@@ -52,7 +57,7 @@ export function Button({
       ) : (
         <>
           {icon}
-          <Text className={`text-base font-semibold ${VARIANT_TEXT_CLASSES[variant]}`}>{label}</Text>
+          <Text className={`font-semibold ${size === 'sm' ? 'text-sm' : 'text-base'} ${VARIANT_TEXT_CLASSES[variant]}`}>{label}</Text>
         </>
       )}
     </Pressable>

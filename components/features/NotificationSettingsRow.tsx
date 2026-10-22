@@ -2,7 +2,6 @@ import { Bell } from 'lucide-react-native';
 import { useState } from 'react';
 import { Platform, Switch, Text, View } from 'react-native';
 
-import { Card } from '@/components/ui/Card';
 import {
   DAILY_REMINDERS,
   getNotificationPermission,
@@ -31,9 +30,10 @@ function toast(message: string, variant: 'success' | 'error') {
  * notification permission and registers this browser for Web Push; the
  * reminders themselves are delivered by the OS as system banners (see
  * services/notificationService.ts), never as something drawn inside the app.
- * Web (PWA) only.
+ * Web (PWA) only. Rendered as a flat settings-list row (no card chrome) - the
+ * parent section provides the grouping and hairline dividers.
  */
-export function NotificationSettingsCard() {
+export function NotificationSettingsRow() {
   const enabled = useNotificationStore((state) => state.remindersEnabled);
   const setEnabled = useNotificationStore((state) => state.setRemindersEnabled);
   const [busy, setBusy] = useState(false);
@@ -73,24 +73,24 @@ export function NotificationSettingsCard() {
   }
 
   return (
-    <Card>
-      <View className="flex-row items-center justify-between gap-3">
-        <View className="flex-1 flex-row items-center gap-2">
-          <Bell size={18} color="#A1A1AA" />
-          <Text className="text-sm font-semibold text-foreground">Push-Mitteilungen</Text>
-        </View>
-        <Switch
-          value={isOn}
-          onValueChange={handleToggle}
-          disabled={!canToggle || busy}
-          accessibilityLabel="Push-Mitteilungen"
-          trackColor={{ false: '#27272A', true: '#6366F1' }}
-          thumbColor="#000000"
-        />
+    <View className="flex-row items-center gap-3 py-3">
+      <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+        <Bell size={18} color="#6366F1" strokeWidth={1.75} />
       </View>
-      <Text className="mt-2 text-xs text-text-secondary">
-        {hint ?? `Erinnerungen um ${REMINDER_TIMES} Uhr - als Mitteilung deines Geräts, auch wenn die App geschlossen ist.`}
-      </Text>
-    </Card>
+      <View className="flex-1 gap-0.5">
+        <Text className="text-[15px] font-medium leading-5 text-foreground">Push-Mitteilungen</Text>
+        <Text className="text-xs leading-4 text-text-secondary">
+          {hint ?? `Erinnerungen um ${REMINDER_TIMES} Uhr, auch bei geschlossener App.`}
+        </Text>
+      </View>
+      <Switch
+        value={isOn}
+        onValueChange={handleToggle}
+        disabled={!canToggle || busy}
+        accessibilityLabel="Push-Mitteilungen"
+        trackColor={{ false: '#3F3F46', true: '#6366F1' }}
+        thumbColor="#ffffff"
+      />
+    </View>
   );
 }

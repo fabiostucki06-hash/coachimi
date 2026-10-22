@@ -1,11 +1,30 @@
 import { router } from 'expo-router';
-import { Camera, ChevronDown, Droplet, Egg, LogOut, Pencil, Plus, RotateCcw, Scale, Target, Trash2, Wheat, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import {
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  Droplet,
+  Egg,
+  LogOut,
+  Minus,
+  Palette,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Scale,
+  Target,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Wheat,
+  X,
+} from 'lucide-react-native';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LocalBackupCard } from '@/components/features/LocalBackupCard';
-import { NotificationSettingsCard } from '@/components/features/NotificationSettingsCard';
+import { NotificationSettingsRow } from '@/components/features/NotificationSettingsRow';
 import { NutrientVisibilitySelector } from '@/components/features/NutrientVisibilitySelector';
 import { PatchNotes } from '@/components/features/PatchNotes';
 import { ThemeToggle } from '@/components/features/ThemeToggle';
@@ -29,6 +48,40 @@ import { useUserStore } from '@/store/userStore';
 import type { Micronutrients, WeightEntry } from '@/types';
 import { formatDateShort } from '@/utils/calendarDates';
 import type { ActivityLevel, Gender, Goal } from '@/utils/nutritionCalculator';
+
+// Shared line-art weight for every icon on this screen (lucide defaults to 2).
+const STROKE = 1.75;
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <Text className="text-xs font-medium uppercase tracking-wider text-text-secondary">{children}</Text>;
+}
+
+function formatKg(value: number, signed = false): string {
+  const text = Math.abs(value).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (!signed) return text;
+  return `${value < 0 ? '−' : value > 0 ? '+' : '±'}${text}`;
+}
+
+function daysBetween(fromKey: string, toKey: string): number {
+  return Math.round((Date.parse(`${toKey}T00:00:00Z`) - Date.parse(`${fromKey}T00:00:00Z`)) / 86_400_000);
+}
+
+/**
+ * Change over (roughly) the last 30 days: latest entry vs. the earliest entry inside
+ * that window. If the window only holds the latest entry, falls back to the entry
+ * right before it so a sparse logger still sees a trend. `history` is ascending.
+ */
+function getWeightTrend(history: WeightEntry[]): { deltaKg: number; days: number } | null {
+  if (history.length < 2) return null;
+  const latest = history[history.length - 1];
+  const inWindow = history.filter((entry) => daysBetween(entry.date, latest.date) <= 30);
+  const baseline = inWindow.length > 1 ? inWindow[0] : history[history.length - 2];
+  return { deltaKg: latest.weightKg - baseline.weightKg, days: Math.max(daysBetween(baseline.date, latest.date), 1) };
+}
+
+function shortDateLabel(dateKey: string): string {
+  return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+}
 
 function GoalInputRow({
   icon,
@@ -104,23 +157,19 @@ function WeightHistoryRow({
 
   if (isEditing) {
     return (
-      <View className="gap-3 rounded-2xl border border-primary/40 bg-primary/5 p-3">
-        <DateField label="Datum" value={editDate} onChange={setEditDate} />
+      <View className="gap-2.5 rounded-2xl bg-primary/5 p-3">
+        <DateField compact label="Datum" value={editDate} onChange={setEditDate} />
         <View className="flex-row items-end gap-2">
           <View className="flex-1">
-            <TextField label="Gewicht" keyboardType="decimal-pad" value={editWeight} onChangeText={setEditWeight} suffix="kg" />
+            <TextField compact label="Gewicht" keyboardType="decimal-pad" value={editWeight} onChangeText={setEditWeight} suffix="kg" />
           </View>
-          <Pressable
-            onPress={handleSave}
-            className="h-[50px] items-center justify-center rounded-2xl bg-primary px-4 active:bg-[#4F46E5]"
-          >
-            <Text className="text-sm font-semibold text-white">Speichern</Text>
-          </Pressable>
+          <Button size="sm" label="Speichern" onPress={handleSave} />
           <Pressable
             onPress={() => setIsEditing(false)}
-            className="h-[50px] w-[50px] items-center justify-center rounded-2xl bg-overlay/5"
+            accessibilityLabel="Bearbeiten abbrechen"
+            className="h-10 w-10 items-center justify-center rounded-xl bg-overlay/5 active:opacity-70"
           >
-            <X color="#A1A1AA" size={18} />
+            <X color="#A1A1AA" size={16} strokeWidth={STROKE} />
           </Pressable>
         </View>
       </View>
@@ -128,25 +177,25 @@ function WeightHistoryRow({
   }
 
   return (
-    <View className="flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4 py-3">
-      <View>
-        <Text className="text-sm font-semibold text-foreground">{entry.weightKg} kg</Text>
-        <Text className="text-xs text-text-secondary">{formatDateShort(entry.date)}</Text>
+    <View className="flex-row items-center justify-between py-2.5">
+      <View className="gap-0.5">
+        <Text className="text-[15px] font-medium leading-5 text-foreground">{formatKg(entry.weightKg)} kg</Text>
+        <Text className="text-xs leading-4 text-text-secondary">{formatDateShort(entry.date)}</Text>
       </View>
-      <View className="flex-row items-center gap-2">
+      <View className="flex-row items-center gap-1">
         <Pressable
           onPress={startEdit}
-          className="h-8 w-8 items-center justify-center rounded-full bg-overlay/5 active:opacity-80"
+          className="h-8 w-8 items-center justify-center rounded-full active:bg-overlay/10"
           accessibilityLabel="Eintrag bearbeiten"
         >
-          <Pencil color="#A1A1AA" size={14} />
+          <Pencil color="#A1A1AA" size={15} strokeWidth={STROKE} />
         </Pressable>
         <Pressable
           onPress={onDelete}
-          className="h-8 w-8 items-center justify-center rounded-full bg-red-500/10 active:opacity-80"
+          className="h-8 w-8 items-center justify-center rounded-full active:bg-red-500/10"
           accessibilityLabel="Eintrag löschen"
         >
-          <Trash2 color="#ef4444" size={14} />
+          <Trash2 color="#ef4444" size={15} strokeWidth={STROKE} />
         </Pressable>
       </View>
     </View>
@@ -213,7 +262,7 @@ function MicronutrientGoalRow({
             accessibilityLabel={`${label}-Ziel auf Standard zurücksetzen`}
             className="h-6 w-6 items-center justify-center rounded-full bg-overlay/10 active:opacity-70"
           >
-            <RotateCcw color="#A1A1AA" size={12} />
+            <RotateCcw color="#A1A1AA" size={12} strokeWidth={STROKE} />
           </Pressable>
         )}
         <TextInput
@@ -395,24 +444,38 @@ export default function ProfilScreen() {
     setNewWeight('');
   }
 
-  const chartPoints = weightHistory.map((entry) => entry.weightKg);
-  const firstDate = weightHistory[0]?.date;
-  const lastDate = weightHistory[weightHistory.length - 1]?.date;
+  const chartData = weightHistory.map((entry) => ({ value: entry.weightKg, label: shortDateLabel(entry.date) }));
+  const latestWeight = weightHistory[weightHistory.length - 1];
+  const weightTrend = getWeightTrend(weightHistory);
   const sortedHistoryDesc = [...weightHistory].sort((a, b) => b.date.localeCompare(a.date));
+  const parsedNewWeight = Number.parseFloat(newWeight.replace(',', '.'));
+  const isNewWeightValid = Number.isFinite(parsedNewWeight) && parsedNewWeight > 0;
+
+  // A trend is "good" when it moves toward the selected goal; for maintain/endurance
+  // any change is just shown neutrally.
+  const trendDirection = !weightTrend || Math.abs(weightTrend.deltaKg) < 0.05 ? 0 : Math.sign(weightTrend.deltaKg);
+  const wantedDirection = user.goal === 'weight_loss' ? -1 : user.goal === 'muscle_gain' ? 1 : 0;
+  const trendTone =
+    trendDirection === 0 || wantedDirection === 0
+      ? { pill: 'bg-overlay/5', text: 'text-text-secondary', icon: '#A1A1AA' }
+      : trendDirection === wantedDirection
+        ? { pill: 'bg-emerald-500/10', text: 'text-emerald-500', icon: '#10b981' }
+        : { pill: 'bg-amber-500/10', text: 'text-amber-500', icon: '#f59e0b' };
+  const TrendIcon = trendDirection < 0 ? TrendingDown : trendDirection > 0 ? TrendingUp : Minus;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-6 px-6 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12"
+        contentContainerClassName="gap-5 px-5 pt-4 pb-32 lg:mx-auto lg:w-full lg:max-w-2xl lg:px-10 lg:pb-12"
       >
-        <Text className="text-3xl font-bold tracking-tight text-foreground">Profil</Text>
+        <Text className="text-[28px] font-semibold leading-9 tracking-tight text-foreground">Profil</Text>
 
         <View className="items-center gap-3 rounded-[28px] border border-surface-border bg-surface py-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <Pressable onPress={handlePickAvatar} disabled={uploadingAvatar} className="relative active:opacity-80">
             <UserAvatar name={user.name} avatarUrl={user.avatarUrl} frameId={activeBorder} size={72} />
             <View className="absolute -bottom-1 -right-1 h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-primary">
-              {uploadingAvatar ? <ActivityIndicator size="small" color="#ffffff" /> : <Camera color="#ffffff" size={12} />}
+              {uploadingAvatar ? <ActivityIndicator size="small" color="#ffffff" /> : <Camera color="#ffffff" size={12} strokeWidth={2} />}
             </View>
           </Pressable>
           <View className="items-center gap-1">
@@ -428,7 +491,7 @@ export default function ProfilScreen() {
         </View>
 
         <Card className="gap-4">
-          <Text className="text-sm font-semibold text-text-secondary">Konto</Text>
+          <SectionTitle>Konto</SectionTitle>
           <TextField label="Name" value={name} onChangeText={setName} autoCapitalize="words" placeholder="Max Mustermann" />
           <TextField
             label="E-Mail-Adresse"
@@ -453,22 +516,22 @@ export default function ProfilScreen() {
         </Card>
 
         <View className="gap-2">
-          <Text className="text-sm font-semibold text-text-secondary">Ziele</Text>
-          <GoalInputRow icon={<Target color="#6366F1" size={18} />} label="Tagesziel Kalorien" value={calorieGoal} onChangeText={setCalorieGoal} suffix="kcal" accentColor="#6366F1" />
-          <GoalInputRow icon={<Wheat color="#3b82f6" size={18} />} label="Carbs" value={carbsGoal} onChangeText={handleCarbsChange} suffix="g" accentColor="#3b82f6" />
-          <GoalInputRow icon={<Egg color="#ef4444" size={18} />} label="Protein" value={proteinGoal} onChangeText={handleProteinChange} suffix="g" accentColor="#ef4444" />
+          <SectionTitle>Ziele</SectionTitle>
+          <GoalInputRow icon={<Target color="#6366F1" size={18} strokeWidth={STROKE} />} label="Tagesziel Kalorien" value={calorieGoal} onChangeText={setCalorieGoal} suffix="kcal" accentColor="#6366F1" />
+          <GoalInputRow icon={<Wheat color="#3b82f6" size={18} strokeWidth={STROKE} />} label="Carbs" value={carbsGoal} onChangeText={handleCarbsChange} suffix="g" accentColor="#3b82f6" />
+          <GoalInputRow icon={<Egg color="#ef4444" size={18} strokeWidth={STROKE} />} label="Protein" value={proteinGoal} onChangeText={handleProteinChange} suffix="g" accentColor="#ef4444" />
           {isProteinBelowFloor && (
             <Text className="px-1 text-xs text-red-500">
               Mindestens {proteinFloorG}g Protein (2.0g/kg Körpergewicht) - Muskelerhalt-Untergrenze.
             </Text>
           )}
-          <GoalInputRow icon={<Droplet color="#f59e0b" size={18} />} label="Fett" value={fatGoal} onChangeText={handleFatChange} suffix="g" accentColor="#f59e0b" />
+          <GoalInputRow icon={<Droplet color="#f59e0b" size={18} strokeWidth={STROKE} />} label="Fett" value={fatGoal} onChangeText={handleFatChange} suffix="g" accentColor="#f59e0b" />
           {dietTargetSummary && <Text className="px-1 text-xs text-text-secondary">{dietTargetSummary}</Text>}
           <Button label="Ziele speichern" onPress={handleSaveGoals} disabled={!isGoalsFormValid} className="mt-1" />
         </View>
 
         <Card className="gap-2">
-          <Text className="text-sm font-semibold text-text-secondary">Ernährungsstil</Text>
+          <SectionTitle>Ernährungsstil</SectionTitle>
           <Text className="text-xs text-text-secondary">
             Passt Makroziele, MND-Bewertung und Essensvorschläge sofort an - keine weitere Bestätigung nötig.
           </Text>
@@ -477,10 +540,10 @@ export default function ProfilScreen() {
         </Card>
 
         <Card className="gap-4">
-          <Text className="text-sm font-semibold text-text-secondary">Ziel wählen</Text>
+          <SectionTitle>Ziel wählen</SectionTitle>
           <ChipGroup options={GOAL_OPTIONS} selected={goal} onSelect={setGoal} />
 
-          <Text className="pt-2 text-sm font-semibold text-text-secondary">Körperdaten</Text>
+          <Text className="pt-2 text-xs font-medium uppercase tracking-wider text-text-secondary">Körperdaten</Text>
           <View className="flex-row gap-3">
             <View className="flex-1">
               <TextField label="Alter" keyboardType="number-pad" value={age} onChangeText={setAge} suffix="Jahre" />
@@ -506,7 +569,7 @@ export default function ProfilScreen() {
 
         {visibleExtraNutrients.length > 0 && (
           <Card className="gap-2">
-            <Text className="text-sm font-semibold text-text-secondary">Tagesbedarf: Extra Nährstoffe</Text>
+            <SectionTitle>Tagesbedarf: Extra Nährstoffe</SectionTitle>
             <Text className="text-xs text-text-secondary">
               Eigene Ziele für die oben ausgewählten Nährstoffe - ohne Eingabe gilt der aus deinem Ernährungsstil berechnete Standardwert.
             </Text>
@@ -528,65 +591,98 @@ export default function ProfilScreen() {
           </Card>
         )}
 
-        <Card className="gap-3">
-          <Text className="text-sm font-semibold text-text-secondary">Darstellung</Text>
-          <ThemeToggle />
-        </Card>
-
-        <NotificationSettingsCard />
+        {/* Flat settings list - no card chrome, rows separated by hairlines. */}
+        <View className="gap-1">
+          <SectionTitle>Einstellungen</SectionTitle>
+          <View className="gap-3 border-b border-surface-border/60 py-3">
+            <View className="flex-row items-center gap-3">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <Palette color="#6366F1" size={18} strokeWidth={STROKE} />
+              </View>
+              <Text className="text-[15px] font-medium leading-5 text-foreground">Darstellung</Text>
+            </View>
+            <ThemeToggle />
+          </View>
+          <NotificationSettingsRow />
+        </View>
 
         <LocalBackupCard />
 
-        <Card className="gap-4">
-          <View className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-overlay/5">
-              <Scale color="#A1A1AA" size={18} />
+        <Card className="gap-5 p-5">
+          <View className="flex-row items-start justify-between">
+            <View className="gap-1">
+              <View className="flex-row items-center gap-1.5">
+                <Scale color="#A1A1AA" size={14} strokeWidth={STROKE} />
+                <Text className="text-xs font-medium uppercase tracking-wider text-text-secondary">Gewichtsverlauf</Text>
+              </View>
+              <Text className="text-[28px] font-semibold leading-9 tracking-tight text-foreground">
+                {latestWeight ? formatKg(latestWeight.weightKg) : '–'}
+                <Text className="text-base font-normal text-text-secondary"> kg</Text>
+              </Text>
             </View>
-            <Text className="text-sm font-semibold text-text-secondary">Gewichtsverlauf</Text>
+            {weightTrend && (
+              <View className={`mt-1 flex-row items-center gap-1 rounded-full px-2.5 py-1 ${trendTone.pill}`}>
+                <TrendIcon color={trendTone.icon} size={14} strokeWidth={2} />
+                <Text className={`text-xs font-semibold ${trendTone.text}`}>
+                  {formatKg(weightTrend.deltaKg, true)} kg
+                </Text>
+              </View>
+            )}
           </View>
+          {weightTrend && (
+            <Text className="-mt-3 text-xs leading-4 text-text-secondary">
+              Trend: {trendDirection < 0 ? 'runter' : trendDirection > 0 ? 'rauf' : 'stabil'} um {formatKg(weightTrend.deltaKg)} kg in{' '}
+              {weightTrend.days === 1 ? '1 Tag' : `${weightTrend.days} Tagen`}
+            </Text>
+          )}
 
-          <LineChart points={chartPoints} firstLabel={firstDate} lastLabel={lastDate} color="#6366F1" />
+          <LineChart data={chartData} color="#6366F1" unit="kg" />
 
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <DateField label="Datum" value={newWeightDate} onChange={setNewWeightDate} />
+          <View className="gap-2.5">
+            <View className="flex-row items-end gap-2">
+              <View className="flex-1">
+                <DateField compact label="Datum" value={newWeightDate} onChange={setNewWeightDate} />
+              </View>
+              <View className="flex-1">
+                <TextField
+                  compact
+                  label="Neues Gewicht"
+                  keyboardType="decimal-pad"
+                  value={newWeight}
+                  onChangeText={setNewWeight}
+                  suffix="kg"
+                  placeholder={String(user.weightKg ?? '')}
+                />
+              </View>
             </View>
-            <View className="flex-1">
-              <TextField
-                label="Neues Gewicht"
-                keyboardType="decimal-pad"
-                value={newWeight}
-                onChangeText={setNewWeight}
-                suffix="kg"
-                placeholder={String(user.weightKg ?? '')}
-              />
-            </View>
+            <Button
+              size="sm"
+              label="Eintragen"
+              icon={<Plus color="#ffffff" size={16} strokeWidth={2} />}
+              onPress={handleAddWeight}
+              disabled={!isNewWeightValid}
+              className="self-end"
+            />
           </View>
-          <Button
-            label="Gewicht eintragen"
-            icon={<Plus color="#ffffff" size={18} />}
-            onPress={handleAddWeight}
-            disabled={!Number.isFinite(Number.parseFloat(newWeight.replace(',', '.'))) || Number.parseFloat(newWeight.replace(',', '.')) <= 0}
-          />
 
           {weightHistory.length > 0 && (
-            <>
+            <View>
               <Pressable
                 onPress={() => setShowWeightHistory((prev) => !prev)}
-                className="flex-row items-center justify-between border-t border-surface-border pt-3"
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showWeightHistory }}
+                className="flex-row items-center justify-between border-t border-surface-border/60 pt-3.5 active:opacity-70"
               >
-                <Text className="text-sm font-semibold text-text-secondary">
-                  Verlauf bearbeiten ({weightHistory.length})
-                </Text>
-                <ChevronDown
-                  color="#A1A1AA"
-                  size={18}
-                  style={{ transform: [{ rotate: showWeightHistory ? '180deg' : '0deg' }] }}
-                />
+                <Text className="text-sm font-medium text-text-secondary">Verlauf bearbeiten ({weightHistory.length})</Text>
+                {showWeightHistory ? (
+                  <ChevronUp color="#A1A1AA" size={18} strokeWidth={STROKE} />
+                ) : (
+                  <ChevronDown color="#A1A1AA" size={18} strokeWidth={STROKE} />
+                )}
               </Pressable>
 
               {showWeightHistory && (
-                <View className="gap-2">
+                <View className="mt-1">
                   {sortedHistoryDesc.map((entry) => (
                     <WeightHistoryRow
                       key={entry.id}
@@ -597,7 +693,7 @@ export default function ProfilScreen() {
                   ))}
                 </View>
               )}
-            </>
+            </View>
           )}
         </Card>
 
@@ -608,7 +704,7 @@ export default function ProfilScreen() {
             onPress={handleSignOut}
             className="flex-row items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/5 px-5 py-3.5 active:bg-red-500/10"
           >
-            <LogOut color="#f87171" size={18} />
+            <LogOut color="#f87171" size={18} strokeWidth={STROKE} />
             <Text className="text-base font-semibold text-red-400">Abmelden</Text>
           </Pressable>
         )}
