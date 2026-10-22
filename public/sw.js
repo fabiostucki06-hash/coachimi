@@ -30,7 +30,7 @@
 // detectable. `activate` below then deletes every cache key that isn't the
 // current CACHE_NAME, so the old shell cache never lingers.
 
-const CACHE_NAME = 'coach-imi-shell-v4';
+const CACHE_NAME = 'coach-imi-shell-v5';
 const SHELL_URLS = ['/', '/manifest.json'];
 
 // User data (diary, profile, diet cycles) lives in Supabase, a cross-origin host
@@ -71,8 +71,12 @@ self.addEventListener('fetch', (event) => {
   if (NEVER_CACHE_PREFIXES.some((prefix) => path.startsWith(prefix))) return;
 
   if (request.mode === 'navigate') {
+    // `no-store` bypasses the browser's HTTP cache too, so every open of the
+    // app/site gets the freshly deployed index.html (and with it the newest
+    // hashed bundle) whenever the network is reachable. The cached shell is
+    // only the offline fallback.
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then((response) => {
           const copy = response.clone();
           caches
