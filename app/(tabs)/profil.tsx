@@ -2,11 +2,9 @@ import { router } from 'expo-router';
 import {
   Camera,
   ChevronDown,
-  ChartSpline,
   ChevronUp,
   Droplet,
   Egg,
-  EyeOff,
   LogOut,
   Minus,
   Palette,
@@ -22,7 +20,7 @@ import {
   X,
 } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LocalBackupCard } from '@/components/features/LocalBackupCard';
@@ -41,7 +39,6 @@ import { TextField } from '@/components/ui/TextField';
 import { NUTRIENT_META, NUTRIENT_ORDER } from '@/components/features/nutrientMeta';
 import { getDietTargetSummary, getMicronutrientGoalsForDiet, PROTEIN_FLOOR_G_PER_KG } from '@/services/dietEngine';
 import { AvatarUploadError, pickAndUploadAvatar } from '@/services/profile';
-import { useDisplayPrefsStore } from '@/store/displayPrefsStore';
 import { useProfileStore } from '@/store/profileStore';
 import { RANKS, useRewardStore } from '@/store/rewardStore';
 import { useSyncStore } from '@/store/syncStore';
@@ -300,8 +297,6 @@ export default function ProfilScreen() {
   const selectedDiaryDate = useUiStore((state) => state.selectedDate);
   const session = useSyncStore((state) => state.session);
   const signOut = useSyncStore((state) => state.signOut);
-  const showWeightTrend = useDisplayPrefsStore((state) => state.showWeightTrend);
-  const setShowWeightTrend = useDisplayPrefsStore((state) => state.setShowWeightTrend);
   const activeRank = useRewardStore((state) => state.activeRank);
   const activeRankName = RANKS.find((rank) => rank.id === activeRank)?.name ?? RANKS[0].name;
   const activeBorder = useRewardStore((state) => state.activeBorder);
@@ -606,123 +601,96 @@ export default function ProfilScreen() {
             </View>
             <ThemeToggle />
           </View>
-          <View className="flex-row items-center gap-3 border-b border-surface-border/60 py-3">
-            <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-              <ChartSpline color="#6366F1" size={18} strokeWidth={STROKE} />
-            </View>
-            <View className="flex-1 gap-0.5">
-              <Text className="text-[15px] font-medium leading-5 text-foreground">Gewichtsverlauf anzeigen</Text>
-              <Text className="text-xs leading-4 text-text-secondary">Diagramm, Trend und Gewicht eintragen</Text>
-            </View>
-            <Switch
-              value={showWeightTrend}
-              onValueChange={setShowWeightTrend}
-              accessibilityLabel="Gewichtsverlauf anzeigen"
-              trackColor={{ false: '#3F3F46', true: '#6366F1' }}
-              thumbColor="#ffffff"
-            />
-          </View>
           <NotificationSettingsRow />
         </View>
 
         <LocalBackupCard />
 
-        {showWeightTrend && (
-          <Card className="gap-5 p-5">
-            <View className="flex-row items-start justify-between">
-              <View className="gap-1">
-                <View className="flex-row items-center gap-1.5">
-                  <Scale color="#A1A1AA" size={14} strokeWidth={STROKE} />
-                  <Text className="text-xs font-medium uppercase tracking-wider text-text-secondary">Gewichtsverlauf</Text>
-                  <Pressable
-                    onPress={() => setShowWeightTrend(false)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Gewichtsverlauf ausblenden"
-                    hitSlop={8}
-                    className="ml-1 h-6 w-6 items-center justify-center rounded-full active:bg-overlay/10"
-                  >
-                    <EyeOff color="#A1A1AA" size={13} strokeWidth={STROKE} />
-                  </Pressable>
-                </View>
-                <Text className="text-[28px] font-semibold leading-9 tracking-tight text-foreground">
-                  {latestWeight ? formatKg(latestWeight.weightKg) : '–'}
-                  <Text className="text-base font-normal text-text-secondary"> kg</Text>
+        <Card className="gap-5 p-5">
+          <View className="flex-row items-start justify-between">
+            <View className="gap-1">
+              <View className="flex-row items-center gap-1.5">
+                <Scale color="#A1A1AA" size={14} strokeWidth={STROKE} />
+                <Text className="text-xs font-medium uppercase tracking-wider text-text-secondary">Gewichtsverlauf</Text>
+              </View>
+              <Text className="text-[28px] font-semibold leading-9 tracking-tight text-foreground">
+                {latestWeight ? formatKg(latestWeight.weightKg) : '–'}
+                <Text className="text-base font-normal text-text-secondary"> kg</Text>
+              </Text>
+            </View>
+          </View>
+          {weightTrend && (
+            <View className="-mt-3 flex-row items-center gap-1.5">
+              <TrendIcon color={trendTone.icon} size={14} strokeWidth={2} />
+              <Text className="text-xs leading-4 text-text-secondary">
+                <Text className={`font-medium ${trendTone.text}`}>
+                  {trendDirection < 0 ? 'Sinkend' : trendDirection > 0 ? 'Steigend' : 'Stabil'}
                 </Text>
+                {weightTrend.days === 1 ? ' · letzter Tag' : ` · letzte ${weightTrend.days} Tage`}
+              </Text>
+            </View>
+          )}
+
+          <LineChart data={chartData} color="#6366F1" unit="kg" />
+
+          <View className="gap-2.5">
+            <View className="flex-row items-end gap-2">
+              <View className="flex-1">
+                <DateField compact label="Datum" value={newWeightDate} onChange={setNewWeightDate} />
+              </View>
+              <View className="flex-1">
+                <TextField
+                  compact
+                  label="Neues Gewicht"
+                  keyboardType="decimal-pad"
+                  value={newWeight}
+                  onChangeText={setNewWeight}
+                  suffix="kg"
+                  placeholder={String(user.weightKg ?? '')}
+                />
               </View>
             </View>
-            {weightTrend && (
-              <View className="-mt-3 flex-row items-center gap-1.5">
-                <TrendIcon color={trendTone.icon} size={14} strokeWidth={2} />
-                <Text className="text-xs leading-4 text-text-secondary">
-                  <Text className={`font-medium ${trendTone.text}`}>
-                    {trendDirection < 0 ? 'Sinkend' : trendDirection > 0 ? 'Steigend' : 'Stabil'}
-                  </Text>
-                  {weightTrend.days === 1 ? ' · letzter Tag' : ` · letzte ${weightTrend.days} Tage`}
-                </Text>
-              </View>
-            )}
+            <Button
+              size="sm"
+              label="Eintragen"
+              icon={<Plus color="#ffffff" size={16} strokeWidth={2} />}
+              onPress={handleAddWeight}
+              disabled={!isNewWeightValid}
+              className="self-end"
+            />
+          </View>
 
-            <LineChart data={chartData} color="#6366F1" unit="kg" />
-
-            <View className="gap-2.5">
-              <View className="flex-row items-end gap-2">
-                <View className="flex-1">
-                  <DateField compact label="Datum" value={newWeightDate} onChange={setNewWeightDate} />
-                </View>
-                <View className="flex-1">
-                  <TextField
-                    compact
-                    label="Neues Gewicht"
-                    keyboardType="decimal-pad"
-                    value={newWeight}
-                    onChangeText={setNewWeight}
-                    suffix="kg"
-                    placeholder={String(user.weightKg ?? '')}
-                  />
-                </View>
-              </View>
-              <Button
-                size="sm"
-                label="Eintragen"
-                icon={<Plus color="#ffffff" size={16} strokeWidth={2} />}
-                onPress={handleAddWeight}
-                disabled={!isNewWeightValid}
-                className="self-end"
-              />
-            </View>
-
-            {weightHistory.length > 0 && (
-              <View>
-                <Pressable
-                  onPress={() => setShowWeightHistory((prev) => !prev)}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: showWeightHistory }}
-                  className="flex-row items-center justify-between border-t border-surface-border/60 pt-3.5 active:opacity-70"
-                >
-                  <Text className="text-sm font-medium text-text-secondary">Verlauf bearbeiten ({weightHistory.length})</Text>
-                  {showWeightHistory ? (
-                    <ChevronUp color="#A1A1AA" size={18} strokeWidth={STROKE} />
-                  ) : (
-                    <ChevronDown color="#A1A1AA" size={18} strokeWidth={STROKE} />
-                  )}
-                </Pressable>
-
-                {showWeightHistory && (
-                  <View className="mt-1">
-                    {sortedHistoryDesc.map((entry) => (
-                      <WeightHistoryRow
-                        key={entry.id}
-                        entry={entry}
-                        onSave={(changes) => updateWeightEntry(entry.id, changes)}
-                        onDelete={() => removeWeightEntry(entry.id)}
-                      />
-                    ))}
-                  </View>
+          {weightHistory.length > 0 && (
+            <View>
+              <Pressable
+                onPress={() => setShowWeightHistory((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showWeightHistory }}
+                className="flex-row items-center justify-between border-t border-surface-border/60 pt-3.5 active:opacity-70"
+              >
+                <Text className="text-sm font-medium text-text-secondary">Verlauf bearbeiten ({weightHistory.length})</Text>
+                {showWeightHistory ? (
+                  <ChevronUp color="#A1A1AA" size={18} strokeWidth={STROKE} />
+                ) : (
+                  <ChevronDown color="#A1A1AA" size={18} strokeWidth={STROKE} />
                 )}
-              </View>
-            )}
-          </Card>
-        )}
+              </Pressable>
+
+              {showWeightHistory && (
+                <View className="mt-1">
+                  {sortedHistoryDesc.map((entry) => (
+                    <WeightHistoryRow
+                      key={entry.id}
+                      entry={entry}
+                      onSave={(changes) => updateWeightEntry(entry.id, changes)}
+                      onDelete={() => removeWeightEntry(entry.id)}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+        </Card>
 
         <PatchNotes />
 
