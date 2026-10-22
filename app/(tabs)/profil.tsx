@@ -59,10 +59,8 @@ function SectionTitle({ children }: { children: ReactNode }) {
   return <Text className="text-xs font-medium uppercase tracking-wider text-text-secondary">{children}</Text>;
 }
 
-function formatKg(value: number, signed = false): string {
-  const text = Math.abs(value).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  if (!signed) return text;
-  return `${value < 0 ? '−' : value > 0 ? '+' : '±'}${text}`;
+function formatKg(value: number): string {
+  return value.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 function daysBetween(fromKey: string, toKey: string): number {
@@ -462,10 +460,10 @@ export default function ProfilScreen() {
   const wantedDirection = user.goal === 'weight_loss' ? -1 : user.goal === 'muscle_gain' ? 1 : 0;
   const trendTone =
     trendDirection === 0 || wantedDirection === 0
-      ? { pill: 'bg-overlay/5', text: 'text-text-secondary', icon: '#A1A1AA' }
+      ? { text: 'text-text-secondary', icon: '#A1A1AA' }
       : trendDirection === wantedDirection
-        ? { pill: 'bg-emerald-500/10', text: 'text-emerald-500', icon: '#10b981' }
-        : { pill: 'bg-amber-500/10', text: 'text-amber-500', icon: '#f59e0b' };
+        ? { text: 'text-emerald-500', icon: '#10b981' }
+        : { text: 'text-amber-500', icon: '#f59e0b' };
   const TrendIcon = trendDirection < 0 ? TrendingDown : trendDirection > 0 ? TrendingUp : Minus;
 
   return (
@@ -651,24 +649,21 @@ export default function ProfilScreen() {
                   <Text className="text-base font-normal text-text-secondary"> kg</Text>
                 </Text>
               </View>
-              {weightTrend && (
-                <View className={`mt-1 flex-row items-center gap-1 rounded-full px-2.5 py-1 ${trendTone.pill}`}>
-                  <TrendIcon color={trendTone.icon} size={14} strokeWidth={2} />
-                  <Text className={`text-xs font-semibold ${trendTone.text}`}>
-                    {formatKg(weightTrend.deltaKg, true)} kg
-                  </Text>
-                </View>
-              )}
             </View>
             {weightTrend && (
-              <Text className="-mt-3 text-xs leading-4 text-text-secondary">
-                Trend: {trendDirection < 0 ? 'runter' : trendDirection > 0 ? 'rauf' : 'stabil'} um {formatKg(weightTrend.deltaKg)} kg in{' '}
-                {weightTrend.days === 1 ? '1 Tag' : `${weightTrend.days} Tagen`}
-              </Text>
+              <View className="-mt-3 flex-row items-center gap-1.5">
+                <TrendIcon color={trendTone.icon} size={14} strokeWidth={2} />
+                <Text className="text-xs leading-4 text-text-secondary">
+                  <Text className={`font-medium ${trendTone.text}`}>
+                    {trendDirection < 0 ? 'Sinkend' : trendDirection > 0 ? 'Steigend' : 'Stabil'}
+                  </Text>
+                  {weightTrend.days === 1 ? ' · letzter Tag' : ` · letzte ${weightTrend.days} Tage`}
+                </Text>
+              </View>
             )}
-  
+
             <LineChart data={chartData} color="#6366F1" unit="kg" />
-  
+
             <View className="gap-2.5">
               <View className="flex-row items-end gap-2">
                 <View className="flex-1">
@@ -695,7 +690,7 @@ export default function ProfilScreen() {
                 className="self-end"
               />
             </View>
-  
+
             {weightHistory.length > 0 && (
               <View>
                 <Pressable
@@ -711,7 +706,7 @@ export default function ProfilScreen() {
                     <ChevronDown color="#A1A1AA" size={18} strokeWidth={STROKE} />
                   )}
                 </Pressable>
-  
+
                 {showWeightHistory && (
                   <View className="mt-1">
                     {sortedHistoryDesc.map((entry) => (
