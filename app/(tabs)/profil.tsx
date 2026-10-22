@@ -6,7 +6,6 @@ import {
   Droplet,
   Egg,
   LogOut,
-  Minus,
   Palette,
   Pencil,
   Plus,
@@ -14,8 +13,6 @@ import {
   Scale,
   Target,
   Trash2,
-  TrendingDown,
-  TrendingUp,
   Wheat,
   X,
 } from 'lucide-react-native';
@@ -58,23 +55,6 @@ function SectionTitle({ children }: { children: ReactNode }) {
 
 function formatKg(value: number): string {
   return value.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
-function daysBetween(fromKey: string, toKey: string): number {
-  return Math.round((Date.parse(`${toKey}T00:00:00Z`) - Date.parse(`${fromKey}T00:00:00Z`)) / 86_400_000);
-}
-
-/**
- * Change over (roughly) the last 30 days: latest entry vs. the earliest entry inside
- * that window. If the window only holds the latest entry, falls back to the entry
- * right before it so a sparse logger still sees a trend. `history` is ascending.
- */
-function getWeightTrend(history: WeightEntry[]): { deltaKg: number; days: number } | null {
-  if (history.length < 2) return null;
-  const latest = history[history.length - 1];
-  const inWindow = history.filter((entry) => daysBetween(entry.date, latest.date) <= 30);
-  const baseline = inWindow.length > 1 ? inWindow[0] : history[history.length - 2];
-  return { deltaKg: latest.weightKg - baseline.weightKg, days: Math.max(daysBetween(baseline.date, latest.date), 1) };
 }
 
 function shortDateLabel(dateKey: string): string {
@@ -444,22 +424,9 @@ export default function ProfilScreen() {
 
   const chartData = weightHistory.map((entry) => ({ value: entry.weightKg, label: shortDateLabel(entry.date) }));
   const latestWeight = weightHistory[weightHistory.length - 1];
-  const weightTrend = getWeightTrend(weightHistory);
   const sortedHistoryDesc = [...weightHistory].sort((a, b) => b.date.localeCompare(a.date));
   const parsedNewWeight = Number.parseFloat(newWeight.replace(',', '.'));
   const isNewWeightValid = Number.isFinite(parsedNewWeight) && parsedNewWeight > 0;
-
-  // A trend is "good" when it moves toward the selected goal; for maintain/endurance
-  // any change is just shown neutrally.
-  const trendDirection = !weightTrend || Math.abs(weightTrend.deltaKg) < 0.05 ? 0 : Math.sign(weightTrend.deltaKg);
-  const wantedDirection = user.goal === 'weight_loss' ? -1 : user.goal === 'muscle_gain' ? 1 : 0;
-  const trendTone =
-    trendDirection === 0 || wantedDirection === 0
-      ? { text: 'text-text-secondary', icon: '#A1A1AA' }
-      : trendDirection === wantedDirection
-        ? { text: 'text-emerald-500', icon: '#10b981' }
-        : { text: 'text-amber-500', icon: '#f59e0b' };
-  const TrendIcon = trendDirection < 0 ? TrendingDown : trendDirection > 0 ? TrendingUp : Minus;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -607,29 +574,16 @@ export default function ProfilScreen() {
         <LocalBackupCard />
 
         <Card className="gap-5 p-5">
-          <View className="flex-row items-start justify-between">
-            <View className="gap-1">
-              <View className="flex-row items-center gap-1.5">
-                <Scale color="#A1A1AA" size={14} strokeWidth={STROKE} />
-                <Text className="text-xs font-medium uppercase tracking-wider text-text-secondary">Gewichtsverlauf</Text>
-              </View>
-              <Text className="text-[28px] font-semibold leading-9 tracking-tight text-foreground">
-                {latestWeight ? formatKg(latestWeight.weightKg) : '–'}
-                <Text className="text-base font-normal text-text-secondary"> kg</Text>
-              </Text>
+          <View className="gap-1">
+            <View className="flex-row items-center gap-1.5">
+              <Scale color="#A1A1AA" size={14} strokeWidth={STROKE} />
+              <Text className="text-xs font-medium uppercase tracking-wider text-text-secondary">Gewichtsverlauf</Text>
             </View>
+            <Text className="text-[28px] font-semibold leading-9 tracking-tight text-foreground">
+              {latestWeight ? formatKg(latestWeight.weightKg) : '–'}
+              <Text className="text-base font-normal text-text-secondary"> kg</Text>
+            </Text>
           </View>
-          {weightTrend && (
-            <View className="-mt-3 flex-row items-center gap-1.5">
-              <TrendIcon color={trendTone.icon} size={14} strokeWidth={2} />
-              <Text className="text-xs leading-4 text-text-secondary">
-                <Text className={`font-medium ${trendTone.text}`}>
-                  {trendDirection < 0 ? 'Sinkend' : trendDirection > 0 ? 'Steigend' : 'Stabil'}
-                </Text>
-                {weightTrend.days === 1 ? ' · letzter Tag' : ` · letzte ${weightTrend.days} Tage`}
-              </Text>
-            </View>
-          )}
 
           <LineChart data={chartData} color="#6366F1" unit="kg" />
 
